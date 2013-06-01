@@ -139,6 +139,60 @@
             }
         }
 
+        public static function go($url)
+        {
+            if (!headers_sent()) {
+                header('Location: ' . $url);
+                exit;
+            } else {
+                echo '<script type="text/javascript">';
+                echo "\t" . 'window.location.href = "' . $url . '";';
+                echo '</script>';
+                echo '<noscript>';
+                echo "\t" . '<meta http-equiv="refresh" content="0;url=' . $url . '" />';
+                echo '</noscript>';
+                exit;
+            }
+        }
+
+        public function mergeOptions(array $array1, $array2 = null)
+        {
+            if (is_array($array2)) {
+                foreach ($array2 as $key => $val) {
+                    if (is_array($array2[$key])) {
+                        $array1[$key] = (ake($key, $array1) && is_array($array1[$key]))
+                                      ? $this->mergeOptions($array1[$key], $array2[$key])
+                                      : $array2[$key];
+                    } else {
+                        $array1[$key] = $val;
+                    }
+                }
+            }
+            return $array1;
+        }
+
+        public static function isUtf8($string)
+        {
+            if (!is_string($string)) {
+                return false;
+            }
+            return !strlen(
+                preg_replace(
+                      ',[\x09\x0A\x0D\x20-\x7E]'
+                    . '|[\xC2-\xDF][\x80-\xBF]'
+                    . '|\xE0[\xA0-\xBF][\x80-\xBF]'
+                    . '|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}'
+                    . '|\xED[\x80-\x9F][\x80-\xBF]'
+                    . '|\xF0[\x90-\xBF][\x80-\xBF]{2}'
+                    . '|[\xF1-\xF3][\x80-\xBF]{3}'
+                    . '|\xF4[\x80-\x8F][\x80-\xBF]{2}'
+                    . ',sS',
+                    '',
+                    $string
+                )
+            );
+        }
+
         static public function cleanDataToJs($string, $extended = false, $char = '\'')
         {
             if ($extended) {
@@ -146,4 +200,7 @@
             }
             return repl($char, '\\' . $char, $string);
         }
+
+        public static function token(){return sha1(str_shuffle(chr(mt_rand(32, 126)) . uniqid() . microtime(true)));}
+        public static function isEmail($email) { return preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $email); }
     }

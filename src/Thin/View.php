@@ -385,4 +385,9 @@
         {
             return $this->_encoding;
         }
+
+        public static function utf8($str)
+        {
+            return Inflector::utf8($str);
+        }
     }
