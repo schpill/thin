@@ -138,4 +138,12 @@
                 }
             }
         }
+
+        static public function cleanDataToJs($string, $extended = false, $char = '\'')
+        {
+            if ($extended) {
+                $string = repl('\\', '\\\\', $string);
+            }
+            return repl($char, '\\' . $char, $string);
+        }
     }

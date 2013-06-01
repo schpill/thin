@@ -1,5 +1,7 @@
 <?php
     namespace Thin;
+    use Symfony\Component\HttpFoundation\ThinRequest as ThinRequest;
+
     class Bootstrap
     {
         private static $app;
@@ -7,6 +9,12 @@
         public static function init()
         {
             session_start();
+
+            Request::$foundation = ThinRequest::createFromGlobals();
+
+            define('NL', "\n");
+            define('ISAJAX', \i::lower(getenv('HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest');
+
             Utils::cleanCache();
             $logger = new Log();
             $app = new Application;
@@ -36,9 +44,9 @@
             $router::dispatch();
         }
 
-        private static function run()
+        public static function run()
         {
-            $route = \u::get('appDispatch');
+            Request::$route = $route = \u::get('appDispatch');
             $module = $route->getModule();
             $controller = $route->getController();
             $action = $route->getAction();
@@ -101,6 +109,6 @@
 
         private static function test()
         {
-            $em = ems('ajf', 'user')->find(1);
+
         }
     }

@@ -69,6 +69,7 @@
             }
 
             \u::set('appView', $this);
+            \u::set('showStats', true);
         }
 
         public function partial($partial, array $params = array(), $cache = false, $echo = true, $module = null)

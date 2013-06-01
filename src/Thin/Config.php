@@ -26,12 +26,21 @@
                             }
                             $config = $configMerge;
                         }
-                        foreach ($config as $k => $v) {
-                            static::set($conf . '.' . $k, $v);
-                        }
+                        static::setArray($conf, $config);
                     }
                 } else {
                     throw new Exception("The config file '$conf' does not exist.");
+                }
+            }
+        }
+
+        private static function setArray($conf, $array)
+        {
+            foreach ($array as $k => $v) {
+                if (!is_array($v)) {
+                    static::set($conf . '.' . $k, $v);
+                } else {
+                    static::setArray($conf . '.' . $k, $v);
                 }
             }
         }

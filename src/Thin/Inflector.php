@@ -512,6 +512,20 @@
             return ($value === '' || $value === null);
         }
 
+        public static function is($pattern, $value)
+        {
+            // Asterisks are translated into zero-or-more regular expression wildcards
+            // to make it convenient to check if the URI starts with a given pattern
+            // such as "library/*". This is only done when not root.
+            if ($pattern !== '/')  {
+                $pattern = repl('*', '(.*)', $pattern).'\z';
+            } else {
+                $pattern = '^/$';
+            }
+
+            return preg_match('#'.$pattern.'#', $value);
+        }
+
         public static function encoding()
         {
             return 'utf-8';

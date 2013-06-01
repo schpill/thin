@@ -14,7 +14,9 @@
         public static function dispatch()
         {
             static::$_uri = $uri = $_SERVER['REQUEST_URI'];
-            $routes = Config::get('routes.collection');
+            $file = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
+            $configRoutes = include($file);
+            $routes = $configRoutes['collection'];
             foreach ($routes as $route) {
                 $path = $route->getPath();
                 if ($path == $uri) {
@@ -74,6 +76,15 @@
             $dispatch->setModule('www');
             $dispatch->setController('static');
             $dispatch->setAction('is404');
+            \u::set('appDispatch', $dispatch);
+        }
+
+        public static function isError()
+        {
+            $dispatch = new Dispatch;
+            $dispatch->setModule('www');
+            $dispatch->setController('static');
+            $dispatch->setAction('is-error');
             \u::set('appDispatch', $dispatch);
         }
     }

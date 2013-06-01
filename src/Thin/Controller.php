@@ -5,7 +5,7 @@
         public function noRender()
         {
             $this->view->noCompiled();
-            u::clearEvent('bootstrap.finished');
+            \u::set('showStats', null);
         }
 
         public function getRequest()

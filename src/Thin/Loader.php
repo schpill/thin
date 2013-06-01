@@ -41,20 +41,30 @@
 
     spl_autoload_register('ThinAutoload');
 
-    set_exception_handler(function($e) {
-        var_dump($e);
+    set_exception_handler(function($exception) {
+        $router = plugin('router');
+        u::set('ThinError', $exception);
+        $router::isError();
+        \Thin\Bootstrap::run();
     });
 
 
-    set_error_handler(function($code, $error, $file, $line) {
-        var_dump($code, $error, $file, $line);
+    set_error_handler(function($type, $message, $file, $line) {
+        $exception = new \ErrorException($message, $type, 0, $file, $line);
+        $router = plugin('router');
+        u::set('ThinError', $exception);
+        $router::isError();
+        \Thin\Bootstrap::run();
     });
 
 
     $register_shutdown_function = function ($error) {
         extract($error, EXTR_SKIP);
         $exception = new \ErrorException($message, $type, 0, $file, $line);
-        dieDump($error);
+        $router = plugin('router');
+        u::set('ThinError', $exception);
+        $router::isError();
+        \Thin\Bootstrap::run();
     };
 
     \Thin\Event::set('register_shutdown_function', $register_shutdown_function);
@@ -68,6 +78,34 @@
 
     error_reporting(-1);
 
+    define('THINSTART', time());
+
+    $protocol = 'http';
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
+        $protocol = 'https';
+    }
+
+    $urlSite = "$protocol://" . $_SERVER["SERVER_NAME"] . dirname($_SERVER["SCRIPT_NAME"]) . "/";
+
+    if (strstr($urlSite, '//')) {
+        $urlSite = repl('//', '/', $urlSite);
+        $urlSite = repl($protocol . ':/', $protocol . '://', $urlSite);
+    }
+    if (\i::upper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        $tab = explode('\\', $urlSite);
+        $r = '';
+        foreach ($tab as $c => $v) {
+            $r .= $v;
+        }
+        $r = repl('//', '/', $r);
+        $r = repl($protocol . ':/', $protocol . '://', $r);
+        $urlSite = $r;
+    }
+    u::set("urlsite", $urlSite);
+
+
+    define('URLSITE', $urlSite);
+
     require_once APPLICATION_PATH . DS . 'Bootstrap.php';
     \Thin\Timer::start();
 
@@ -77,10 +115,11 @@
     if (null !== u::get("showStats")) {
         \Thin\Timer::stop();
         $executionTime  = \Thin\Timer::get();
-        $queries        = u::get('NbQueries');
-        $SQLDuration    = u::get('SQLTotalDuration');
+        $queries        = (null === u::get('NbQueries')) ? 0 : u::get('NbQueries');
+        $valQueries     = ($queries < 2) ? 'requete SQL executee' : 'requetes SQL executees';
+        $SQLDuration    = (null === u::get('SQLTotalDuration')) ? 0 : u::get('SQLTotalDuration');
         $execPHP        = $executionTime - $SQLDuration;
         $PCPhp          = round(($execPHP / $executionTime) * 100, 2);
         $PCSQL          = 100 - $PCPhp;
-        echo "\n<!--\n\n\tPage générée en $executionTime s.\n\t$queries requêtes SQL exécutées en $SQLDuration s. (" . ($PCSQL) . " %)\n\tExécution PHP $execPHP s. ($PCPhp %)\n\n\tMémoire utilisée : " . convertSize(memory_get_peak_usage()) . "\n\n-->";
+        echo "\n<!--\n\n\tPage generee en $executionTime s.\n\t$queries $valQueries en $SQLDuration s. (" . ($PCSQL) . " %)\n\tExecution PHP $execPHP s. ($PCPhp %)\n\n\tMemoire utilisee : " . convertSize(memory_get_peak_usage()) . "\n\n-->";
     }

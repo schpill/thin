@@ -121,45 +121,25 @@
             }
         }
     }
+    if (!function_exists('email')) {
+        function email($to, $from, $subject, $body, $html = true)
+        {
+            $mail = new \Thin\Smtp('mailjet');
+            $mail->to($to)->from($from)->subject($subject);
+            if (true === $html) {
+                $result = $mail->body($body)->send();
+            } else {
+                $result = $mail->text($body)->sendText();
+            }
+            return $result;
+        }
+    }
 
     if (!function_exists('config')) {
         /* ex: config('app.encoding');*/
-        function config($key = null, $value = null)
+        function config($namespace = 'application', $key)
         {
-            $FTVConfig = u::get('FTVConfig');
-            $configs = (null !== $FTVConfig) ? $FTVConfig : array();
-            if (null !== $value) {
-                $configs = arraySet($configs, $key, $value);
-                u::set('FTVConfig', $configs);
-                return $value;
-            }
-            if (null === $key) {
-                return $configs;
-            } else {
-                if (null !== $configs) {
-                    if (strstr($key, '.')) {
-                        $params = explode('.', $key);
-                        $actual = $configs;
-                        $render = true;
-                        foreach ($params as $param) {
-                            if (ake($param, $actual)) {
-                                $actual = $actual[$param];
-                            } else {
-                                $render = false;
-                                break;
-                            }
-                        }
-                        return (true === $render) ? $actual : null;
-                    } else {
-                        if (ake($key, $configs)) {
-                            return $configs[$key];
-                        } else {
-                            return null;
-                        }
-                    }
-                }
-                return $configs;
-            }
+            return \Thin\Utils::get($namespace . '.' . $key);
         }
     }
 
@@ -257,17 +237,6 @@
         function utils()
         {
             return \Thin\Utils::getInstance('\Thin\Utils');
-        }
-    }
-
-    if (!function_exists('urlsite')) {
-        function urlsite($echo = true)
-        {
-            if (true === $echo) {
-                echo URLSITE;
-            } else {
-                return URLSITE;
-            }
         }
     }
 
