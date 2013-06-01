@@ -5,8 +5,8 @@
         'application' => array(
             'key' => '5@poplmm145d3225_85fvKL0@',
             'mailjet' => array(
-                'login' => '739abc7007a2bbbd050cac4852186259',
-                'password' => '03c09a6b64c3024789b4466feca526d2',
+                'login' => 'xxx',
+                'password' => 'xxx',
             ),
         ),
         'db' => array(
@@ -15,7 +15,7 @@
                 'host' => 'localhost',
                 'username' => 'root',
                 'password' => 'root',
-                'dbname' => 'ajf',
+                'dbname' => 'thin',
             ),
         ),
     );
