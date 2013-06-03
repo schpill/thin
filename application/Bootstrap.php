@@ -61,7 +61,7 @@
             }
 
             $controllerFile = $controllerDir . DS . Inflector::lower($controller) . 'Controller.php';
-            if (!file_exists($controllerFile)) {
+            if (!File::exists($controllerFile)) {
                 throw new Exception("The controller '$controllerFile' does not exist.");
             }
             require_once $controllerFile;
@@ -72,10 +72,10 @@
             $controller->view = new View;
             $actions = get_class_methods($controllerClass);
 
-            if (in_array('init', $actions)) {
+            if (Arrays::inArray('init', $actions)) {
                 $controller->init();
             }
-            if (in_array('preDispatch', $actions)) {
+            if (Arrays::inArray('preDispatch', $actions)) {
                 $controller->preDispatch();
             }
 
@@ -102,7 +102,7 @@
 
             $controller->view->render();
 
-            if (in_array('postDispatch', $actions)) {
+            if (Arrays::inArray('postDispatch', $actions)) {
                 $controller->postDispatch();
             }
         }

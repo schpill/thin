@@ -4,7 +4,7 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
-    class Array
+    class Arrays
     {
         /**
          * @var  string  default delimiter for path()
@@ -15,10 +15,10 @@
          * Tests if an array is associative or not.
          *
          *     // Returns TRUE
-         *     Array::isAssoc(array('username' => 'john.doe'));
+         *     Arrays::isAssoc(array('username' => 'john.doe'));
          *
          *     // Returns false
-         *     Array::isAssoc('foo', 'bar');
+         *     Arrays::isAssoc('foo', 'bar');
          *
          * @param   array   $array  array to check
          * @return  boolean
@@ -37,13 +37,13 @@
          * Test if a value is an array with an additional check for array-like objects.
          *
          *     // Returns TRUE
-         *     Array::isArray(array());
-         *     Array::isArray(new \ArrayObject);
+         *     Arrays::isArray(array());
+         *     Arrays::isArray(new \ArrayObject);
          *
          *     // Returns false
-         *     Array::isArray(false);
-         *     Array::isArray('not an array!');
-         *     Array::isArray(\Model::instance());
+         *     Arrays::isArray(false);
+         *     Arrays::isArray('not an array!');
+         *     Arrays::isArray(\Model::instance());
          *
          * @param   mixed   $value  value to check
          * @return  boolean
@@ -59,19 +59,28 @@
             }
         }
 
+
+        public static function inArray($needle, $array)
+        {
+            if (static::isArray($array)) {
+                // Definitely an array
+                return in_array($needle, $array);
+            }
+        }
+
         /**
          * Gets a value from an array using a dot separated path.
          *
          *     // Get the value of $array['foo']['bar']
-         *     $value = Array::path($array, 'foo.bar');
+         *     $value = Arrays::path($array, 'foo.bar');
          *
          * Using a wildcard "*" will search intermediate arrays and return an array.
          *
          *     // Get the values of "color" in theme
-         *     $colors = Array::path($array, 'theme.*.color');
+         *     $colors = Arrays::path($array, 'theme.*.color');
          *
          *     // Using an array of keys
-         *     $colors = Array::path($array, array('theme', '*', 'color'));
+         *     $colors = Arrays::path($array, array('theme', '*', 'color'));
          *
          * @param   array   $array      array to search
          * @param   mixed   $path       key path string (delimiter separated) or array of keys
@@ -136,7 +145,7 @@
 
                     $values = array();
                     foreach ($array as $arr) {
-                        if ($value = Array::path($arr, implode('.', $keys))) {
+                        if ($value = Arrays::path($arr, implode('.', $keys))) {
                             $values[] = $value;
                         }
                     }
@@ -161,7 +170,7 @@
         /**
         * Set a value on an array by path.
         *
-        * @see Array::path()
+        * @see Arrays::path()
         * @param array   $array     Array to update
         * @param string  $path      Path
         * @param mixed   $value     Value to set
@@ -201,7 +210,7 @@
          * Fill an array with a range of numbers.
          *
          *     // Fill an array with values 5, 10, 15, 20
-         *     $values = Array::range(5, 20);
+         *     $values = Arrays::range(5, 20);
          *
          * @param   integer $step   stepping
          * @param   integer $max    ending number
@@ -226,10 +235,10 @@
          * array, the default value will be returned instead.
          *
          *     // Get the value "username" from $_POST, if it exists
-         *     $username = Array::get($_POST, 'username');
+         *     $username = Arrays::get($_POST, 'username');
          *
          *     // Get the value "sorting" from $_GET, if it exists
-         *     $sorting = Array::get($_GET, 'sorting');
+         *     $sorting = Arrays::get($_GET, 'sorting');
          *
          * @param   array   $array      array to extract from
          * @param   string  $key        key name
@@ -246,11 +255,11 @@
          * array, the default value will be added instead.
          *
          *     // Get the values "username", "password" from $_POST
-         *     $auth = Array::extract($_POST, array('username', 'password'));
+         *     $auth = Arrays::extract($_POST, array('username', 'password'));
          *
          *     // Get the value "level1.level2a" from $data
          *     $data = array('level1' => array('level2a' => 'value 1', 'level2b' => 'value 2'));
-         *     Array::extract($data, array('level1.level2a', 'password'));
+         *     Arrays::extract($data, array('level1.level2a', 'password'));
          *
          * @param   array  $array    array to extract paths from
          * @param   array  $paths    list of path
@@ -271,7 +280,7 @@
          * Retrieves muliple single-key values from a list of arrays.
          *
          *     // Get all of the "id" values from a result
-         *     $ids = Array::pluck($result, 'id');
+         *     $ids = Arrays::pluck($result, 'id');
          *
          * [!!] A list of arrays is an array that contains arrays, eg: array(array $a, array $b, array $c, ...)
          *
@@ -297,7 +306,7 @@
          * Adds a value to the beginning of an associative array.
          *
          *     // Add an empty value to the start of a select list
-         *     Array::unshift($array, 'none', 'Select a value');
+         *     Arrays::unshift($array, 'none', 'Select a value');
          *
          * @param   array   $array  array to modify
          * @param   string  $key    array key name
@@ -318,16 +327,16 @@
          * callbacks to all elements in an array, including sub-arrays.
          *
          *     // Apply "strip_tags" to every element in the array
-         *     $array = Array::map('strip_tags', $array);
+         *     $array = Arrays::map('strip_tags', $array);
          *
          *     // Apply $this->filter to every element in the array
-         *     $array = Array::map(array(array($this,'filter')), $array);
+         *     $array = Arrays::map(array(array($this,'filter')), $array);
          *
          *     // Apply strip_tags and $this->filter to every element
-         *     $array = Array::map(array('strip_tags',array($this,'filter')), $array);
+         *     $array = Arrays::map(array('strip_tags',array($this,'filter')), $array);
          *
          * [!!] Because you can pass an array of callbacks, if you wish to use an array-form callback
-         * you must nest it in an additional array as above. Calling Array::map(array($this,'filter'), $array)
+         * you must nest it in an additional array as above. Calling Arrays::map(array($this,'filter'), $array)
          * will cause an error.
          * [!!] Unlike `array_map`, this method requires a callback and will only map
          * a single array.
@@ -367,7 +376,7 @@
          *     $mary = array('name' => 'mary', 'children' => array('jane'));
          *
          *     // John and Mary are married, merge them together
-         *     $john = Array::merge($john, $mary);
+         *     $john = Arrays::merge($john, $mary);
          *
          *     // The output of $john will now be:
          *     array('name' => 'mary', 'children' => array('fred', 'paul', 'sally', 'jane'))
@@ -425,7 +434,7 @@
          *     $a2 = array('name' => 'jack', 'food' => 'tacos', 'drink' => 'beer');
          *
          *     // Overwrite the values of $a1 with $a2
-         *     $array = Array::overwrite($a1, $a2);
+         *     $array = Arrays::overwrite($a1, $a2);
          *
          *     // The output of $array will now be:
          *     array('name' => 'jack', 'mood' => 'happy', 'food' => 'tacos')
@@ -456,7 +465,7 @@
          * Note that this function does not validate the callback string.
          *
          *     // Get the callback function and parameters
-         *     list($func, $params) = Array::callback('Foo::bar(apple,orange)');
+         *     list($func, $params) = Arrays::callback('Foo::bar(apple,orange)');
          *
          *     // Get the result of the callback
          *     $result = call_user_func_array($func, $params);
@@ -498,7 +507,7 @@
          *     $array = array('set' => array('one' => 'something'), 'two' => 'other');
          *
          *     // Flatten the array
-         *     $array = Array::flatten($array);
+         *     $array = Arrays::flatten($array);
          *
          *     // The array will now be
          *     array('one' => 'something', 'two' => 'other');

@@ -235,7 +235,7 @@
                 // and determine if the current URI matches the pattern and if so
                 // we will simply return the environment for that URI pattern.
                 foreach ($patterns as $pattern) {
-                    if (\i::is($pattern, $uri) or $pattern == gethostname()) {
+                    if (Inflector::is($pattern, $uri) or $pattern == gethostname()) {
                         return $environment;
                     }
                 }
