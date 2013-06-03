@@ -6,32 +6,32 @@
     namespace Thin;
     class Translation extends Object
     {
-        public function __construct($from = 'fr', $to = 'en', $fileTranslation)
-        {
-            $this->setFrom($from);
-            $this->setTo($to);
+        public $sentences;
 
-            if ($from != $to) {
-                if (File::exists($fileTranslation)) {
-                    $translations = include($fileTranslation);
-                    $this->setSentences($translations);
-                    Utils::set('ThinTranslate', $this);
-                } else {
-                    throw new Exception('The translation file does not exist.');
-                }
+        public function __construct($language, $segment = '')
+        {
+            if (Inflector::length($segment)) {
+                $fileTranslation = LANGUAGE_PATH . DS . ucwords(Inflector::lower(repl('.', DS, $segment))) . DS . Inflector::lower($language) . '.ini';
+            } else {
+                $fileTranslation = LANGUAGE_PATH . DS . Inflector::lower($language) . '.ini';
+            }
+
+            if (File::exists($fileTranslation)) {
+                $ini = new Ini($fileTranslation);
+                $translations = $ini->parseIni();
+                $this->setSentences($translations);
+                Utils::set('ThinTranslate', $this);
+            } else {
+                throw new Exception('The translation file ' . $fileTranslation . ' does not exist.');
             }
         }
 
-        public function translate($sentence, $api = false)
+        public function translate($sentence)
         {
-            $from   = $this->getFrom();
-            $to     = $this->getTo();
-
-            if ($from == $to) {
+            $sentences = $this->getSentences();
+            if (null === $sentences) {
                 return $sentence;
             }
-
-            $sentences = $this->getSentences();
             if (ake($sentence, $sentences)) {
                 return $sentences[$sentence];
             }

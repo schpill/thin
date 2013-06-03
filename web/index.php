@@ -1,15 +1,16 @@
 <?php
     // Define path to application directory
-    defined('APPLICATION_PATH') || define('APPLICATION_PATH', realpath(dirname(__FILE__) . '/../application'));
-    defined('CACHE_PATH') || define('CACHE_PATH', realpath(dirname(__FILE__) . '/../storage/cache'));
-    defined('LOGS_PATH') || define('LOGS_PATH', realpath(dirname(__FILE__) . '/../storage/logs'));
-    defined('TMP_PATH') || define('TMP_PATH', realpath(dirname(__FILE__) . '/../storage/tmp'));
+    defined('APPLICATION_PATH') || define('APPLICATION_PATH',   realpath(dirname(__FILE__) . '/../application'));
+    defined('CACHE_PATH')       || define('CACHE_PATH',         realpath(dirname(__FILE__) . '/../storage/cache'));
+    defined('LOGS_PATH')        || define('LOGS_PATH',          realpath(dirname(__FILE__) . '/../storage/logs'));
+    defined('TMP_PATH')         || define('TMP_PATH',           realpath(dirname(__FILE__) . '/../storage/tmp'));
+    defined('LANGUAGE_PATH')    || define('LANGUAGE_PATH',      realpath(dirname(__FILE__) . '/../storage/language'));
 
     // Define path to libs directory
-    defined('LIBRARIES_PATH') || define('LIBRARIES_PATH', APPLICATION_PATH . '/../src');
+    defined('LIBRARIES_PATH')   || define('LIBRARIES_PATH', APPLICATION_PATH . '/../src');
 
     // Define application environment
-    defined('APPLICATION_ENV') || define('APPLICATION_ENV', (getenv('APPLICATION_ENV') ? getenv('APPLICATION_ENV') : 'production'));
+    defined('APPLICATION_ENV')  || define('APPLICATION_ENV', (getenv('APPLICATION_ENV') ? getenv('APPLICATION_ENV') : 'production'));
 
     define('DS', DIRECTORY_SEPARATOR);
     define('PS', PATH_SEPARATOR);

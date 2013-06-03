@@ -42,14 +42,14 @@
                 $curKey = $curLineSplit[0];
                 $curValue = $curLineSplit[1];
                 if($saveInClass) {
-                    $this->Keys[trim($curKey)] = trim($curValue);
+                    $this->keysWithoutSections[trim($curKey)] = trim($curValue);
                 } else {
                     $nKeys[trim($curKey)] = trim($curValue);
                 }
                 $counter++;
             }
 
-            if($saveInClass) {
+            if(true === $saveInClass) {
                 return $this->keysWithoutSections;
             } else {
                 return $nKeys;

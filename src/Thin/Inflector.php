@@ -460,7 +460,7 @@
          * @param string $tableName Under_scored and plural table name (i.e. `'posts'`).
          * @return string CamelCased class name (i.e. `'Post'`).
          */
-        public static function classify($tableName)
+        public static function reclassify($tableName)
         {
             return self::camelize(self::singularize($tableName));
         }
@@ -510,20 +510,6 @@
         public static function isEmpty($value)
         {
             return ($value === '' || $value === null);
-        }
-
-        public static function is($pattern, $value)
-        {
-            // Asterisks are translated into zero-or-more regular expression wildcards
-            // to make it convenient to check if the URI starts with a given pattern
-            // such as "library/*". This is only done when not root.
-            if ($pattern !== '/')  {
-                $pattern = repl('*', '(.*)', $pattern).'\z';
-            } else {
-                $pattern = '^/$';
-            }
-
-            return preg_match('#'.$pattern.'#', $value);
         }
 
         public static function encoding()
@@ -737,5 +723,230 @@
         public static function strReplaceFirst($search, $replace, $subject)
         {
             return implode($replace, explode($search, $subject, 2));
+        }
+
+        /**
+         * Limit the number of characters in a string.
+         *
+         * <code>
+         *      // Returns "hel..."
+         *      echo Inflector::limit('hello word', 3);
+         *
+         *      // Limit the number of characters and append a custom ending
+         *      echo Inflector::limit('hello word', 3, '---');
+         * </code>
+         *
+         * @param  string  $value
+         * @param  int     $limit
+         * @param  string  $end
+         * @return string
+         */
+        public static function limit($value, $limit = 100, $end = '...')
+        {
+            if (static::length($value) <= $limit) {
+                return $value;
+            }
+            return mb_substr($value, 0, $limit, 'utf8') . $end;
+        }
+
+        /**
+         * Limit the number of chracters in a string including custom ending
+         *
+         * <code>
+         *      // Returns "hello..."
+         *      echo Inflector::limitExact('hello word', 9);
+         *
+         *      // Limit the number of characters and append a custom ending
+         *      echo Inflector::limitExact('hello word', 9, '---');
+         * </code>
+         *
+         * @param  string  $value
+         * @param  int     $limit
+         * @param  string  $end
+         * @return string
+         */
+        public static function limitExact($value, $limit = 100, $end = '...')
+        {
+            if (static::length($value) <= $limit) {
+                return $value;
+            }
+
+            $limit -= static::length($end);
+
+            return static::limit($value, $limit, $end);
+        }
+
+        /**
+         * Convert a string to title case (ucwords equivalent).
+         *
+         * <code>
+         *      // Convert a string to title case
+         *      $title = Inflector::title('hello word');
+         *
+         *      // Convert a multi-byte string to title case
+         *      $title = Inflector::title('hélène de Troie');
+         * </code>
+         *
+         * @param  string  $value
+         * @return string
+         */
+        public static function title($value)
+        {
+            return mb_convert_case($value, MB_CASE_TITLE, 'utf8');
+        }
+
+        /**
+         * Limit the number of words in a string.
+         *
+         * <code>
+         *      // Returns "This is a..."
+         *      echo Inflector::words('This is a sentence.', 3);
+         *
+         *      // Limit the number of words and append a custom ending
+         *      echo Inflector::words('This is a sentence.', 3, '---');
+         * </code>
+         *
+         * @param  string  $value
+         * @param  int     $words
+         * @param  string  $end
+         * @return string
+         */
+        public static function words($value, $words = 100, $end = '...')
+        {
+            if (trim($value) == '') {
+                return '';
+            }
+
+            preg_match('/^\s*+(?:\S++\s*+){1,' . $words . '}/u', $value, $matches);
+
+            if (static::length($value) == static::length($matches[0])) {
+                $end = '';
+            }
+
+            return rtrim($matches[0]) . $end;
+        }
+
+        /**
+         * Generate a URL friendly "slug" from a given string.
+         *
+         * <code>
+         *      // Returns "this-is-my-blog-post"
+         *      $slug = Inflector::slugify('This is my blog post!');
+         *
+         *      // Returns "this_is_my_blog_post"
+         *      $slug = Inflector::slugify('This is my blog post!', '_');
+         * </code>
+         *
+         * @param  string  $title
+         * @param  string  $separator
+         * @return string
+         */
+        public static function slugify($title, $separator = '-')
+        {
+            $title = preg_replace('/[^\x09\x0A\x0D\x20-\x7E]/', '', $title);
+
+            // Remove all characters that are not the separator, letters, numbers, or whitespace.
+            $title = preg_replace('![^' . preg_quote($separator) . '\pL\pN\s]+!u', '', static::lower($title));
+
+            // Replace all separator characters and whitespace by a single separator
+            $title = preg_replace('![' . preg_quote($separator) . '\s]+!u', $separator, $title);
+
+            return trim($title, $separator);
+        }
+
+        /**
+         * Convert a string to an underscored, camel-cased class name.
+         *
+         * This method is primarily used to format task and controller names.
+         *
+         * <code>
+         *      // Returns "Task_Name"
+         *      $class = Inflector::classify('task_name');
+         *
+         *      // Returns "Hello_Word"
+         *      $class = Inflector::classify('taylor otwell')
+         * </code>
+         *
+         * @param  string  $value
+         * @return string
+         */
+        public static function classify($value)
+        {
+            $search = array('_', '-', '.');
+
+            return repl(' ', '_', static::title(repl($search, ' ', $value)));
+        }
+
+        /**
+         * Return the "URI" style segments in a given string.
+         *
+         * @param  string  $value
+         * @return array
+         */
+        public static function segments($value)
+        {
+            return array_diff(explode('/', trim($value, '/')), array(''));
+        }
+
+        /**
+         * Generate a random alpha or alpha-numeric string.
+         *
+         * <code>
+         *      // Generate a 40 character random alpha-numeric string
+         *      echo Inflector::random(40);
+         *
+         *      // Generate a 16 character random alphabetic string
+         *      echo Inflector::random(16, 'alpha');
+         * <code>
+         *
+         * @param  int     $length
+         * @param  string  $type
+         * @return string
+         */
+        public static function random($length, $type = 'alnum')
+        {
+            return substr(str_shuffle(str_repeat(static::pool($type), 5)), 0, $length);
+        }
+
+        /**
+         * Determine if a given string matches a given pattern.
+         *
+         * @param  string  $pattern
+         * @param  string  $value
+         * @return bool
+         */
+        public static function is($pattern, $value)
+        {
+            // Asterisks are translated into zero-or-more regular expression wildcards
+            // to make it convenient to check if the URI starts with a given pattern
+            // such as "library/*". This is only done when not root.
+            if ($pattern !== '/') {
+                $pattern = repl('*', '(.*)', $pattern) . '\z';
+            } else {
+                $pattern = '^/$';
+            }
+
+            return preg_match('#' . $pattern . '#', $value);
+        }
+
+
+        /**
+         * Get the character pool for a given type of random string.
+         *
+         * @param  string  $type
+         * @return string
+         */
+        protected static function pool($type)
+        {
+            switch ($type) {
+                case 'alpha':
+                    return 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+                case 'alnum':
+                    return '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+                default:
+                    throw new Exception("Invalid random string type [$type].");
+            }
         }
     }

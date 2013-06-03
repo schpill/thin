@@ -13,15 +13,15 @@
             Request::$foundation = ThinRequest::createFromGlobals();
 
             define('NL', "\n");
-            define('ISAJAX', \i::lower(getenv('HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest');
+            define('ISAJAX', Inflector::lower(getenv('HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest');
 
             Utils::cleanCache();
             $logger = new Log();
-            $app = new Application;
+            $app    = new Application;
 
             $app['logger'] = $logger;
 
-            \u::set('app', $app);
+            Utils::set('app', $app);
 
             static::$app = $app;
 
@@ -46,12 +46,12 @@
 
         public static function run()
         {
-            Request::$route = $route = \u::get('appDispatch');
+            Request::$route = $route = Utils::get('appDispatch');
             $module = $route->getModule();
             $controller = $route->getController();
             $action = $route->getAction();
 
-            $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . \i::lower($module);
+            $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . Inflector::lower($module);
             if (!is_dir($moduleDir)) {
                 throw new Exception("The module '$module' does not exist.");
             }
@@ -60,13 +60,13 @@
                 throw new Exception("The controller '$controller' does not exist.");
             }
 
-            $controllerFile = $controllerDir . DS . \i::lower($controller) . 'Controller.php';
+            $controllerFile = $controllerDir . DS . Inflector::lower($controller) . 'Controller.php';
             if (!file_exists($controllerFile)) {
                 throw new Exception("The controller '$controllerFile' does not exist.");
             }
             require_once $controllerFile;
 
-            $controllerClass = 'Thin\\' . \i::lower($controller) . 'Controller';
+            $controllerClass = 'Thin\\' . Inflector::lower($controller) . 'Controller';
             $controller = new $controllerClass;
 
             $controller->view = new View;
@@ -85,7 +85,7 @@
                 for ($i = 0 ; $i < count($words) ; $i++) {
                     $word = trim($words[$i]);
                     if ($i > 0) {
-                        $word = ucfirst(\i::lower($word));
+                        $word = ucfirst(Inflector::lower($word));
                     }
                     $newAction .= $word;
                 }
