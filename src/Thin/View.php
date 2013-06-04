@@ -51,7 +51,7 @@
                 if (strstr($viewFile, DS)) {
                     $this->_viewFile = $viewFile;
                 } else {
-                    $file = CACHE_PATH . DS . md5($this->_viewFile . time() . \u::UUID()) . '.fake';
+                    $file = CACHE_PATH . DS . md5($this->_viewFile . time() . Utils::UUID()) . '.fake';
                     @unlink($file);
                     @touch($file);
                     $fp = fopen($file, 'a');
@@ -59,17 +59,17 @@
                     $this->_viewFile = $file;
                 }
             } else {
-                $route = \u::get('appDispatch');
+                $route = Utils::get('appDispatch');
                 $module = $route->getModule();
                 $controller = $route->getController();
                 $action = $route->getAction();
 
                 $this->_module   = $module;
-                $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . \i::lower($controller) . DS . \i::lower($action) . '.phtml';
+                $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
             }
 
-            \u::set('appView', $this);
-            \u::set('showStats', true);
+            Utils::set('appView', $this);
+            Utils::set('showStats', true);
         }
 
         public function partial($partial, array $params = array(), $cache = false, $echo = true, $module = null)
@@ -187,7 +187,7 @@
                     $content = ob_get_contents();
                     ob_end_clean();
                     $hash = sha1($this->_viewFile);
-                    \u::set($hash, $content);
+                    Utils::set($hash, $content);
                     return true;
                 }
             }
@@ -267,8 +267,8 @@
         public function __call($func, $argv)
         {
             if (substr($func, 0, 3) == 'get') {
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($func, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 if (isset($this->$var)) {
                     return $this->$var;
                 } else {
@@ -276,8 +276,8 @@
                 }
             } elseif (substr($func, 0, 3) == 'set') {
                 $value = $argv[0];
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($func, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 $this->$var = $value;
                 return $this;
             }
@@ -307,13 +307,13 @@
 
         public function addAsset($asset, array $configAsset = array(), $ext = null)
         {
-            $configs = \u::get('FTVConfig');
+            $configs = Utils::get('FTVConfig');
 
             $versionJs = $configs['app']['js']['version'];
             $versionCss = $configs['app']['css']['version'];
 
             if(null === $ext) {
-                $tabString = explode('.', \i::lower($asset));
+                $tabString = explode('.', Inflector::lower($asset));
                 $ext = end($tabString);
             }
             if ($ext == 'css') {
@@ -322,7 +322,7 @@
                     foreach ($configAsset as $key => $value) {
                         $assetHtml .= " $key=\"$value\" ";
                     }
-                    $assetHtml = \i::substr($assetHtml, 0, -1);
+                    $assetHtml = Inflector::substr($assetHtml, 0, -1);
                 }
                 $assetHtml .= ' />' . "\n";
                 return $assetHtml;
@@ -336,7 +336,7 @@
                     foreach ($configAsset as $key => $value) {
                         $assetHtml .= " $key=\"$value\" ";
                     }
-                    $assetHtml = \i::substr($assetHtml, 0, -1);
+                    $assetHtml = Inflector::substr($assetHtml, 0, -1);
                 }
                 $assetHtml .= ' />' . "\n";
                 return $assetHtml;
@@ -349,6 +349,28 @@
         {
             $this->_escape = $spec;
             return $this;
+        }
+
+        /**
+         * Convert a string from one encoding to another.
+         *
+         * @param string $string The string to convert
+         * @param string $to     The input encoding
+         * @param string $from   The output encoding
+         *
+         * @return string The string with the new encoding
+         *
+         * @throws \RuntimeException if no suitable encoding function is found (iconv or mbstring)
+         */
+        public function convertEncoding($string, $to, $from)
+        {
+            if (function_exists('mb_convert_encoding')) {
+                return mb_convert_encoding($string, $to, $from);
+            } elseif (function_exists('iconv')) {
+                return iconv($from, $to, $string);
+            }
+
+            throw new \RuntimeException('No suitable convert encoding function (use UTF-8 as your encoding or install the iconv or mbstring extension).');
         }
 
         public function escape($var)
@@ -389,5 +411,29 @@
         public static function utf8($str)
         {
             return Inflector::utf8($str);
+        }
+
+        public static function evaluate($php, array $parameters)
+        {
+            if (file_exists($template)) {
+                extract($parameters, EXTR_SKIP);
+                if (empty($view)) {
+                    throw new Exception("A view is needed to evaluate.");
+                }
+                ob_start();
+                require $template;
+
+                return ob_get_clean();
+            } elseif (is_string($template)) {
+                extract($parameters, EXTR_SKIP);
+                if (empty($view)) {
+                    throw new Exception("A view is needed to evaluate.");
+                }
+                ob_start();
+                eval('; ?>' . $template . '<?php ;');
+                return ob_get_clean();
+            } else {
+                throw new Exception("A view is needed to evaluate.");
+            }
         }
     }
