@@ -13,6 +13,27 @@
         public $keysWithoutSections;
         public $keysWithSections;
 
+        /**
+         * String that separates nesting levels of configuration data identifiers
+         *
+         * @var string
+         */
+        protected $_nestSeparator = '.';
+
+        /**
+         * String that separates the parent section name
+         *
+         * @var string
+         */
+        protected $_sectionSeparator = ':';
+
+        /**
+         * Whether to skip extends or not
+         *
+         * @var boolean
+         */
+        protected $_skipExtends = false;
+
 
         public function __construct($fileName, $safeFile = false)
         {
@@ -58,43 +79,24 @@
 
         public function parseIniWithSections($saveInClass = false)
         {
-            $fileHandle = file($this->iniFile);
-
-            $countLines = count($fileHandle);
-            $counter = 0;
-
-            $lastSection = "";
-
-            $nKeys = "";
-
-            if ($this->safeFile) {
-                $countLines -= 2;
-                $counter += 2;
-            }
-
-            while ($counter < $countLines) {
-                $curLine = $fileHandle[$counter];
-
-                if (strpos($curLine, "[") == 1) {
-                    $lastSection = $curLine;
-                    continue;
-                }
-
-                $explosion = explode("=", $curLine);
-
-                $curKey = trim($explosion[0]);
-                $curValue = trim($explosion[1]);
-
-                if ($saveInClass) {
-                    $this->keysWithSections[$lastSection][$curKey] = $curValue;
-                } else {
-                    $nKeys[$lastSection][$curKey] = $curValue;
+            $loaded = parse_ini_file($this->iniFile, true);
+            dieDump($loaded);
+            $iniArray = array();
+            foreach ($loaded as $key => $data) {
+                $pieces = explode($this->_sectionSeparator, $key);
+                $thisSection = trim(current($pieces));
+                switch (count($pieces)) {
+                    case 1:
+                        $iniArray[$thisSection] = $data;
+                        break;
+                    case 2:
+                        $extendedSection = trim(end($pieces));
+                        $iniArray[$thisSection] = array_merge(array(';extends' => $extendedSection), $data);
+                        break;
+                    default:
+                        throw new Exception("Section '$thisSection' may not extend multiple sections in $this->iniFile");
                 }
             }
-
-            if (true === $saveInClass) {
-                return $this->keysWithSections;
-            } else
-                return $nKeys;
-            }
+            dieDump($iniArray);
+            return $iniArray;
         }

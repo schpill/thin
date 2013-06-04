@@ -12,6 +12,27 @@
             return Utils::set($key, $value);
         }
 
+        public static function has($key)
+        {
+            return !is_null(static::get($key));
+        }
+
+        public static function loadIni($conf, $environment = true)
+        {
+            $file = APPLICATION_PATH . DS . 'config' . DS . Inflector::lower($conf) . '.ini';
+            if (file_exists($file)) {
+                if (true === $environment) {
+                    $config = new \Zend_Config_Ini($file, APPLICATION_ENV);
+                } else {
+                    $config = new \Zend_Config_Ini($file);
+                }
+                $config = $config->toArray();
+                static::setArray($conf, $config);
+            } else {
+                throw new Exception("The config file '$conf' does not exist.");
+            }
+        }
+
         public static function load($conf, $environment = true)
         {
             if (null === static::get($conf)) {

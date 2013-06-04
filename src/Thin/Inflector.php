@@ -221,11 +221,11 @@
         {
             $var = '_' . $type;
 
-            if (!isset(self::${$var})) {
+            if (!isset(static::${$var})) {
                 return null;
             }
             if (empty($config)) {
-                return self::${$var};
+                return static::${$var};
             }
             switch ($type) {
                 case 'transliteration':
@@ -237,33 +237,33 @@
                         }
                         $_config[$key] = $val;
                     }
-                    self::$_transliteration = array_merge(
-                        $_config, self::$_transliteration, $_config
+                    static::$_transliteration = array_merge(
+                        $_config, static::$_transliteration, $_config
                     );
                 break;
                 case 'uninflected':
-                    self::$_uninflected = array_merge(self::$_uninflected, (array) $config);
-                    self::$_plural['regexUninflected'] = null;
-                    self::$_singular['regexUninflected'] = null;
+                    static::$_uninflected = array_merge(static::$_uninflected, (array) $config);
+                    static::$_plural['regexUninflected'] = null;
+                    static::$_singular['regexUninflected'] = null;
 
                     foreach ((array) $config as $word) {
-                        unset(self::$_singularized[$word], self::$_pluralized[$word]);
+                        unset(static::$_singularized[$word], static::$_pluralized[$word]);
                     }
                 break;
                 case 'singular':
                 case 'plural':
-                    if (isset(self::${$var}[key($config)])) {
+                    if (isset(static::${$var}[key($config)])) {
                         foreach ($config as $rType => $set) {
-                            self::${$var}[$rType] = array_merge($set, self::${$var}[$rType], $set);
+                            static::${$var}[$rType] = array_merge($set, static::${$var}[$rType], $set);
 
                             if ($rType == 'irregular') {
                                 $swap = ($type == 'singular' ? '_plural' : '_singular');
-                                self::${$swap}[$rType] = array_flip(self::${$var}[$rType]);
+                                static::${$swap}[$rType] = array_flip(static::${$var}[$rType]);
                             }
                         }
                     } else {
-                        self::${$var}['rules'] = array_merge(
-                            $config, self::${$var}['rules'], $config
+                        static::${$var}['rules'] = array_merge(
+                            $config, static::${$var}['rules'], $config
                         );
                     }
                 break;
@@ -278,29 +278,29 @@
          */
         public static function pluralize($word)
         {
-            if (isset(self::$_pluralized[$word])) {
-                return self::$_pluralized[$word];
+            if (isset(static::$_pluralized[$word])) {
+                return static::$_pluralized[$word];
             }
-            extract(self::$_plural);
+            extract(static::$_plural);
 
             if (!isset($regexUninflected) || !isset($regexIrregular)) {
-                $regexUninflected = self::_enclose(join( '|', $uninflected + self::$_uninflected));
-                $regexIrregular = self::_enclose(join( '|', array_keys($irregular)));
-                self::$_plural += compact('regexUninflected', 'regexIrregular');
+                $regexUninflected = static::_enclose(join( '|', $uninflected + static::$_uninflected));
+                $regexIrregular = static::_enclose(join( '|', array_keys($irregular)));
+                static::$_plural += compact('regexUninflected', 'regexIrregular');
             }
             if (preg_match('/(' . $regexUninflected . ')$/i', $word, $regs)) {
-                return self::$_pluralized[$word] = $word;
+                return static::$_pluralized[$word] = $word;
             }
             if (preg_match('/(.*)\\b(' . $regexIrregular . ')$/i', $word, $regs)) {
-                $plural = substr($word, 0, 1) . substr($irregular[self::lower($regs[2])], 1);
-                return self::$_pluralized[$word] = $regs[1] . $plural;
+                $plural = substr($word, 0, 1) . substr($irregular[static::lower($regs[2])], 1);
+                return static::$_pluralized[$word] = $regs[1] . $plural;
             }
             foreach ($rules as $rule => $replacement) {
                 if (preg_match($rule, $word)) {
-                    return self::$_pluralized[$word] = preg_replace($rule, $replacement, $word);
+                    return static::$_pluralized[$word] = preg_replace($rule, $replacement, $word);
                 }
             }
-            return self::$_pluralized[$word] = $word;
+            return static::$_pluralized[$word] = $word;
         }
 
         /**
@@ -311,32 +311,32 @@
          */
         public static function singularize($word)
         {
-            if (isset(self::$_singularized[$word])) {
-                return self::$_singularized[$word];
+            if (isset(static::$_singularized[$word])) {
+                return static::$_singularized[$word];
             }
-            if (empty(self::$_singular['irregular'])) {
-                self::$_singular['irregular'] = array_flip(self::$_plural['irregular']);
+            if (empty(static::$_singular['irregular'])) {
+                static::$_singular['irregular'] = array_flip(static::$_plural['irregular']);
             }
-            extract(self::$_singular);
+            extract(static::$_singular);
 
             if (!isset($regexUninflected) || !isset($regexIrregular)) {
-                $regexUninflected = self::_enclose(join('|', $uninflected + self::$_uninflected));
-                $regexIrregular = self::_enclose(join('|', array_keys($irregular)));
-                self::$_singular += compact('regexUninflected', 'regexIrregular');
+                $regexUninflected = static::_enclose(join('|', $uninflected + static::$_uninflected));
+                $regexIrregular = static::_enclose(join('|', array_keys($irregular)));
+                static::$_singular += compact('regexUninflected', 'regexIrregular');
             }
             if (preg_match("/(.*)\\b({$regexIrregular})\$/i", $word, $regs)) {
                 $singular = substr($word, 0, 1) . substr($irregular[strtolower($regs[2])], 1);
-                return self::$_singularized[$word] = $regs[1] . $singular;
+                return static::$_singularized[$word] = $regs[1] . $singular;
             }
             if (preg_match('/^(' . $regexUninflected . ')$/i', $word, $regs)) {
-                return self::$_singularized[$word] = $word;
+                return static::$_singularized[$word] = $word;
             }
             foreach ($rules as $rule => $replacement) {
                 if (preg_match($rule, $word)) {
-                    return self::$_singularized[$word] = preg_replace($rule, $replacement, $word);
+                    return static::$_singularized[$word] = preg_replace($rule, $replacement, $word);
                 }
             }
-            return self::$_singularized[$word] = $word;
+            return static::$_singularized[$word] = $word;
         }
 
         /**
@@ -347,13 +347,13 @@
          */
         public static function reset()
         {
-            self::$_singularized = self::$_pluralized = array();
-            self::$_camelized = self::$_underscored = array();
-            self::$_humanized = array();
+            static::$_singularized = static::$_pluralized = array();
+            static::$_camelized = static::$_underscored = array();
+            static::$_humanized = array();
 
-            self::$_plural['regexUninflected'] = self::$_singular['regexUninflected'] = null;
-            self::$_plural['regexIrregular'] = self::$_singular['regexIrregular'] = null;
-            self::$_transliteration = array(
+            static::$_plural['regexUninflected'] = static::$_singular['regexUninflected'] = null;
+            static::$_plural['regexIrregular'] = static::$_singular['regexIrregular'] = null;
+            static::$_transliteration = array(
                 '/à|á|å|â/' => 'a', '/è|é|ê|ẽ|ë/' => 'e',
                 '/ì|í|î/' => 'i', '/ò|ó|ô|ø/' => 'o',
                 '/ù|ú|ů|û/' => 'u', '/ç/' => 'c',
@@ -390,7 +390,7 @@
         public static function uncamelize($string, $splitter = "_")
         {
             $string = preg_replace('/(?!^)[[:upper:]][[:lower:]]/', '$0', preg_replace('/(?!^)[[:upper:]]+/', $splitter . '$0', $string));
-            return self::lower($string);
+            return static::lower($string);
         }
 
         /**
@@ -401,10 +401,10 @@
          */
         public static function underscore($word)
         {
-            if (isset(self::$_underscored[$word])) {
-                return self::$_underscored[$word];
+            if (isset(static::$_underscored[$word])) {
+                return static::$_underscored[$word];
             }
-            return self::$_underscored[$word] = self::lower(self::slug($word, '_'));
+            return static::$_underscored[$word] = static::lower(static::slug($word, '_'));
         }
 
         /**
@@ -419,7 +419,7 @@
          */
         public static function slug($string, $replacement = '-')
         {
-            $map = self::$_transliteration + array(
+            $map = static::$_transliteration + array(
                 '/[^\w\s]/' => ' ', '/\\s+/' => $replacement,
                 '/(?<=[a-z])([A-Z])/' => $replacement . '\\1',
                 str_replace(':rep', preg_quote($replacement, '/'), '/^[:rep]+|[:rep]+$/') => ''
@@ -437,10 +437,10 @@
          */
         public static function humanize($word, $separator = '_')
         {
-            if (isset(self::$_humanized[$key = $word . ':' . $separator])) {
-                return self::$_humanized[$key];
+            if (isset(static::$_humanized[$key = $word . ':' . $separator])) {
+                return static::$_humanized[$key];
             }
-            return self::$_humanized[$key] = ucwords(repl($separator, " ", $word));
+            return static::$_humanized[$key] = ucwords(repl($separator, " ", $word));
         }
 
         /**
@@ -451,7 +451,7 @@
          */
         public static function tableize($className)
         {
-            return self::pluralize(self::underscore($className));
+            return static::pluralize(static::underscore($className));
         }
 
         /**
@@ -462,7 +462,7 @@
          */
         public static function reclassify($tableName)
         {
-            return self::camelize(self::singularize($tableName));
+            return static::camelize(static::singularize($tableName));
         }
 
         /**
@@ -478,17 +478,17 @@
 
         public static function length($value)
         {
-            return (MB_STRING) ? mb_strlen($value, self::encoding()) : strlen($value);
+            return (MB_STRING) ? mb_strlen($value, static::encoding()) : strlen($value);
         }
 
         public static function lower($value)
         {
-            return (MB_STRING) ? mb_strtolower($value, self::encoding()) : strtolower($value);
+            return (MB_STRING) ? mb_strtolower($value, static::encoding()) : strtolower($value);
         }
 
         public static function upper($value)
         {
-            return (MB_STRING) ? mb_strtoupper($value, self::encoding()) : strtoupper($value);
+            return (MB_STRING) ? mb_strtoupper($value, static::encoding()) : strtoupper($value);
         }
 
         public static function substr($str, $start, $length = false, $encoding = 'utf-8')
@@ -497,14 +497,14 @@
                 return false;
             }
             if (function_exists('mb_substr')) {
-                return mb_substr($str, (int)$start, ($length === false ? self::length($str) : (int)$length), $encoding);
+                return mb_substr($str, (int)$start, ($length === false ? static::length($str) : (int)$length), $encoding);
             }
-            return substr($str, $start, ($length === false ? self::length($str) : (int)$length));
+            return substr($str, $start, ($length === false ? static::length($str) : (int)$length));
         }
 
         public static function ucfirst($str)
         {
-            return self::upper(self::substr($str, 0, 1)) . self::substr($str, 1);
+            return static::upper(static::substr($str, 0, 1)) . static::substr($str, 1);
         }
 
         public static function isEmpty($value)
@@ -520,13 +520,13 @@
         public static function urlize($text)
         {
             // Remove all non url friendly characters with the unaccent function
-            $text = self::lower(self::unaccent($text));
+            $text = static::lower(static::unaccent($text));
 
             // Remove all none word characters
             $text = preg_replace('/\W/', ' ', $text);
 
             // More stripping. Replace spaces with dashes
-            $text = self::lower(preg_replace('/[^A-Z^a-z^0-9^\/]+/', '-',
+            $text = static::lower(preg_replace('/[^A-Z^a-z^0-9^\/]+/', '-',
                                preg_replace('/([a-z\d])([A-Z])/', '\1_\2',
                                preg_replace('/([A-Z]+)([A-Z][a-z])/', '\1_\2',
                                preg_replace('/::/', '/', $text)))));
@@ -540,7 +540,7 @@
                 return $string;
             }
 
-            if (self::seemsUtf8($string)) {
+            if (Utils::isUtf8($string)) {
                 $chars = array(
                 // Decompositions for Latin-1 Supplement
                 chr(195).chr(128) => 'A', chr(195).chr(129) => 'A',
@@ -714,7 +714,7 @@
         public static function getFileExtension($filename, $lower = true)
         {
             if (true === $lower) {
-                $filename = self::lower($filename);
+                $filename = static::lower($filename);
             }
             $tab = explode('.', $filename);
             return end($tab);
