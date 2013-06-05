@@ -4,8 +4,6 @@
     {
         public static $argLength = 16;
         /**
-         * Magento Root path
-         *
          * @var string
          */
         protected static $_filePath;
@@ -65,7 +63,7 @@
 
                 // prepare method argments
                 $args = array();
-                if (isset($data['args']) && $withArgs) {
+                if (isset($data['args']) && true === $withArgs) {
                     foreach ($data['args'] as $arg) {
                         $args[] = static::_formatCalledArgument($arg);
                     }
@@ -111,11 +109,11 @@
                 $out .= "\n";
             }
 
-            if ($html) {
+            if (true === $html) {
                 $out .= '</pre>';
             }
 
-            if ($return) {
+            if (true === $return) {
                 return $out;
             } else {
                 echo $out;
@@ -136,7 +134,7 @@
 
             } else if (is_resource($arg)) {
                 $out .= '#[' . get_resource_type($arg) . ']';
-            } else if (Array::isArray($arg)) {
+            } else if (Arrays::isArray($arg)) {
                 $isAssociative = false;
                 $args = array();
                 foreach ($arg as $k => $v) {
