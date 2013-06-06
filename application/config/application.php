@@ -16,13 +16,16 @@
                 'host'              => 'localhost',
                 'username'          => 'root',
                 'password'          => 'root',
-                'dbname'            => 'thin',
+                'dbname'            => 'ajf',
                 'port'              => '3306',
                 'metadata_path'     => APPLICATION_PATH . DS . 'doctrine' . DS . 'entities',
                 'proxy_dir'         => APPLICATION_PATH . DS . 'doctrine' . DS . 'proxies',
                 'yaml_dir'          => APPLICATION_PATH . DS . 'doctrine' . DS . 'schemas',
                 'proxy_namespace'   => 'Proxy',
             ),
+        ),
+        'database' => array(
+            'buffer' => 5
         ),
     );
 
