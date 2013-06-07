@@ -3,6 +3,7 @@
 
     $application['production'] = array(
         'application' => array(
+            'defaultModule' => 'www',
             'key' => '5@poplmm145d3225_85fvKL0@',
             'mailjet' => array(
                 'login' => 'xxx',

@@ -14,6 +14,10 @@
         public static function dispatch()
         {
             static::$_uri = $uri = $_SERVER['REQUEST_URI'];
+            $defaultRoute = static::defaultRoute();
+            if (null !== $defaultRoute) {
+                return;
+            }
             $file = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
             $configRoutes = include($file);
             $routes = $configRoutes['collection'];
@@ -29,7 +33,9 @@
                     return static::make($route);
                 }
             }
+
             static::is404();
+
         }
 
         private static function match($pathComp)
@@ -86,5 +92,35 @@
             $dispatch->setController('static');
             $dispatch->setAction('is-error');
             \u::set('appDispatch', $dispatch);
+        }
+
+        private static function defaultRoute()
+        {
+            $tab            = explode('/', substr(static::$_uri, 1));
+            if (count($tab) > 1) {
+                $module         = \Thin\Config::get('application.application.defaultModule');
+                $controller     = \Thin\Inflector::lower(current($tab));
+                $action         = repl(array('.html', '.php', '.asp', '.jsp', '.cfm', '.py', '.pl'), array('', '', '', '', '', '', ''), $tab[1]);
+                $moduleDir      = APPLICATION_PATH . DS . 'modules' . DS . \Thin\Inflector::lower($module);
+                $controllerDir  = $moduleDir . DS . 'controllers';
+                $controllerFile = $controllerDir . DS . \Thin\Inflector::lower($controller) . 'Controller.php';
+                if (true === \Thin\File::exists($controllerFile)) {
+                    require_once $controllerFile;
+                    $controllerClass    = 'Thin\\' . \Thin\Inflector::lower($controller) . 'Controller';
+                    $controllerInstance = new $controllerClass;
+                    $actions            = get_class_methods($controllerInstance);
+                    $actionName         = $action . 'Action';
+
+                    if (\Thin\Arrays::inArray($actionName, $actions)) {
+                        $dispatch = new Dispatch;
+                        $dispatch->setModule($module);
+                        $dispatch->setController($controller);
+                        $dispatch->setAction(\Thin\Inflector::uncamelize($action, '-'));
+                        \Thin\Utils::set('appDispatch', $dispatch);
+                        return true;
+                    }
+                }
+            }
+            return null;
         }
     }

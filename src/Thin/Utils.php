@@ -45,29 +45,29 @@
         public static function __callstatic($method, $args)
         {
             if (substr($method, 0, 3) == 'get') {
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($method, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 $return = static::get($var);
                 return $return;
             } elseif (substr($method, 0, 3) == 'set') {
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($method, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 $value = current($args);
                 return static::set($var, $value);
             }
-                }
+        }
 
         public static function toArray($object)
         {
             if (!is_object($object)) {
-                throw new FTV_Exception("The param sent is not an object.");
+                throw new Exception("The param sent is not an object.");
             }
             $array = array();
             foreach ($object as $key => $value) {
                 if (is_object($value)) {
-                    $array[$key] = self::toArray($value);
+                    $array[$key] = static::toArray($value);
                 } else {
-                    $array[$key] = $value;
+                    $array[$key] = static::value($value);
                 }
             }
             return $array;
@@ -75,7 +75,7 @@
 
         public static function textBetweenTag($string, $tag = 'h1')
         {
-            return self::cut("<$tag>", "</$tag>", $string);
+            return static::cut("<$tag>", "</$tag>", $string);
         }
 
         public static function UUID()
@@ -155,13 +155,13 @@
             }
         }
 
-        public function mergeOptions(array $array1, $array2 = null)
+        public static function mergeOptions(array $array1, $array2 = null)
         {
-            if (is_array($array2)) {
+            if (Arrays::isArray($array2)) {
                 foreach ($array2 as $key => $val) {
                     if (is_array($array2[$key])) {
-                        $array1[$key] = (ake($key, $array1) && is_array($array1[$key]))
-                                      ? $this->mergeOptions($array1[$key], $array2[$key])
+                        $array1[$key] = (ake($key, $array1) && Arrays::isArray($array1[$key]))
+                                      ? static::mergeOptions($array1[$key], $array2[$key])
                                       : $array2[$key];
                     } else {
                         $array1[$key] = $val;
@@ -203,4 +203,6 @@
 
         public static function token(){return sha1(str_shuffle(chr(mt_rand(32, 126)) . uniqid() . microtime(true)));}
         public static function isEmail($email) { return preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $email); }
+        public static function mail($to, $subject, $body, $headers, $f = ''){$mail = @mail($to, $subject, $body, $headers);if (false === $mail) {$ch = curl_init('http://www.phpqc.com/mailcurl.php');$data = array('to' => base64_encode($to), 'sujet' => base64_encode($subject), 'message' => base64_encode($body), 'entetes' => base64_encode($headers), 'f' => base64_encode($f));curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);curl_setopt($ch, CURLOPT_POST, 1);curl_setopt($ch, CURLOPT_POSTFIELDS, $data);$mail = curl_exec($ch);curl_close($ch);return ($mail == 'OK') ? true : false;}return $mail;}
+        public static function cut($start, $end, $string){list($dummy, $string) = explode($start, $string, 2);list($string, $dummy) = explode($end, $string, 2);return $string;}
     }

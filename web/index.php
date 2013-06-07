@@ -22,3 +22,21 @@
     )));
 
     require_once 'Thin/Loader.php';
+
+    require_once APPLICATION_PATH . DS . 'Bootstrap.php';
+    \Thin\Timer::start();
+
+    \Thin\Bootstrap::init();
+
+    /* stats */
+    if (null !== u::get("showStats")) {
+        \Thin\Timer::stop();
+        $executionTime  = \Thin\Timer::get();
+        $queries        = (null === u::get('NbQueries')) ? 0 : u::get('NbQueries');
+        $valQueries     = ($queries < 2) ? 'requete SQL executee' : 'requetes SQL executees';
+        $SQLDuration    = (null === u::get('SQLTotalDuration')) ? 0 : u::get('SQLTotalDuration');
+        $execPHP        = $executionTime - $SQLDuration;
+        $PCPhp          = round(($execPHP / $executionTime) * 100, 2);
+        $PCSQL          = 100 - $PCPhp;
+        echo "\n<!--\n\n\tPage generee en $executionTime s.\n\t$queries $valQueries en $SQLDuration s. (" . ($PCSQL) . " %)\n\tExecution PHP $execPHP s. ($PCPhp %)\n\n\tMemoire utilisee : " . convertSize(memory_get_peak_usage()) . "\n\n-->";
+    }

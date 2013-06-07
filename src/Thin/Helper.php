@@ -159,7 +159,7 @@
     if (!function_exists('addEav')) {
         function addEav($entity, array $attributes)
         {
-            $eav = u::newInstance('\Thin\Memory', array('FTV', 'EAV'));
+            $eav = \Thin\Utils::newInstance('\Thin\Memory', array('Thin', 'EAV'));
             $eav = $eav->setEntity($entity);
             foreach ($attributes as $key => $value) {
                 $setter = 'set' . i::camelize($key);
@@ -170,7 +170,7 @@
     }
     if (!function_exists('form')) {
         function error($form) {
-            return u::getInstance('FTVForm_' . $form);
+            return \Thin\Utils::getInstance('ThinForm_' . $form);
         }
     }
 
@@ -195,7 +195,7 @@
             if (null === $role) {
                 return false;
             }
-            return $role->getLabel() == u::get('AJFRole')->getLabel();
+            return $role->getLabel() == \Thin\Utils::get('AJFRole')->getLabel();
         }
     }
     if (!function_exists('role')) {
@@ -207,22 +207,13 @@
     if (!function_exists('render')) {
         function render($file)
         {
-            return u::run('view.render', array('hash' => sha1($file)));
+            return \Thin\Utils::run('view.render', array('hash' => sha1($file)));
         }
     }
     if (!function_exists('arrayLookup')) {
         function arrayLookup($a, $b)
         {
             return array_flip(array_intersect(array_flip($a), array_keys($b)));
-        }
-    }
-
-    /* petite fonction qui permet d'appeler les parametres envoyés à la vue depuis le controller sans les passer dans le partial */
-    if (!function_exists('view')) {
-        function view($key)
-        {
-            $view = Zend_Controller_Action_HelperBroker::getStaticHelper('viewRenderer')->view;
-            return $view->$key;
         }
     }
 
@@ -372,7 +363,7 @@
     if (!function_exists('_extract')) {
         function _extract(array $array)
         {
-            extract($array, EXTR_PREFIX_ALL, 'FTV');
+            extract($array, EXTR_PREFIX_ALL, 'Thin');
         }
     }
 
@@ -386,7 +377,7 @@
     if (!function_exists('model')) {
         function model($entity, $table)
         {
-            $classModel = 'FTVModel_' . ucfirst(\Thin\Inflector::lower($entity)) . '_' . ucfirst(\Thin\Inflector::lower($table));
+            $classModel = 'ThinModel_' . ucfirst(\Thin\Inflector::lower($entity)) . '_' . ucfirst(\Thin\Inflector::lower($table));
             return \Thin\Utils::newInstance($classModel);
         }
     }
@@ -461,8 +452,12 @@
     if (!function_exists('setPath')) {
         function setPath($name, $path)
         {
-            $p = \Thin\Utils::getInstance('Paths');
-            $p[$name] = $path;
+            $paths = \Thin\Utils::get('ThinPaths');
+            if (null === $paths) {
+                $paths = array();
+            }
+            $paths[$name] = $path;
+            \Thin\Utils::set('ThinPaths', $paths);
         }
     }
 
@@ -481,9 +476,9 @@
     if (!function_exists('path')) {
         function path($path)
         {
-            $p = \Thin\Utils::getInstance('FTVPaths');
-            if (array_key_exists($path, $p)) {
-                return $p[$path];
+            $paths = \Thin\Utils::get('ThinPaths');
+            if (ake($path, $paths)) {
+                return $paths[$path];
             } else {
                 throw new Exception("This path '$path' is not defined.");
             }
@@ -549,8 +544,8 @@
             }
 
             foreach (explode('.', $key) as $segment) {
-                if (!is_array($array) || !array_key_exists($segment, $array)) {
-                    return \Thin\Utils::value($default);
+                if (!is_array($array) || !ake($segment, $array)) {
+                    return value($default);
                 }
                 $array = $array[$segment];
             }
@@ -571,17 +566,17 @@
         {
             if (strpos($key, '.') !== false) {
                 $keys = explode('.', $key, 2);
-                if (strlen($keys[0]) && strlen($keys[1])) {
-                    if (!ake($keys[0], $array)) {
-                        if ($keys[0] === '0' && !empty($array)) {
-                            $array = array($keys[0] => $array);
+                if (strlen(current($keys)) && strlen($keys[1])) {
+                    if (!ake(current($keys), $array)) {
+                        if (current($keys) === '0' && !empty($array)) {
+                            $array = array(current($keys) => $array);
                         } else {
-                            $array[$keys[0]] = array();
+                            $array[current($keys)] = array();
                         }
-                    } elseif (!isArray($array[$keys[0]])) {
-                        throw new \Thin\Exception("Cannot create sub-key for '{$keys[0]}' as key already exists");
+                    } elseif (!\Thin\Arrays::isArray($array[current($keys)])) {
+                        throw new \Thin\Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
                     }
-                    $array[$keys[0]] = arraySet($array[$keys[0]], $keys[1], $value);
+                    $array[current($keys)] = arraySet($array[current($keys)], $keys[1], $value);
                 } else {
                     throw new \Thin\Exception("Invalid key '$key'");
                 }
@@ -634,7 +629,7 @@
                     return $value;
                 }
             }
-            return u::value($default);
+            return \Thin\Utils::value($default);
         }
     }
 
@@ -1041,7 +1036,7 @@
     if (!function_exists('instance')) {
         function instance($class, array $params = array())
         {
-            return u::getInstance($class, $params);
+            return \Thin\Utils::getInstance($class, $params);
         }
     }
 
@@ -1126,8 +1121,8 @@
         function getRealClass($class)
         {
             static $classes = array();
-            if (!array_key_exists($class, $classes)) {
-                $reflect = new ReflectionClass($class);
+            if (!ake($class, $classes)) {
+                $reflect = new \ReflectionClass($class);
                 $classes[$class] = $reflect->getName();
             }
             return $classes[$class];
@@ -1137,7 +1132,7 @@
     if (!function_exists('getInstance')) {
         function getInstance($class)
         {
-            return u::getInstance($class);
+            return \Thin\Utils::getInstance($class);
         }
     }
 
@@ -1145,9 +1140,9 @@
         function urlsite($echo = true)
         {
             if (true === $echo) {
-                echo u::get('urlsite');
+                echo \Thin\Utils::get('urlsite');
             } else {
-                return u::get('urlsite');
+                return \Thin\Utils::get('urlsite');
             }
         }
     }
@@ -1155,7 +1150,7 @@
     if (!function_exists('__')) {
         function __($str, $echo = true)
         {
-            $t = u::get('FTVTranslate');
+            $t = \Thin\Utils::get('ThinTranslate');
             $translation = $t->translate($str);
             if (true === $echo) {
                 echo $translation;
@@ -1209,14 +1204,14 @@
     if (!function_exists('save')) {
         function save($key, $value = null)
         {
-            $saved = \Thin\Utils::get('FTVSaved');
+            $saved = \Thin\Utils::get('ThinSaved');
             if (null === $saved) {
                 if (null === $value) {
                     return null;
                 }
                 $saved = array();
                 $saved[$key] = $value;
-                \Thin\Utils::set('FTVSaved', $saved);
+                \Thin\Utils::set('ThinSaved', $saved);
             } else {
                 if (null === $value) {
                     if (ake($key, $saved)) {
@@ -1226,7 +1221,7 @@
                     }
                 } else {
                     $saved[$key] = $value;
-                    \Thin\Utils::set('FTVSaved', $saved);
+                    \Thin\Utils::set('ThinSaved', $saved);
                 }
             }
         }
@@ -1263,12 +1258,12 @@
                 $nargs = count($args);
                 if($nargs > 0) {
                     $value = $nargs > 1 ? $args : $args[0];
-                    $options[$name] = $value;
+                    $options[$name] = value($value);
                 }
                 return ake($name, $options) ? $options[$name] : null;
-          }
+            }
 
-          return $options;
+            return $options;
         }
     }
 
@@ -1286,7 +1281,7 @@
             $length = 'NA';
             $type = (string) $string;
             if (strstr($string, '(')) {
-                $length = (int) u::cut('(', ')', $string);
+                $length = (int) \Thin\Utils::cut('(', ')', $string);
                 list($type, $dummy) = explode('(', $string, 2);
                 $type = (string) $type;
             }
