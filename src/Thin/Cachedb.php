@@ -104,11 +104,9 @@
                 $cache->delete();
                 $cache = em($this->config->entity, $this->config->table);
             }
-            $value      = serialize(($this->expiration($minutes) + time()) . '%%%%%:::::' . $value);
+            $data       = serialize(($this->expiration($minutes) + time()) . '%%%%%:::::' . $value);
 
-            $expiration = $this->expiration($minutes);
-
-            $cache->setDateAdd(date('Y-m-d H:i:s'))->setEntityName(md5($this->_namespace))->setTableName(md5($key))->setTableId(999)->setData($value);
+            $cache->setDateAdd(date('Y-m-d H:i:s'))->setEntityName(md5($this->_namespace))->setTableName(md5($key))->setTableId(999)->setData($data);
             $newCache = $cache->save();
             return $this;
         }

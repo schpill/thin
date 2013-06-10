@@ -1150,8 +1150,11 @@
     if (!function_exists('__')) {
         function __($str, $echo = true)
         {
-            $t = \Thin\Utils::get('ThinTranslate');
-            $translation = $t->translate($str);
+            $language = (null !== \Thin\Utils::get('thinLanguage')) ? \Thin\Utils::get('thinLanguage') : 'fr';
+            $config = new translateConfig;
+            $config->populate(array('entity' => 'ajf', 'table' => 'eav'));
+            $t = new \Thin\Translationdb($language, $config);
+            $translation = $t->get($str);
             if (true === $echo) {
                 echo $translation;
             } else {

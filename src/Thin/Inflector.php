@@ -20,8 +20,8 @@
          * Contains a default map of accented and special characters to ASCII characters.  Can be
          * extended or added to using `Inflector::rules()`.
          *
-         * @see FTV_Inflector::slug()
-         * @see FTV_Inflector::rules()
+         * @see Inflector::slug()
+         * @see Inflector::rules()
          * @var array
          */
         protected static $_transliteration = array(
@@ -41,7 +41,7 @@
          * Indexed array of words which are the same in both singular and plural form.  You can add
          * rules to this list using `Inflector::rules()`.
          *
-         * @see FTV_Inflector::rules()
+         * @see Inflector::rules()
          * @var array
          */
         protected static $_uninflected = array(
@@ -62,7 +62,7 @@
         /**
          * Contains the list of pluralization rules.
          *
-         * @see FTV_Inflector::rules()
+         * @see Inflector::rules()
          * @var array Contains the following keys:
          *   - `'rules'`: An array of regular expression rules in the form of `'match' => 'replace'`,
          *     which specify the matching and replacing rules for the pluralization of words.
@@ -123,7 +123,7 @@
         /**
          * Contains the list of pluralization rules.
          *
-         * @see FTV_Inflector::rules()
+         * @see Inflector::rules()
          * @var array Contains the following keys:
          *   - `'rules'`: An array of regular expression rules in the form of `'match' => 'replace'`,
          *     which specify the matching and replacing rules for the pluralization of words.
@@ -203,7 +203,7 @@
 
         public static function utf8($str)
         {
-            if (false === FTV_Utils::isUtf8($str)) {
+            if (false === Utils::isUtf8($str)) {
                 $str = utf8_encode($str);
             }
             return $str;
@@ -412,7 +412,7 @@
          * non word characters removed.  Maps special characters to ASCII using
          * `Inflector::$_transliteration`, which can be updated using `Inflector::rules()`.
          *
-         * @see FTV_Inflector::rules()
+         * @see Inflector::rules()
          * @param string $string An arbitrary string to convert.
          * @param string $replacement The replacement to use for spaces.
          * @return string The converted string.
@@ -422,7 +422,7 @@
             $map = static::$_transliteration + array(
                 '/[^\w\s]/' => ' ', '/\\s+/' => $replacement,
                 '/(?<=[a-z])([A-Z])/' => $replacement . '\\1',
-                str_replace(':rep', preg_quote($replacement, '/'), '/^[:rep]+|[:rep]+$/') => ''
+                repl(':rep', preg_quote($replacement, '/'), '/^[:rep]+|[:rep]+$/') => ''
             );
             return preg_replace(array_keys($map), array_values($map), $string);
         }
