@@ -83,22 +83,6 @@
             return $this;
         }
 
-        public function serialize($keys = array(), $valueSeparator = '=', $fieldSeparator = ' ', $quote = '"')
-        {
-            $data = array();
-            if (empty($keys)) {
-                $keys = array_keys($this->_datas);
-            }
-
-            foreach ($this->_data as $key => $value) {
-                if (in_array($key, $keys)) {
-                    $data[] = $key . $valueSeparator . $quote . $value . $quote;
-                }
-            }
-            $res = implode($fieldSeparator, $data);
-            return $res;
-        }
-
         public function toArray()
         {
             $array = array();

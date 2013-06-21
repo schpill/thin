@@ -160,9 +160,7 @@
             if (Arrays::isArray($array2)) {
                 foreach ($array2 as $key => $val) {
                     if (is_array($array2[$key])) {
-                        $array1[$key] = (ake($key, $array1) && Arrays::isArray($array1[$key]))
-                                      ? static::mergeOptions($array1[$key], $array2[$key])
-                                      : $array2[$key];
+                        $array1[$key] = (ake($key, $array1) && Arrays::isArray($array1[$key])) ? static::mergeOptions($array1[$key], $array2[$key]) : $array2[$key];
                     } else {
                         $array1[$key] = $val;
                     }

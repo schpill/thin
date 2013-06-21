@@ -81,40 +81,40 @@
 
     spl_autoload_register('ThinAutoload');
 
-    set_exception_handler(function($exception) {
-        $router = plugin('router');
-        \Thin\Utils::set('ThinError', $exception);
-        $router::isError();
-        \Thin\Bootstrap::run();
-    });
-
-
-    set_error_handler(function($type, $message, $file, $line) {
-        $exception = new \ErrorException($message, $type, 0, $file, $line);
-        $router = plugin('router');
-        \Thin\Utils::set('ThinError', $exception);
-        $router::isError();
-        \Thin\Bootstrap::run();
-    });
-
-
-    $register_shutdown_function = function ($error) {
-        extract($error, EXTR_SKIP);
-        $exception = new \ErrorException($message, $type, 0, $file, $line);
-        $router = plugin('router');
-        \Thin\Utils::set('ThinError', $exception);
-        $router::isError();
-        \Thin\Bootstrap::run();
-    };
-
-    \Thin\Event::set('register_shutdown_function', $register_shutdown_function);
-
-    register_shutdown_function(function() {
-        $error = error_get_last();
-        if (null !== $error) {
-            \Thin\Event::run('register_shutdown_function', array($error));
-        }
-    });
+    //*GP* set_exception_handler(function($exception) {
+        //*GP* $router = plugin('router');
+        //*GP* \Thin\Utils::set('ThinError', $exception);
+        //*GP* $router::isError();
+        //*GP* \Thin\Bootstrap::run();
+    //*GP* });
+//*GP*
+//*GP*
+    //*GP* set_error_handler(function($type, $message, $file, $line) {
+        //*GP* $exception = new \ErrorException($message, $type, 0, $file, $line);
+        //*GP* $router = plugin('router');
+        //*GP* \Thin\Utils::set('ThinError', $exception);
+        //*GP* $router::isError();
+        //*GP* \Thin\Bootstrap::run();
+    //*GP* });
+//*GP*
+//*GP*
+    //*GP* $register_shutdown_function = function ($error) {
+        //*GP* extract($error, EXTR_SKIP);
+        //*GP* $exception = new \ErrorException($message, $type, 0, $file, $line);
+        //*GP* $router = plugin('router');
+        //*GP* \Thin\Utils::set('ThinError', $exception);
+        //*GP* $router::isError();
+        //*GP* \Thin\Bootstrap::run();
+    //*GP* };
+//*GP*
+    //*GP* \Thin\Event::set('register_shutdown_function', $register_shutdown_function);
+//*GP*
+    //*GP* register_shutdown_function(function() {
+        //*GP* $error = error_get_last();
+        //*GP* if (null !== $error) {
+            //*GP* \Thin\Event::run('register_shutdown_function', array($error));
+        //*GP* }
+    //*GP* });
 
     error_reporting(-1);
 
