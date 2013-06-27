@@ -86,6 +86,12 @@
             $this->perPage      = $perPage;
         }
 
+        public function getItemsByPage()
+        {
+            $offset = ($this->page - 1) * $this->perPage;
+            return array_slice($this->results, $offset, $this->perPage);
+        }
+
         /**
          * Create a new Paginator instance.
          *

@@ -49,7 +49,28 @@
         public static function playlist($id)
         {
             $tab = json_decode(file_get_contents("http://api.deezer.com/2.0/playlist/$id/tracks?output=json"), true);
-            return $tab['data'];
+            $data = $tab['data'];
+            if (ake('next', $tab)) {
+                $next = $tab['next'];
+                if (isset($next)) {
+                    return static::next($next, $data);
+                }
+            }
+            return $data;
+        }
+
+        private static function next($url, $data)
+        {
+
+            $tab = json_decode(file_get_contents($url), true);
+            $data = array_merge($data, $tab['data']);
+            if (ake('next', $tab)) {
+                $next = $tab['next'];
+                if (isset($next)) {
+                    return static::next($next, $data);
+                }
+            }
+            return $data;
         }
 
         public static function search($search)

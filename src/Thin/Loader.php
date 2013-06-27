@@ -75,48 +75,25 @@
         }
     }
 
+    error_reporting(-1);
+
+    //*GP* set_exception_handler(function($exception) {
+        //*GP* var_dump($exception);
+    //*GP* });
+    //*GP* set_error_handler(function($type, $message, $file, $line) {
+        //*GP* $exception = new \ErrorException($message, $type, 0, $file, $line);
+        //*GP* var_dump($exception);
+    //*GP* });
+    //*GP* register_shutdown_function(function() {
+        //*GP* $error = error_get_last();
+        //*GP* var_dump($error);
+    //*GP* });
+
     require_once 'Helper.php';
 
     define('MB_STRING', (int) function_exists('mb_get_info'));
 
     spl_autoload_register('ThinAutoload');
-
-    //*GP* set_exception_handler(function($exception) {
-        //*GP* $router = plugin('router');
-        //*GP* \Thin\Utils::set('ThinError', $exception);
-        //*GP* $router::isError();
-        //*GP* \Thin\Bootstrap::run();
-    //*GP* });
-//*GP*
-//*GP*
-    //*GP* set_error_handler(function($type, $message, $file, $line) {
-        //*GP* $exception = new \ErrorException($message, $type, 0, $file, $line);
-        //*GP* $router = plugin('router');
-        //*GP* \Thin\Utils::set('ThinError', $exception);
-        //*GP* $router::isError();
-        //*GP* \Thin\Bootstrap::run();
-    //*GP* });
-//*GP*
-//*GP*
-    //*GP* $register_shutdown_function = function ($error) {
-        //*GP* extract($error, EXTR_SKIP);
-        //*GP* $exception = new \ErrorException($message, $type, 0, $file, $line);
-        //*GP* $router = plugin('router');
-        //*GP* \Thin\Utils::set('ThinError', $exception);
-        //*GP* $router::isError();
-        //*GP* \Thin\Bootstrap::run();
-    //*GP* };
-//*GP*
-    //*GP* \Thin\Event::set('register_shutdown_function', $register_shutdown_function);
-//*GP*
-    //*GP* register_shutdown_function(function() {
-        //*GP* $error = error_get_last();
-        //*GP* if (null !== $error) {
-            //*GP* \Thin\Event::run('register_shutdown_function', array($error));
-        //*GP* }
-    //*GP* });
-
-    error_reporting(-1);
 
     define('THINSTART', time());
 

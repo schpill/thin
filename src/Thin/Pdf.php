@@ -17,11 +17,10 @@
             curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
             $pdf = curl_exec($ch);
             curl_close($ch);
-
-            header("Content-type: application/pdf");
-            header("Content-Length: " . Inflector::length($pdf));
-            header("Content-Disposition: attachement; filename=$name.pdf");
-            die($pdf);
+            $redirect = URLSITE . 'file.php?type=pdf&name=' . $name . '&file=' . md5($pdf);
+            $cache = CACHE_PATH . DS . md5($pdf) . '.pdf';
+            file_put_contents($cache, $pdf);
+            Utils::go($redirect);
         }
 
         public static function urlToPdf($url, $name = 'document', $portrait = true)

@@ -90,7 +90,7 @@
          */
         public static function path($array, $path, $default = null, $delimiter = null)
         {
-            if ( ! static::isArray($array)) {
+            if (!static::isArray($array)) {
                 // This is not an array!
                 return $default;
             }
@@ -145,7 +145,7 @@
 
                     $values = array();
                     foreach ($array as $arr) {
-                        if ($value = Arrays::path($arr, implode('.', $keys))) {
+                        if ($value = static::path($arr, implode('.', $keys))) {
                             $values[] = $value;
                         }
                     }

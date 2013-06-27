@@ -1,5 +1,12 @@
 <?php
 
+    if (!function_exists('getUrl')) {
+        function getUrl()
+        {
+            return URLSITE . $_SERVER['REQUEST_URI'];
+        }
+    }
+
     if (!function_exists('helper')) {
         function helper($helper)
         {
@@ -486,25 +493,15 @@
     }
 
     if (!function_exists('app')) {
-        function app()
+        function app($name)
         {
-            $args = func_get_args();
-            $function = array_shift($args);
-            if (is_callable(array('\Thin\Utils', $function))) {
-                switch (count($args)) {
-                    case 0:
-                        return \Thin\Utils::$function();
-                    case 1:
-                        return \Thin\Utils::$function($args[0]);
-                    case 2:
-                        return \Thin\Utils::$function($args[0], $args[1]);
-                    case 3:
-                        return \Thin\Utils::$function($args[0], $args[1], $args[2]);
-                    case 4:
-                        return \Thin\Utils::$function($args[0], $args[1], $args[2], $args[3]);
-                    case 5:
-                        return \Thin\Utils::$function($args[0], $args[1], $args[2], $args[3], $args[4]);
-                }
+            static $applications = array();
+            if (ake($name, $applications)) {
+                return $applications[$name];
+            } else {
+                $object = new $name;
+                $applications[$name] = $object;
+                return $object;
             }
         }
     }
@@ -519,11 +516,7 @@
     if (!function_exists('fgc')) {
         function fgc($file)
         {
-            if (file_exists($file)) {
-                return file_get_contents($file);
-            } else {
-                throw new Thin\Exception("The file '$file' does not exist.");
-            }
+            return file_get_contents($file);
         }
     }
 

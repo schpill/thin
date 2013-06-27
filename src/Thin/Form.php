@@ -67,7 +67,7 @@
                 $attributes['enctype'] = 'multipart/form-data';
             }
 
-            if (!array_key_exists('accept-charset', $attributes)) {
+            if (!ake('accept-charset', $attributes)) {
                 $attributes['accept-charset'] = 'utf-8';
             }
 
@@ -104,7 +104,6 @@
         {
             static::$labels[] = $name;
             $attributes = Html::attributes($attributes);
-            //*GP* $value = Html::entities($value);
             return '<label for="' . $name . '"' . $attributes . '>' . $value . '</label>';
         }
 
@@ -448,7 +447,7 @@
             // If an ID has been explicitly specified in the attributes, we will
             // use that ID. Otherwise, we will look for an ID in the array of
             // label names so labels and their elements have the same ID.
-            if (array_key_exists('id', $attributes)) {
+            if (ake('id', $attributes)) {
                 return $attributes['id'];
             }
             if (in_array($name, static::$labels)) {

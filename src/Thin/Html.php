@@ -58,15 +58,18 @@
 
         public static function link($url, $title = null, $attributes = array())
         {
-
-            if (null === $title) $title = $url;
+            if (null === $title) {
+                $title = $url;
+            }
             return '<a href="' . $url . '"' . static::attributes($attributes) . '>' . static::entities($title) . '</a>';
         }
 
         public static function mailto($email, $title = null, $attributes = array())
         {
             $email = static::email($email);
-            if (null === $title) $title = $email;
+            if (null === $title) {
+                $title = $email;
+            }
             $email = '&#109;&#097;&#105;&#108;&#116;&#111;&#058;' . $email;
             return '<a href="' . $email . '"' . static::attributes($attributes) . '>' . static::entities($title) . '</a>';
         }
@@ -169,11 +172,95 @@
             return $safe;
         }
 
+        /**
+        * Generate an strong element.
+        *
+        * @access public
+        * @param string $data
+        * @return string
+        */
+
+        public static function strong($data)
+        {
+            return '<strong>' . $data . '</strong>';
+        }
+
+        /**
+        * Generate an em element.
+        *
+        * @access public
+        * @param string $data
+        * @return string
+        */
+
+        public static function em($data)
+        {
+            return '<em>' . $data . '</em>';
+        }
+
+        /**
+        * Generate an code element.
+        *
+        * @access public
+        * @param string $data
+        * @return string
+        */
+
+        public static function code($data)
+        {
+            return '<pre><code>' . $data . '</code></pre>';
+        }
+
+        /**
+        * Generate an blockquote element.
+        *
+        * @access public
+        * @param string $data
+        * @return string
+        */
+
+        public static function quote($data)
+        {
+            return '<blockquote><p>' . $data . '</p></blockquote>';
+        }
+
+        /**
+        * Generate an del element.
+        *
+        * @access public
+        * @param string $data
+        * @return string
+        */
+
+        public static function del($data)
+        {
+            return '<del>' . $data . '</del>';
+        }
+
+        /**
+        * Generate an iframe element.
+        *
+        * @access public
+        * @param string $url
+        * @param array $attributes
+        * @return string
+        */
+
+        public static function iframe($url, $attributes = array())
+        {
+            return '<iframe src="' . $url . '"' . static::attributes($attributes) . '></iframe>';
+        }
+
         public static function __callStatic($method, $parameters)
         {
-            if (ake($method, static::$macros)) {
-                return call_user_func_array(static::$macros[$method], $parameters);
+            if (2 == count($parameters)) {
+                return static::tag($method, current($parameters), end($parameters));
+            } else if (1 == count($parameters)) {
+                return static::tag($method, current($parameters));
+            } else if (0 == count($parameters)) {
+                return static::tag($method);
+            } else {
+                throw new Exception("The method $method is not well implemented.");
             }
-            throw new Exception("Method [$method] does not exist.");
         }
     }
