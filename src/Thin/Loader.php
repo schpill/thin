@@ -77,17 +77,19 @@
 
     error_reporting(-1);
 
-    //*GP* set_exception_handler(function($exception) {
-        //*GP* var_dump($exception);
-    //*GP* });
-    //*GP* set_error_handler(function($type, $message, $file, $line) {
-        //*GP* $exception = new \ErrorException($message, $type, 0, $file, $line);
-        //*GP* var_dump($exception);
-    //*GP* });
-    //*GP* register_shutdown_function(function() {
-        //*GP* $error = error_get_last();
-        //*GP* var_dump($error);
-    //*GP* });
+    set_exception_handler(function($exception) {
+        var_dump($exception);
+    });
+    set_error_handler(function($type, $message, $file, $line) {
+        $exception = new \ErrorException($message, $type, 0, $file, $line);
+        var_dump($exception);
+    });
+    register_shutdown_function(function() {
+        $error = error_get_last();
+        if (null !== $error) {
+            var_dump($error);
+        }
+    });
 
     require_once 'Helper.php';
 

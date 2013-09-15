@@ -92,6 +92,26 @@
                 $uncamelizeMethod = \i::uncamelize(lcfirst(substr($method, 3)));
                 $var = repl('_', '.', \i::lower($uncamelizeMethod));
                 return static::get($var);
+            } else {
+                $file = APPLICATION_PATH . DS . 'config' . DS . Inflector::lower($method) . '.php';
+                if (File::exists($file)) {
+                    $config = include($file);
+                    $configMerge = $config['production'];
+                    if (ake(APPLICATION_ENV, $config)) {
+                        $configMerge = static::merge($configMerge, $config[APPLICATION_ENV]);
+                    }
+                    $config = $configMerge;
+                    $keys = explode('.', current($args));
+                    $actual = $config;
+                    for ($i = 0 ; $i < count($keys) ; $i++) {
+                        $key = trim($keys[$i]);
+                        if (ake($key, $actual)) {
+                            $actual = $actual[$key];
+                        }
+                    }
+                    return $actual;
+                }
+                return null;
             }
         }
 

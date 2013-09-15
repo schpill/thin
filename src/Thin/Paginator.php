@@ -8,7 +8,8 @@
          * @var array
          */
         public $results;
-
+        public $firstItemNumber;
+        public $lastItemNumber;
         /**
          * The current page.
          *
@@ -84,6 +85,13 @@
             $this->total        = $total;
             $this->results      = $results;
             $this->perPage      = $perPage;
+
+            $this->lastItemNumber   = ($total < $page * $perPage) ? $total : $page * $perPage;
+            $this->firstItemNumber  = $this->lastItemNumber - $perPage + 1;
+
+            if (1 > $this->firstItemNumber) {
+                $this->firstItemNumber = 1;
+            }
         }
 
         public function getItemsByPage()
@@ -118,7 +126,7 @@
          */
         public static function page($total, $perPage)
         {
-            $page = (null === request()->getPage()) ? 1 : request()->getPage();
+            $page = (null === request()->getCrudNumPage()) ? 1 : request()->getCrudNumPage();
 
             // The page will be validated and adjusted if it is less than one or greater
             // than the last page. For example, if the current page is not an integer or

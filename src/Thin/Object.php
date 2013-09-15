@@ -14,37 +14,37 @@
         {
             $args   = func_get_args();
             $nbArgs = func_num_args();
-            if (1 == $nbArgs && (is_array($args[0]) || is_object($args[0]))) {
-                if (is_array($args[0])) {
-                    $this->populate($args[0]);
-                } elseif (is_object($args[0])) {
-                    $array = (array) $args[0];
+            if (1 == $nbArgs && (is_array(current($args)) || is_object(current($args)))) {
+                if (is_array(current($args))) {
+                    $this->populate(current($args));
+                } elseif (is_object(current($args))) {
+                    $array = (array) current($args);
                     $this->populate($array);
                 }
             }
             $this->_args = $args;
-            $this->_nameClass = \i::lower(get_class($this));
+            $this->_nameClass = Inflector::lower(get_class($this));
             return $this;
         }
 
         public function __call($func, $argv)
         {
             if (substr($func, 0, 3) == 'get') {
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($func, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 if (isset($this->$var)) {
                     return $this->$var;
                 } else {
                     return null;
                 }
             } elseif (substr($func, 0, 3) == 'has') {
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($func, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 return isset($this->$var) && !empty($this->$var);
             } elseif (substr($func, 0, 3) == 'set') {
-                $value = $argv[0];
-                $uncamelizeMethod = \i::uncamelize(lcfirst(substr($func, 3)));
-                $var = \i::lower($uncamelizeMethod);
+                $value = current($argv);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var = Inflector::lower($uncamelizeMethod);
                 if (!empty($var)) {
                     $this->$var = $value;
                 }
@@ -85,14 +85,6 @@
 
         public function toArray()
         {
-            $array = array();
-            foreach ($this->_datas['fieldsSave'] as $field) {
-                $array[$field] = $this->$field;
-            }
-            $array = (array) $this;
-            unset($array['_nameClass']);
-            unset($array['_args']);
-            unset($array['_data']);
-            return $array;
+            return $this->getArrayCopy();
         }
     }

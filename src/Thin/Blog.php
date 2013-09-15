@@ -293,7 +293,7 @@
 
             // Replace [u]...[/u] with <span style="text-decoration:underline;">...</span>
             $matches["/\[u\](.*?)\[\/u\]/is"] = function($match) {
-                return Html::span($match[2], array('style' => 'text-decoration: underline;'));
+                return Html::span($match[1], array('style' => 'text-decoration: underline;'));
             };
 
             // Replace [center]...[/center] with <div style="text-align:center;">...</div>
@@ -372,5 +372,20 @@
                 return static::makeKey();
             }
             return $key;
+        }
+
+        public static function share()
+        {
+            $html = '<script type="text/javascript" src="http://apis.google.com/js/plusone.js"></script><div class="span5 alert-info">
+            <div style="float:left; width:85px;padding-right:10px; margin:4px 4px 4px 4px;height:30px;">
+            <iframe src="http://www.facebook.com/plugins/like.php?locale=fr_FR&amp;href='. urlencode(getUrl()) .'&amp;layout=button_count&amp;show_faces=false&amp;width=85&amp;action=like&amp;font=verdana&amp;colorscheme=light&amp;height=21" allowtransparency="true" style="border:none; overflow:hidden; width:85px; height:21px;" frameborder="0" scrolling="no"></iframe></div>
+            <div style="float:left; width:80px;padding-right:10px; margin:4px 4px 4px 4px;height:30px;">
+            <g:plusone></g:plusone>
+            </div>
+            <div style="float:left; width:95px;padding-right:10px; margin:4px 4px 4px 4px;height:30px;">
+            <iframe data-twttr-rendered="true" title="Twitter Tweet Button" style="width: 106px; height: 20px;" class="twitter-share-button twitter-count-horizontal" src="http://platform.twitter.com/widgets/tweet_button.1371247185.html#_=1372410415388&amp;count=horizontal&amp;id=twitter-widget-0&amp;lang=en&amp;original_referer='. urlencode(getUrl()) .'&amp;size=m&amp;text=##title##&amp;url='. urlencode(getUrl()) .'&amp;via=florentetgeraldpointca" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
+            </div>
+            </div><div style="clear:both"></div>';
+            return $html;
         }
     }

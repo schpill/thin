@@ -75,7 +75,7 @@
             $lat        = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'};
             $long       = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'};
 
-            $coords      = new Coords;
+            $coords     = new Coords;
             return $coords->setLatitude($lat)->setLongitude($long);
         }
 

@@ -191,12 +191,24 @@
             );
         }
 
-        static public function cleanDataToJs($string, $extended = false, $char = '\'')
+        public static function cleanDataToJs($string, $extended = false, $char = '\'')
         {
             if ($extended) {
                 $string = repl('\\', '\\\\', $string);
             }
             return repl($char, '\\' . $char, $string);
+        }
+
+        public static function httpRequest($url, $method = \Buzz\Message\RequestInterface::METHOD_GET)
+        {
+            $buzz = new \Buzz\Browser(new \Buzz\Client\Curl());
+
+            try {
+                $response = $buzz->call($url, $method);
+            } catch (\RuntimeException $e) {
+                return false;
+            }
+            return $response->getContent();
         }
 
         public static function token(){return sha1(str_shuffle(chr(mt_rand(32, 126)) . uniqid() . microtime(true)));}

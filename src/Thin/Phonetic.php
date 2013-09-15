@@ -1052,7 +1052,7 @@
 
         private static function _clean($str)
         {
-            $str = i::lower($str);
+            $str = Inflector::lower($str);
             $str = repl(' & ', ' et ', $str);
             $str = repl('...', '', $str);
             $str = repl('.', '', $str);

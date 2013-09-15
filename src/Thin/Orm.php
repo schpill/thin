@@ -329,7 +329,7 @@
 
         public function create(array $datas)
         {
-            return $this->fill($datas)->save();
+            return $this->populate($datas)->save();
         }
 
         protected function factory()

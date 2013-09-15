@@ -84,12 +84,12 @@
             return (!is_dir($path)) ? mkdir($path, $chmod, true) : true;
         }
 
-        public static function mvdir($source, $destination, $options = FilesystemIterator::SKIP_DOTS)
+        public static function mvdir($source, $destination, $options = \FilesystemIterator::SKIP_DOTS)
         {
             return static::cpdir($source, $destination, true, $options);
         }
 
-        public static function cpdir($source, $destination, $delete = false, $options = FilesystemIterator::SKIP_DOTS)
+        public static function cpdir($source, $destination, $delete = false, $options = \FilesystemIterator::SKIP_DOTS)
         {
             if (!is_dir($source)) {
                 return false;

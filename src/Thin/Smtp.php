@@ -42,18 +42,18 @@
         {
             // load config
             Config::load('smtp', false);
-            $connection         = (null === $connection) ? config('smtp', 'config.default') : $connection;
+            $connection         = (null === $connection) ? Config::application('application.smtp') : $connection;
 
             // set connection vars
-            $this->host         = config('smtp', "config.connections.$connection.host");
-            $this->port         = config('smtp', "config.connections.$connection.port");
-            $this->secure       = config('smtp', "config.connections.$connection.secure");
-            $this->auth         = config('smtp', "config.connections.$connection.auth");
-            $this->user         = config('smtp', "config.connections.$connection.user");
-            $this->pass         = config('smtp', "config.connections.$connection.password");
+            $this->host         = $connection['host'];
+            $this->port         = $connection['port'];
+            $this->secure       = $connection['secure'];
+            $this->auth         = $connection['auth'];
+            $this->user         = $connection['login'];
+            $this->pass         = $connection['password'];
 
             // set debug mode
-            $this->debugMode    = config('smtp', "config.debugMode");
+            $this->debugMode    = $connection['debug'];
         }
 
         public function from($email, $name = null)
@@ -395,7 +395,7 @@
                 // spin thru attachments...
                 foreach ($this->attachments as $path)  {
                     // if file exists...
-                    if (FTV_File::exists($path)) {
+                    if (File::exists($path)) {
                         // open file
                         $contents = @fgc($path);
 

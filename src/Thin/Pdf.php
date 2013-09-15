@@ -10,7 +10,8 @@
         {
             $orientation = (true == $portrait) ? 'Portrait' : 'Landscape';
             $data = "orientation=$orientation&html=" . urlencode($html);
-            $ch = curl_init('http://dns.phpfactor.com/pdf/');
+
+            $ch = curl_init('http://fr.webz0ne.com/pdf/');
             curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, false);

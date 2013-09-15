@@ -21,7 +21,7 @@
 
         public function offsetGet($id)
         {
-            if (!array_key_exists($id, $this->values)) {
+            if (!ake($id, $this->values)) {
                 throw new Exception(sprintf('Identifier "%s" is not defined.', $id));
             }
 
@@ -89,6 +89,16 @@
         public function keys()
         {
             return array_keys($this->values);
+        }
+
+        public function values()
+        {
+            return $this->values;
+        }
+
+        public function showVars()
+        {
+            return get_object_vars($this);
         }
     }
 

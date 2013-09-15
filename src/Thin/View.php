@@ -48,6 +48,7 @@
         public function __construct($viewFile = null)
         {
             if (null !== $viewFile) {
+                $this->_module   = 'www';
                 if (strstr($viewFile, DS)) {
                     $this->_viewFile = $viewFile;
                 } else {
@@ -65,7 +66,13 @@
                 $action = $route->getAction();
 
                 $this->_module   = $module;
-                $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                $isTranslate = Utils::get('isTranslate');
+                if (true === $isTranslate) {
+                    $lng = getLanguage();
+                    $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                } else {
+                    $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                }
             }
 
             Utils::set('appView', $this);
@@ -84,14 +91,14 @@
                 $this->setCache($cache);
             }
 
-            if (file_exists($partial)) {
+            if (File::exists($partial)) {
                 $viewFile = $partial;
             } else {
                 $module = (null === $module) ? $this->_module : $module;
                 $viewFile = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
             }
 
-            if (file_exists($viewFile)) {
+            if (File::exists($viewFile)) {
                 $this->render($viewFile, $echo);
             } else {
                 throw new Exception("This partial '$viewFile' does not exist.");
@@ -413,10 +420,10 @@
             return Inflector::utf8($str);
         }
 
-        public static function evaluate($php, array $parameters)
+        public static function evaluate($template, array $parameters)
         {
-            if (file_exists($template)) {
-                extract($parameters, EXTR_SKIP);
+            extract($parameters, EXTR_SKIP);
+            if (File::exists($template)) {
                 if (empty($view)) {
                     throw new Exception("A view is needed to evaluate.");
                 }
@@ -425,7 +432,6 @@
 
                 return ob_get_clean();
             } elseif (is_string($template)) {
-                extract($parameters, EXTR_SKIP);
                 if (empty($view)) {
                     throw new Exception("A view is needed to evaluate.");
                 }

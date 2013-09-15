@@ -143,16 +143,13 @@
         public function erase($key = null)
         {
             if (null === $key) {
-                $params = $_SESSION['__Thin__'][$this->_sessionName];
-                foreach ($params as $key => $value) {
-                    $this->$key = null;
-                }
-                $_SESSION['__Thin__'][$this->_sessionName] = array();
+                unset($_SESSION['__Thin__'][$this->_sessionName]);
             } else {
                 if (ake($key, $_SESSION['__Thin__'][$this->_sessionName])) {
                     $_SESSION['__Thin__'][$this->_sessionName][$key] = null;
+                    unset($_SESSION['__Thin__'][$this->_sessionName][$key]);
                 } else {
-                    $logger = \u::get('ThinLog');
+                    $logger = Utils::get('ThinLog');
                     $logger->notice("The key $key does not exist in this session.");
                 }
             }

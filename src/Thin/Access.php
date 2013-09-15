@@ -59,9 +59,6 @@
 
         /**
          * Remove key from data
-         *
-         * @param   string $name
-         * @return  void
          */
         public function __unset($name)
         {

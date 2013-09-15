@@ -106,11 +106,12 @@
 
         public static function pagination(Paginator $paginator)
         {
-            $view = new View;
-            $view->paginator = $paginator;
+            ob_start();
             $tpl = LIBRARIES_PATH . DS . 'Thin' . DS . 'Crud' . DS . 'paginator.phtml';
-            $view->render($tpl, false);
-            return render($tpl);
+            include($tpl);
+            $content = ob_get_contents();
+            ob_end_clean();
+            return $content;
         }
 
         public static function checkEmpty($field)
