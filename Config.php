@@ -115,7 +115,7 @@
             }
         }
 
-        private static function merge($ref, $new)
+        public static function merge($ref, $new)
         {
             $args = func_get_args();
             $res = array_shift($args);

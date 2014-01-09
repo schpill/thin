@@ -1,0 +1,256 @@
+<?php
+    namespace Thin;
+    class Querydata
+    {
+        private $type;
+        private $wheres     = array();
+        private $offset     = 0;
+        private $limit      = 0;
+        private $fields;
+        private $settings;
+        private $results;
+        private $firstQuery = true;
+
+        public function __construct($type, $results = array())
+        {
+            $settings   = ake($type, Data::$_settings)  ? Data::$_settings[$type]   : array();
+            $fields     = ake($type, Data::$_fields)    ? Data::$_fields[$type]     : array();
+
+            if (!count($fields) || !count($settings)) {
+                throw new Exception("The type $type is not configured.");
+            }
+
+            $this->type     = $type;
+            $this->fields   = $fields;
+            $this->settings = $settings;
+            $this->results  = $results;
+        }
+
+        public function all()
+        {
+            $queryKey   = sha1($this->type . 'getAll');
+            $cache      = Data::cache($this->type, $queryKey);
+
+            if (!empty($cache)) {
+                $this->results = $cache;
+                return $this;
+            }
+
+            $datas      = Data::getAll($this->type);
+            if (count($datas)) {
+                foreach ($datas as $path) {
+                    $object = Data::getObject($path);
+                    array_push($this->results, $object);
+                }
+            }
+            $cache = Data::cache($this->type, $queryKey, $this->results);
+            return $this;
+        }
+
+        public function query($condition)
+        {
+            Data::_incQueries(Data::_getTime());
+            $queryKey   = sha1(serialize($condition) . 'QueryData');
+            $cache      = Data::cache($this->type, $queryKey);
+
+            if (!empty($cache)) {
+                return $cache;
+            }
+
+            $this->firstQuery = false;
+            $this->wheres[] = $condition;
+            if (is_string($condition)) {
+                $res = Data::query($this->type, $condition);
+                $collection = array();
+                if (count($res)) {
+                    foreach ($res as $row) {
+                        if (is_string($row)) {
+                            $tab = explode(DS, $row);
+                            $id = repl(".data", '', Arrays::last($tab));
+                        } else {
+                            if (is_object($row)) {
+                                $id = $row->id;
+                            }
+                        }
+                        $collection[] = $id;
+                    }
+                }
+            } else {
+                if (Arrays::isArray($condition)) {
+                    $collection = $condition;
+                } else {
+                    $collection = array();
+                }
+            }
+            $cache = Data::cache($this->type, $queryKey, $collection);
+            return $collection;
+        }
+
+        public function whereAnd($condition)
+        {
+            $collection = $this->query($condition);
+            $this->resultsAnd($collection);
+            return $this;
+        }
+
+        public function whereOr($condition)
+        {
+            $collection = $this->query($condition);
+            $this->resultsOr($collection);
+            return $this;
+        }
+
+        public function whereXor($condition)
+        {
+            $collection = $this->query($condition);
+            $this->resultsXor($collection);
+            return $this;
+        }
+
+        public function where($condition)
+        {
+            return $this->whereOr($condition);
+        }
+
+        public function resultsAnd($resultsAnd)
+        {
+            if (false === $this->firstQuery) {
+                $this->results = array_intersect($this->results, $resultsAnd);
+            } else {
+                $this->results = $resultsAnd;
+            }
+            return $this;
+        }
+
+        public function resultsOr($resultsOr)
+        {
+            if (false === $this->firstQuery) {
+                $this->results = array_merge($this->results, $resultsOr);
+            } else {
+                $this->results = $resultsOr;
+            }
+            return $this;
+        }
+
+        public function resultsXor($resultsXor)
+        {
+            if (false === $this->firstQuery) {
+                $this->results = array_merge(array_diff($this->results, $resultsXor), array_diff($resultsXor, $this->results));
+            } else {
+                $this->results = $resultsXor;
+            }
+            return $this;
+        }
+
+        public function order($orderField, $orderDirection = 'ASC')
+        {
+            if (count($this->results) && null !== $orderField) {
+                $queryKey   = sha1(serialize($this->wheres));
+                $cache      = Data::cache($this->type, $queryKey);
+
+                if (!empty($cache)) {
+                    $this->results = $cache;
+                    return $this;
+                }
+                if (Arrays::isArray($orderField)) {
+                    $orderFields = $orderField;
+                } else {
+                    $orderFields = array($orderField);
+                }
+                foreach ($orderFields as $orderField) {
+                    $sort = array();
+                    foreach($this->results as $id) {
+                        $objectCreated  = (is_string($id)) ? Data::getById($this->type, $id) : $id;
+                        $sort['id'][]   = $objectCreated->id;
+                        foreach ($this->fields as $k => $infos) {
+                            $value      = isset($objectCreated->$k) ? $objectCreated->$k : null;
+                            $sort[$k][] = $value;
+                        }
+                    }
+
+                    $asort = array();
+                    foreach ($sort as $k => $rows) {
+                        for ($i = 0 ; $i < count($rows) ; $i++) {
+                            if (empty($$k) || is_string($$k) || is_object($$k)) {
+                                $$k = array();
+                            }
+                            $asort[$i][$k] = $rows[$i];
+                            array_push($$k, $rows[$i]);
+                        }
+                    }
+
+                    if ('ASC' == Inflector::upper($orderDirection)) {
+                        array_multisort($$orderField, SORT_ASC, $asort);
+                    } else {
+                        array_multisort($$orderField, SORT_DESC, $asort);
+                    }
+                    $collection = array();
+                    foreach ($asort as $k => $row) {
+                        $tmpId = $row['id'];
+                        array_push($collection, $tmpId);
+                    }
+                    $cache = Data::cache($this->type, $queryKey, $collection);
+
+                    $this->results = $collection;
+                }
+            }
+            return $this;
+        }
+
+        public function offset($offset)
+        {
+            $this->offset = $offset;
+            return $this;
+        }
+
+        public function limit($limit)
+        {
+            $this->limit = $limit;
+            return $this;
+        }
+
+        public function sub()
+        {
+            return $this->results;
+        }
+
+        public function get()
+        {
+            $queryKey   = sha1(serialize($this->wheres) . serialize($this->results));
+            $cache      = Data::cache($this->type, $queryKey);
+
+            if (!empty($cache)) {
+                return $cache;
+            }
+
+            if (count($this->results)) {
+                if (0 < $this->limit) {
+                    $max    = count($this->results);
+                    $number = $this->limit - $this->offset;
+                    if ($number > $max) {
+                        $this->offset = $max - $this->limit;
+                        if (0 > $this->offset) {
+                            $this->offset = 0;
+                        }
+                        $this->limit = $max;
+                    }
+                    $this->results = array_slice($this->results, $this->offset, $this->limit);
+                }
+            }
+            $collection = array();
+            if (count($this->results)) {
+                foreach ($this->results as $key => $id) {
+                    $object         = Data::getById($this->type, $id);
+                    $collection[]   = $object;
+                }
+            }
+
+            $cache = Data::cache($this->type, $queryKey, $collection);
+            return $collection;
+        }
+
+        public function create($data = array())
+        {
+            return Data::newOne($this->type, $data);
+        }
+    }

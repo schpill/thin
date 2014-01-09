@@ -10,7 +10,32 @@
 
         public function getRequest()
         {
-            $request = request();
-            return $request;
+            return request();
+        }
+
+        public function forward($route)
+        {
+            $oldRoute   = container()->getRoute();
+            $module     = null !== $route->getModule()      ? $route->getModule()       : $oldRoute->getModule();
+            $controller = null !== $route->getController()  ? $route->getController()   : $oldRoute->getController();
+            $action     = null !== $route->getAction()      ? $route->getAction()       : $oldRoute->getAction();
+            $params     = null !== $route->getParams()      ? $route->getParams()       : array();
+
+            if (count($params)) {
+                foreach ($params as $key => $value) {
+                    $_REQUEST[$key] = $value;
+                }
+            }
+
+            $dispatch = new Dispatch;
+            $dispatch->setModule($module);
+            $dispatch->setController($controller);
+            $dispatch->setAction($action);
+            Utils::set('appDispatch', $dispatch);
+
+            Router::language();
+            Router::run();
+
+            exit;
         }
     }

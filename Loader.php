@@ -3,19 +3,16 @@
         error_reporting(-1);
 
         set_exception_handler(function($exception) {
-            var_dump($exception);
-            exit;
+            showException($exception);
         });
         set_error_handler(function($type, $message, $file, $line) {
             $exception = new \ErrorException($message, $type, 0, $file, $line);
             var_dump($exception);
-            exit;
         });
         register_shutdown_function(function() {
             $error = error_get_last();
             if (null !== $error) {
                 var_dump($error, true);
-                exit;
             }
         });
     }
@@ -58,6 +55,18 @@
         $r = repl('//', '/', $r);
         $r = repl($protocol . ':/', $protocol . '://', $r);
         $urlSite = $r;
+    }
+
+
+    if (null !== request()->getFromHtaccess()) {
+        if ('true' == request()->getFromHtaccess()) {
+            $dir = $_SERVER['SCRIPT_NAME'];
+            $htaccessDir = repl(DS . 'web' . DS . 'index.php', '', $dir);
+            $uri = $_SERVER['REQUEST_URI'];
+            $uri = repl($htaccessDir . DS, '', $uri);
+            $_SERVER['REQUEST_URI'] = DS . $uri;
+            $urlSite .= repl(DS, '', $htaccessDir) . DS;
+        }
     }
 
     \Thin\Utils::set("urlsite", $urlSite);

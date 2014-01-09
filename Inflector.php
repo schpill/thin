@@ -1010,4 +1010,22 @@
             $value = ucwords(repl(array('-', '_'), ' ', $value));
             return repl(' ', '', $value);
         }
+
+        public static function removeXss($str)
+        {
+            $attr = array('style','on[a-z]+');
+            $elem = array('script','iframe','embed','object');
+            $str = preg_replace('#<!--.*?-->?#', '', $str);
+            $str = preg_replace('#<!--#', '', $str);
+            $str = preg_replace('#(<[a-z]+(\s+[a-z][a-z\-]+\s*=\s*(\'[^\']*\'|"[^"]*"|[^\'">][^\s>]*))*)\s+href\s*=\s*(\'javascript:[^\']*\'|"javascript:[^"]*"|javascript:[^\s>]*)((\s+[a-z][a-z\-]*\s*=\s*(\'[^\']*\'|"[^"]*"|[^\'">][^\s>]*))*\s*>)#is', '$1$5', $str);
+            foreach($attr as $a) {
+                $regex = '(<[a-z]+(\s+[a-z][a-z\-]+\s*=\s*(\'[^\']*\'|"[^"]*"|[^\'">][^\s>]*))*)\s+' . $a . '\s*=\s*(\'[^\']*\'|"[^"]*"|[^\'">][^\s>]*)((\s+[a-z][a-z\-]*\s*=\s*(\'[^\']*\'|"[^"]*"|[^\'">][^\s>]*))*\s*>)';
+                $str = preg_replace('#' . $regex . '#is', '$1$5', $str);
+            }
+            foreach($elem as $e) {
+                $regex = '<' . $e . '(\s+[a-z][a-z\-]*\s*=\s*(\'[^\']*\'|"[^"]*"|[^\'">][^\s>]*))*\s*>.*?<\/' . $e . '\s*>';
+                $str = preg_replace('#' . $regex . '#is', '', $str);
+            }
+            return $str;
+        }
     }

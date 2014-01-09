@@ -6,57 +6,57 @@
     namespace Thin;
     class File
     {
-        public static function create($path, $content = null)
+        public static function create($file, $content = null)
         {
-            static::delete($path);
-            @touch($path);
+            static::delete($file);
+            @touch($file);
             if (null !== $content) {
-                $fp = fopen($path, 'a');
+                $fp = fopen($file, 'a');
                 fwrite($fp, $content);
                 fclose($fp);
             }
         }
 
-        public static function append($path, $data)
+        public static function append($file, $data)
         {
-            return file_put_contents($path, $data, LOCK_EX | FILE_APPEND);
+            return file_put_contents($file, $data, LOCK_EX | FILE_APPEND);
         }
 
-        public static function exists($path)
+        public static function exists($file)
         {
-            return file_exists($path);
+            return file_exists($file);
         }
 
-        public static function get($path, $default = null)
+        public static function get($file, $default = null)
         {
-            return (static::exists($path)) ? file_get_contents($path) : Utils::value($default);
+            return (static::exists($file)) ? file_get_contents($file) : Utils::value($default);
         }
 
-        public static function put($path, $data, $chmod = 0777)
+        public static function put($file, $data, $chmod = 0777)
         {
-            $file = file_put_contents($path, $data, LOCK_EX);
+            $file = file_put_contents($file, $data, LOCK_EX);
         }
 
-        public static function delete($path)
+        public static function delete($file)
         {
-            if (true === static::exists($path)) {
-                return @unlink($path);
+            if (true === static::exists($file)) {
+                return @unlink($file);
             }
         }
 
-        public static function move($path, $target)
+        public static function move($file, $target)
         {
-            return rename($path, $target);
+            return rename($file, $target);
         }
 
-        public static function copy($path, $target)
+        public static function copy($file, $target)
         {
-            return copy($path, $target);
+            return copy($file, $target);
         }
 
-        public static function extension($path)
+        public static function extension($file)
         {
-            return pathinfo($path, PATHINFO_EXTENSION);
+            return pathinfo($file, PATHINFO_EXTENSION);
         }
 
         public static function basename($path)
@@ -64,9 +64,9 @@
             return pathinfo($path, PATHINFO_BASENAME);
         }
 
-        public static function type($path)
+        public static function type($file)
         {
-            return filetype($path);
+            return filetype($file);
         }
 
         public static function size($path)
@@ -74,9 +74,14 @@
             return filesize($path);
         }
 
-        public static function modified($path)
+        public static function date($file, $format = "YmDHis")
         {
-            return filemtime($path);
+            return date($format, filemtime($file));
+        }
+
+        public static function modified($file)
+        {
+            return filemtime($file);
         }
 
         public static function mkdir($path, $chmod = 0777)
@@ -181,7 +186,6 @@
 
         public static function isFileComplete($path, $waitTime)
         {
-
             // récupération de la taille du fichier
             $sizeBefore = static::size($path);
 
@@ -239,12 +243,12 @@
         public static function mime($extension, $default = 'application/octet-stream')
         {
             Config::load('mimes');
-            $mimes = config::get('mimes');
+            $mimes = (null !== config::get('mimes')) ? config::get('mimes') : array();
 
             if (!ake($extension, $mimes)) {
                 return $default;
             }
 
-            return (is_array($mimes[$extension])) ? $mimes[$extension][0] : $mimes[$extension];
+            return (Arrays::isArray($mimes[$extension])) ? Arrays::first($mimes[$extension]) : $mimes[$extension];
         }
     }

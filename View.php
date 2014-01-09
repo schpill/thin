@@ -125,6 +125,14 @@
             }
         }
 
+        public function viewRenderer($tpl)
+        {
+            if (File::exists($tpl)) {
+                $this->_viewFile = $tpl;
+            }
+            return $this;
+        }
+
         public function render($partial = null, $echo = true)
         {
             $file = (null === $partial) ? $this->_viewFile : $partial;
@@ -227,6 +235,9 @@
         {
             $content = fgc($file);
 
+            $content = repl('<php>', '<?php ', $content);
+            $content = repl('<php>=', '<?php echo ', $content);
+            $content = repl('</php>', '?>', $content);
             $content = repl('{{=', '<?php echo ', $content);
             $content = repl('{{', '<?php ', $content);
             $content = repl('}}', '?>', $content);
@@ -250,6 +261,17 @@
             if (count($this->_grammar)) {
                 foreach ($this->_grammar as $grammar => $replace) {
                     $content = repl($grammar, $replace, $content);
+                }
+            }
+
+            /* translate */
+            $tab = explode('<lang key=', $content);
+            if (count($tab)) {
+                array_shift($tab);
+                foreach ($tab as $row) {
+                    $key        = Utils::cut('"', '"', trim($row));
+                    $default    = Utils::cut('">', '</lang>', trim($row));
+                    $content    = repl('<lang key="' . $key . '">' . $default . '</lang>', '<?php echo container()->getLanguage()->translate(\'' . stripslashes($key) . '\', \'' . base64_encode($default) . '\'); ?>', $content);
                 }
             }
 
@@ -422,26 +444,26 @@
         {
             return Inflector::utf8($str);
         }
-        
+
         public static function twig($template, $params = array())
         {
             if (!class_exists('Twig_Autoloader')) {
                 require_once 'Twig/Autoloader.php';
             }
-            
+
             $tab    = explode(DS, $template);
             $file   = end($tab);
-            
+
             $path   = repl(DS . $file, '', $template);
-            
+
             $loader = new \Twig_Loader_Filesystem($path);
             $twig   = new \Twig_Environment(
-                $loader, 
+                $loader,
                 array(
                     'cache' => CACHE_PATH
                 )
             );
-            
+
             echo $twig->render($file, $params);
         }
 
@@ -466,5 +488,28 @@
             } else {
                 throw new Exception("A view is needed to evaluate.");
             }
+        }
+
+        public static function showStats()
+        {
+            Timer::stop();
+            $executionTime      = Timer::get();
+            $queries            = (null === Utils::get('NbQueries'))             ? 0                         : Utils::get('NbQueries');
+            $valQueries         = ($queries < 2)                                 ? 'requete SQL executee'    : 'requetes SQL executees';
+            $SQLDuration        = (null === Utils::get('SQLTotalDuration'))      ? 0                         : Utils::get('SQLTotalDuration');
+
+            $queriesNoSQL       = (null === Utils::get('NbQueriesNOSQL'))        ? 0                         : Utils::get('NbQueriesNOSQL');
+            $valQueriesNoSQL    = ($queriesNoSQL < 2)                            ? 'requete NoSQL executee'  : 'requetes NoSQL executees';
+            $SQLDurationNoSQL   = (null === Utils::get('SQLTotalDurationNOSQL')) ? 0                         : Utils::get('SQLTotalDurationNOSQL');
+
+            $execPHPSQL         = $executionTime - $SQLDuration;
+            $execPHPNoSQL       = $executionTime - $SQLDurationNoSQL;
+            $execPHP            = $executionTime - $SQLDuration;
+            $PCPhp              = round(($execPHP      / $executionTime) * 100, 2);
+            $PCPhpSQL           = round(($execPHPSQL   / $executionTime) * 100, 2);
+            $PCPhpNoSQL         = round(($execPHPNoSQL / $executionTime) * 100, 2);
+            $PCSQL              = 100 - $PCPhpSQL;
+            $PCNoSQL            = 100 - $PCPhpNoSQL;
+            return "\n<!--\n\n\tPage generee en $executionTime s. par Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries en $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL en $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tExecution PHP $execPHP s. ($PCPhp %)\n\n\tMemoire utilisee : " . convertSize(memory_get_peak_usage()) . "\n\n-->";
         }
     }

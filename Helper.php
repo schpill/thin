@@ -1,4 +1,159 @@
 <?php
+    if (!function_exists('o')) {
+        function o($name)
+        {
+            $objects = \Thin\Utils::get('thinObjects');
+            if (null === $objects) {
+                $objects = array();
+            }
+            if (ake($name, $objects)) {
+                return $objects[$name];
+            }
+            $newObj = new \Thin\Container;
+            $newObj->setIsThinObject($name);
+            $objects[$name] = $newObj;
+            \Thin\Utils::set('thinObjects', $objects);
+            return $newObj;
+        }
+    }
+
+    if (!function_exists('isAke')) {
+        function isAke($tab, $key, $default = array())
+        {
+            return array_key_exists($key, $tab) ? $tab[$key] : $default;
+        }
+    }
+    if (!function_exists('f')) {
+        function f()
+        {
+            $args = func_get_args();
+            if (0 < count($args)) {
+                $closure = array_shift($args);
+                if(is_callable($callback)) {
+                    return call_user_func_array($callback, $args);
+                }
+            }
+            return null;
+        }
+    }
+
+    if (!function_exists('setArrayXpathValue')) {
+        /**
+         * Set value of an array by using "root/branch/leaf" notation
+         *
+         * @param array $array Array to affect
+         * @param string $path Path to set
+         * @param mixed $value Value to set the target cell to
+         * @return void
+         */
+        function setArrayXpathValue(array &$array, $path, $value, $delimiter = '/')
+        {
+            // fail if the path is empty
+            if (empty($path)) {
+                throw new Exception('Path cannot be empty');
+            }
+
+            // fail if path is not a string
+            if (!is_string($path)) {
+                throw new Exception('Path must be a string');
+            }
+
+            // remove all leading and trailing delimiters
+            $path = trim($path, $delimiter);
+
+            // split the path in into separate parts
+            $parts = explode($delimiter, $path);
+
+            // initially point to the root of the array
+            $pointer =& $array;
+
+            // loop through each part and ensure that the cell is there
+            foreach ($parts as $part) {
+                // fail if the part is empty
+                if (empty($part)) {
+                    throw new Exception('Invalid path specified: ' . $path);
+                }
+
+                // create the cell if it doesn't exist
+                if (!isset($pointer[$part])) {
+                    $pointer[$part] = array();
+                }
+
+                // redirect the pointer to the new cell
+                $pointer =& $pointer[$part];
+            }
+
+            // set value of the target cell
+            $pointer = $value;
+        }
+    }
+
+    if (!function_exists('arrayXpathValue')) {
+        /**
+         * Get value of an array by using "root/branch/leaf" notation
+         *
+         * @param array $array   Array to traverse
+         * @param string $path   Path to a specific option to extract
+         * @param mixed $default Value to use if the path was not found
+         * @return mixed
+         */
+        function arrayXpathValue(array $array, $path, $default = null, $delimiter = '/')
+        {
+            // fail if the path is empty
+            if (empty($path)) {
+                throw new Exception('Path cannot be empty');
+            }
+
+            // fail if path is not a string
+            if (!is_string($path)) {
+                throw new Exception('Path must be a string');
+            }
+
+            // remove all leading and trailing delimiters
+            $path = trim($path, $delimiter);
+
+            // use current array as the initial value
+            $value = $array;
+
+            // extract parts of the path
+            $parts = explode($delimiter, $path);
+
+            // loop through each part and extract its value
+            foreach ($parts as $part) {
+                if (isset($value[$part])) {
+                    // replace current value with the child
+                    $value = $value[$part];
+                } else {
+                    // key doesn't exist, fail
+                    return $default;
+                }
+            }
+
+            return $value;
+        }
+    }
+
+    if (!function_exists('humanize')) {
+        function humanize($word, $key)
+        {
+            return strtolower($word) . str_replace(' ', '', ucwords(str_replace('_', ' ', $key)));
+        }
+    }
+
+    if (!function_exists('setter')) {
+        function setter($key)
+        {
+            return humanize('set', $key);
+        }
+    }
+
+    if (!function_exists('getter')) {
+        function getter($key)
+        {
+            return humanize('get', $key);
+        }
+    }
+
     if (!function_exists('font')) {
         function font($text = 'OK', $font = 'fb82491021a73de6ab8ee73cee1be93d', $size = 50, $fg = '000000', $bg = 'ffffff', $width = 700)
         {
@@ -96,26 +251,29 @@
         function twitter(array $config)
         {
             extract($config);
-            $link = 'https://twitter.com/intent/tweet?original_referer=' . urlencode($original_referer) . '&related=' . urlencode($related) . '&text=%22' . urlencode($text) . '%22&tw_p=tweetbutton&url=' . urlencode($url) . '&via=' . urlencode($via);
+            $link = 'https://twitter.com/intent/tweet?original_referer=' . urlencode($original_referer) . '&amp;related=' . urlencode($related) . '&amp;text=%22' . urlencode($text) . '%22&amp;tw_p=tweetbutton&url=' . urlencode($url) . '&amp;via=' . urlencode($via);
             return $link;
         }
     }
 
-    if (!function_exists('facebook')) {
-        function facebook($echo = true)
+    if (!function_exists('dataDecode')) {
+        function dataDecode($file)
         {
-            $html = '<iframe src="http://www.facebook.com/plugins/like.php?
-app_id=185800681493185&amp;locale=fr_CA&amp;href='. getUrl() .'&amp;send=false
-&amp;layout=standard&amp;width=450&amp;show_faces=false&amp;
-action=like&amp;colorscheme=light&amp;font&amp;height=35"
-scrolling="no" frameborder="0" style="border:none;
-overflow:hidden;width:450px; height:35px;" allowTransparency=
-"true"></iframe>';
-            if (true === $echo) {
-                echo $html . "\n";
-            } else {
-                return $html;
+            if (file_exists($file)) {
+                if (is_readable($file)) {
+                    return unserialize(file_get_contents($file));
+                }
             }
+            return new Obj;
+        }
+    }
+
+    if (!function_exists('facebook')) {
+        function facebook(array $config)
+        {
+            extract($config);
+            $link = 'http://www.facebook.com/sharer/sharer.php?s=100&amp;p[url]=' . urlencode($url) . '&amp;p[images][0]=' . urlencode($image) . '&amp;p[title]=' . urlencode($title) . '&amp;p[summary]=' . urlencode($summary);
+            return $link;
         }
     }
 
@@ -135,10 +293,9 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
     if (!function_exists('contain')) {
         function contain($needle, $string)
         {
-            $needle = \Thin\Inflector::lower($needle);
-            $string = \Thin\Inflector::lower($string);
-
-            return strstr($string, $needle);
+            $needle = \Thin\Inflector::lower(htmlspecialchars_decode($needle));
+            $string = \Thin\Inflector::lower(htmlspecialchars_decode($string));
+            return strstr($string, $needle) ? true : false;
         }
     }
 
@@ -167,6 +324,38 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
         function getvar($name)
         {
             return thinVar($name);
+        }
+
+        function setEvent($name, $event, $priority = 0)
+        {
+            $events = container()->getEvents();
+            if (null === $events) {
+                $events         = array();
+                $events[$name]  = array();
+            }
+            $events[$name][$priority] = $event;
+            container()->setEvents($events);
+        }
+
+        function runEvent($name, $params = array())
+        {
+            $res = '';
+            $events = container()->getEvents();
+            if (null !== $events) {
+                if (is_array($events)) {
+                    if (ake($name, $events)) {
+                        if (is_array($events[$name])) {
+                            for ($i = 0 ; $i < count($events[$name]) ; $i++) {
+                                $func = $events[$name][$i];
+                                if ($func instanceof \Closure) {
+                                    $res .= call_user_func_array($func, $params);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return $res;
         }
     }
 
@@ -244,6 +433,78 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
 
             return serialize(null);
         }
+
+        function callNotPublicMethod($object, $methodName)
+        {
+            $reflectionClass = new \ReflectionClass($object);
+            $reflectionMethod = $reflectionClass->getMethod($methodName);
+            $reflectionMethod->setAccessible(true);
+
+            $params = array_slice(func_get_args(), 2);
+            return $reflectionMethod->invokeArgs($object, $params);
+        }
+
+        function transaction($class, $method)
+        {
+            $transactions = \Thin\Utils::get('thinTransactions');
+            if (null === $transactions) {
+                $transactions = array();
+            }
+            $params = array_slice(func_get_args(), 2);
+            array_push($transactions, array($class, $method, $params));
+            \Thin\Utils::set('thinTransactions', $transactions);
+        }
+
+        function commit()
+        {
+            $transactions = \Thin\Utils::get('thinTransactions');
+            if (null !== $transactions) {
+                if (is_array($transactions)) {
+                    if (count($transactions)) {
+                        foreach (static::$_transactions as $transaction) {
+                            list($class, $method, $params) = $transaction;
+                            $commit = call_user_func_array(array($class, $method), $params);
+                        }
+                    }
+                }
+            }
+        }
+
+        function showException($e)
+        {
+            $code = $e->getCode();
+            $file = $e->getFile();
+            $line = $e->getLine();
+            $date = date('M d, Y h:iA');
+            echo '<style>.error {font-weight: bold; color: red; width: 30%; padding: 10px; margin: 10px; border: solid 1px red;}</style>';
+            echo "Thin has caught an exception: ";
+            $html = "<p>
+            <strong>Date:</strong> {$date}
+         </p>
+
+         <p>
+            <strong>Message:</strong>
+            <div class=error>{$e->getMessage()}</div>
+         </p>
+
+         <p>
+            <strong>Code:</strong> {$code}
+         </p>
+
+         <p>
+            <strong>File:</strong> {$file}
+         </p>
+
+         <p>
+            <strong>Line:</strong> {$line}
+         </p>
+
+         <h3>Stack trace:</h3>";
+         echo $html;
+            echo '<pre style="padding: 5px;">';
+            echo $e->getTraceAsString();
+            echo '</pre>';
+        }
     }
 
     if (!function_exists('url')) {
@@ -274,7 +535,8 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
     if (!function_exists('getUrl')) {
         function getUrl()
         {
-            return substr(URLSITE, 0, -1) . $_SERVER['REQUEST_URI'];
+            $urlsite = trim(URLSITE, '/');
+            return $urlsite . $_SERVER['REQUEST_URI'];
         }
     }
 
@@ -400,7 +662,15 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
         }
     }
     if (!function_exists('email')) {
-        function email($to, $from, $subject, $body, $html = true)
+        function email()
+        {
+            if (!class_exists('ThinEmail')) {
+                eval('class ThinEmail extends Thin\\Container {public function send(){return Thin\\Utils::mail(parent::getTo(), parent::getSubject(), parent::getBody(), parent::getHeaders());}}');
+            }
+            return new ThinEmail;
+        }
+
+        function smtp($to, $from, $subject, $body, $html = true)
         {
             $mail = new \Thin\Smtp();
             $mail->to($to)->from($from)->subject($subject);
@@ -415,9 +685,24 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
 
     if (!function_exists('config')) {
         /* ex: config('app.encoding');*/
-        function config($namespace = 'application', $key)
+        function config()
         {
-            return \Thin\Utils::get($namespace . '.' . $key);
+            $args = func_get_args();
+            if (!count($args)) {
+                return container()->getConfig();
+            }
+            if (1 == count($args)) {
+                $getter = getter(\Thin\Arrays::first($args));
+                return container()->getConfig()->$getter();
+            }
+            if (2 == count($args)) {
+                $key    = \Thin\Arrays::first($args);
+                $value  = \Thin\Arrays::last($args);
+                $setter = setter($key);
+                container()->getConfig()->$setter($value);
+                return $value;
+            }
+            return null;
         }
     }
 
@@ -440,7 +725,7 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
             $eav = \Thin\Utils::newInstance('Memory', array('Thin', 'EAV'));
             $eav = $eav->setEntity($entity);
             foreach ($attributes as $key => $value) {
-                $setter = 'set' . \Thin\Inflector::camelize($key);
+                $setter = setter($key);
                 $eav = $eav->$setter($value);
             }
             return $eav->save();
@@ -569,6 +854,41 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
             $cache = new \Thin\Cache(CACHE_PATH . DS);
             $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
             return $cache->has($hash);
+        }
+    }
+
+    if (!function_exists('duration')) {
+        function duration($ts, $time = time())
+        {
+            $years  = (int) ((($time - $ts) / (7 * 86400)) / 52.177457);
+            $rem    = (int) (($time - $ts) - ($years * 52.177457 * 7 * 86400));
+            $weeks  = (int) (($rem) / (7 * 86400));
+            $days   = (int) (($rem) / 86400) - $weeks * 7;
+            $hours  = (int) (($rem) / 3600) - $days * 24 - $weeks * 7 * 24;
+            $mins   = (int) (($rem) / 60) - $hours * 60 - $days * 24 * 60 - $weeks * 7 * 24 * 60;
+            $str    = '';
+
+            if($years == 1)
+                $str .= "$years year, ";
+            if($years > 1)
+                $str .= "$years years, ";
+            if($weeks == 1)
+                $str .= "$weeks week, ";
+            if($weeks > 1)
+                $str .= "$weeks weeks, ";
+            if($days == 1)
+                $str .= "$days day,";
+            if($days > 1)
+                $str .= "$days days,";
+            if($hours == 1)
+                $str .= " $hours hour and";
+            if($hours > 1)
+                $str .= " $hours hours and";
+            if($mins == 1)
+                $str .= " 1 minute";
+            else
+                $str .= " $mins minutes";
+            return $str;
         }
     }
 
@@ -720,7 +1040,7 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
                     if (!$isObj && !$method->isStatic()) {
                         return false;
                     }
-                } catch (ReflectionException $e) {
+                } catch (\ReflectionException $e) {
                     return false;
                 }
                 return true;
@@ -1421,7 +1741,7 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
     if (!function_exists('getLanguage')) {
         function getLanguage()
         {
-            $session    = session('web');
+            $session    = session('app_lng');
             return $session->getLanguage();
         }
     }
@@ -1587,15 +1907,14 @@ overflow:hidden;width:450px; height:35px;" allowTransparency=
     if (!function_exists('ioc')) {
         function ioc()
         {
-            return new Container();
+            return o('ioc');
         }
     }
 
     if (!function_exists('container')) {
         function container()
         {
-            $container = (null !== \Thin\Utils::get('ThinAppContainer')) ?  \Thin\Utils::get('ThinAppContainer') : new Container();
-            return $container;
+            return o('thinContainer');
         }
     }
 

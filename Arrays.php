@@ -247,7 +247,10 @@
          */
         public static function get($array, $key, $default = null)
         {
-            return isset($array[$key]) ? $array[$key] : $default;
+            if (!ake($key, $array)) {
+                return $default;
+            }
+            return !empty($array[$key]) ? $array[$key] : $default;
         }
 
         /**
@@ -302,6 +305,11 @@
             return $values;
         }
 
+        public static function newOne()
+        {
+            return array();
+        }
+
         /**
          * Adds a value to the beginning of an associative array.
          *
@@ -313,7 +321,7 @@
          * @param   mixed   $val    array value
          * @return  array
          */
-        public static function unshift( array & $array, $key, $val)
+        public static function unshift(array &$array, $key, $val)
         {
             $array = array_reverse($array, TRUE);
             $array[$key] = $val;
@@ -351,7 +359,7 @@
             foreach ($array as $key => $val) {
                 if (static::isArray($val)) {
                     $array[$key] = static::map($callbacks, $array[$key]);
-                } elseif ( ! static::isArray($keys) || in_array($key, $keys)) {
+                } elseif (!static::isArray($keys) || in_array($key, $keys)) {
                     if (static::isArray($callbacks)) {
                         foreach ($callbacks as $cb) {
                             $array[$key] = call_user_func($cb, $array[$key]);
@@ -424,6 +432,22 @@
             }
 
             return $array1;
+        }
+
+        public static function first(array $tab)
+        {
+            if (count($tab)) {
+                return current($tab);
+            }
+            return null;
+        }
+
+        public static function last(array $tab)
+        {
+            if (count($tab)) {
+                return end($tab);
+            }
+            return null;
         }
 
         /**

@@ -13,11 +13,11 @@
         {
             $args   = func_get_args();
             $nbArgs = func_num_args();
-            if (1 == $nbArgs && (is_array(current($args)) || is_object(current($args)))) {
-                if (Arrays::isArray(current($args))) {
-                    $this->populate(current($args));
-                } elseif (is_object(current($args))) {
-                    $array = (array) current($args);
+            if (1 == $nbArgs && (Arrays::isArray(Arrays::first($args)) || is_object(Arrays::first($args)))) {
+                if (Arrays::isArray(Arrays::first($args))) {
+                    $this->populate(Arrays::first($args));
+                } elseif (is_object(Arrays::first($args))) {
+                    $array = (array) Arrays::first($args);
                     $this->populate($array);
                 }
             }
@@ -32,7 +32,7 @@
                 $data = array();
                 if (ake($type, Data::$_fields)) {
                     $fields = Data::$_fields[$type];
-                    foreach ($fields as $field => $infp) {
+                    foreach ($fields as $field => $info) {
                         $data[$field] = (isset($this->$field)) ? $this->$field : null;
                     }
                     if (isset($this->id)) {
@@ -88,8 +88,9 @@
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
                         $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                        if (ake($var, $settings['relationships']) && 's' == $var[strlen($var) - 1]) {
-                            if (ake($var, $settings['relationships'])) {
+                        $relationships = ake('relationships', $settings) ? $settings['relationships'] : array();
+                        if (ake($var, $relationships) && 's' == $var[strlen($var) - 1]) {
+                            if (ake($var, $relationships)) {
                                 $res = Data::query(substr($var, 0, -1), "$type = " . $this->id);
                                 $collection = array();
                                 if (count($res)) {
@@ -98,7 +99,7 @@
                                         $collection[] = $obj;
                                     }
                                 }
-                                return (1 == count($collection)) ? current($collection) : $collection;
+                                return (1 == count($collection)) ? Arrays::first($collection) : $collection;
                             }
                         } elseif (ake('defaultValues', $settings)) {
                             if (Arrays::isArray($settings['defaultValues'])) {
@@ -115,13 +116,70 @@
                 $var = Inflector::lower($uncamelizeMethod);
                 return isset($this->$var) && !empty($this->$var);
             } elseif (substr($func, 0, 3) == 'set') {
-                $value = current($argv);
+                $value = Arrays::first($argv);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 if (!empty($var)) {
+                    if (isset($this->thin_type)) {
+                        $fields = ake($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : array();
+                        if(!ake($var, $fields)) {
+                            throw new Exception($var . ' is not defined in the model => ' . $this->_fields);
+                        } else {
+                            $settingsField = $fields[$var];
+                            if (ake('checkData', $settingsField)) {
+                                $functionCheck = $settingsField['checkData'];
+                                $functionCheck($value);
+                            }
+                        }
+                    }
                     $this->$var = $value;
                     if (!Arrays::inArray($var, $this->_fields)) {
                         $this->_fields[] = $var;
+                    }
+                    if (isset($this->is_thin_object)) {
+                        $name           = $this->is_thin_object;
+                        $objects        = Utils::get('thinObjects');
+                        $objects[$name] = $this;
+                        Utils::set('thinObjects', $objects);
+                    }
+                    if (isset($this->is_app)) {
+                        if (true === $this->is_app) {
+                            Utils::set('ThinAppContainer', $this);
+                        }
+                    }
+                }
+                return $this;
+            } elseif (substr($func, 0, 3) == 'add') {
+                $uncamelizeMethod   = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var                = Inflector::lower($uncamelizeMethod) . 's';
+                $value              = Arrays::first($argv);
+                if (!isset($this->$var)) {
+                    $this->$var = array();
+                }
+                if (!Arrays::isArray($this->$var)) {
+                    $this->$var = array();
+                }
+                array_push($this->$var, $value);
+                return $this;
+            } elseif (substr($func, 0, 6) == 'remove') {
+                $uncamelizeMethod   = Inflector::uncamelize(lcfirst(substr($func, 6)));
+                $var                = Inflector::lower($uncamelizeMethod) . 's';
+                $value              = Arrays::first($argv);
+                if (isset($this->$var)) {
+                    if (Arrays::isArray($this->$var)) {
+                        if (count($this->$var)) {
+                            $remove = false;
+                            foreach ($this->$var as $key => $tmpValue) {
+                                $comp = md5(serialize($value)) == md5(serialize($tmpValue));
+                                if (true === $comp) {
+                                    $remove = true;
+                                    break;
+                                }
+                            }
+                            if (true === $remove) {
+                                unset($this->$var[$key]);
+                            }
+                        }
                     }
                 }
                 return $this;
@@ -131,7 +189,7 @@
                     return call_user_func_array($this->$func, $argv);
                 }
             }
-            if (!is_callable($func) || substr($func, 0, 6) !== 'array_' || substr($func, 0, 3) !== 'set' || substr($func, 0, 3) !== 'get' || substr($func, 0, 3) !== 'has') {
+            if (!is_callable($func) || substr($func, 0, 6) !== 'array_' || substr($func, 0, 3) !== 'set' || substr($func, 0, 3) !== 'get' || substr($func, 0, 3) !== 'has' || substr($func, 0, 3) !== 'add' || substr($func, 0, 6) !== 'remove') {
                 throw new \BadMethodCallException(__class__ . ' => ' . $func);
             }
             return call_user_func_array($func, array_merge(array($this->getArrayCopy()), $argv));
@@ -245,7 +303,7 @@
                                     $collection[] = $obj;
                                 }
                             }
-                            return (1 == count($collection)) ? current($collection) : $collection;
+                            return (1 == count($collection)) ? Arrays::first($collection) : $collection;
                         }
                     }
                 }

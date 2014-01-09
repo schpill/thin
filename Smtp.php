@@ -8,9 +8,9 @@
     {
         // connection
         private $connection;
-        private $localhost = 'localhost';
-        private $timeout = 30;
-        private $debugMode = false;
+        private $localhost      = 'localhost';
+        private $timeout        = 30;
+        private $debugMode      = false;
 
         // auth
         private $host;
@@ -21,28 +21,41 @@
         private $pass;
 
         // email
-        private $to = array();
-        private $cc = array();
-        private $bcc = array();
+        private $to             = array();
+        private $cc             = array();
+        private $bcc            = array();
+        private $headers        = array();
         private $from;
         private $reply;
         private $body;
         private $text;
         private $subject;
-        private $attachments = array();
-        private $textMode = false;
+        private $attachments    = array();
+        private $textMode       = false;
 
         // misc
-        private $charset = 'UTF-8';
-        private $newLine = "\r\n";
-        private $encoding = '7bit';
-        private $wordwrap = 70;
+        private $charset        = 'UTF-8';
+        private $newLine        = "\r\n";
+        private $encoding       = '7bit';
+        private $wordwrap       = 70;
 
-        public function __construct($connection = null)
+        public function __construct(array $connection = array())
         {
-            // load config
-            Config::load('smtp', false);
-            $connection         = (null === $connection) ? Config::application('application.smtp') : $connection;
+            $required = array(
+                'host',
+                'port',
+                'secure',
+                'auth',
+                'login',
+                'password',
+                'debug'
+            );
+
+            foreach ($required as $field) {
+                if (!ake($field, $connection)) {
+                    throw new Exception($field . " is mandatory to use this class.");
+                }
+            }
 
             // set connection vars
             $this->host         = $connection['host'];
@@ -59,11 +72,11 @@
         public function from($email, $name = null)
         {
             // if not array...
-            if (!is_array($email)) {
+            if (!Arrays::isArray($email)) {
                 // set normal
                 $this->from = array(
                     'email' => $email,
-                    'name' => $name,
+                    'name'  => $name,
                 );
             } else {
                 // set convention
@@ -78,7 +91,7 @@
         public function reply($email, $name = null)
         {
             // if not array...
-            if (!is_array($email)) {
+            if (!Arrays::isArray($email)) {
                 // set normal
                 $this->reply = array(
                     'email'     => $email,
@@ -97,7 +110,7 @@
         public function to($email, $name = null)
         {
             // if not array...
-            if (!is_array($email)) {
+            if (!Arrays::isArray($email)) {
                 // set normal
                 $this->to[] = array(
                     'email'     => $email,
@@ -107,7 +120,9 @@
                 // spin array...
                 foreach ($email as $e) {
                     // fix array
-                    if (!is_array($e)) $e = array($e);
+                    if (!Arrays::isArray($e)) {
+                        $e = array($e);
+                    }
 
                     // set convention
                     $this->to[] = array(
@@ -122,7 +137,7 @@
         public function cc($email, $name = null)
         {
             // if not array...
-            if (!is_array($email)) {
+            if (!Arrays::isArray($email)) {
                 // set normal
                 $this->cc[] = array(
                     'email' => $email,
@@ -132,7 +147,9 @@
                 // spin array...
                 foreach ($email as $e) {
                     // fix array
-                    if (!is_array($e)) $e = array($e);
+                    if (!Arrays::isArray($e)) {
+                        $e = array($e);
+                    }
 
                     // set convention
                     $this->cc[] = array(
@@ -147,7 +164,7 @@
         public function bcc($email, $name = null)
         {
             // if not array...
-            if (!is_array($email)) {
+            if (!Arrays::isArray($email)) {
                 // set normal
                 $this->bcc[] = array(
                     'email' => $email,
@@ -157,7 +174,9 @@
                 // spin array...
                 foreach ($email as $e) {
                     // fix array
-                    if (!is_array($e)) $e = array($e);
+                    if (!Arrays::isArray($e)) {
+                        $e = array($e);
+                    }
 
                     // set convention
                     $this->bcc[] = array(
@@ -190,7 +209,7 @@
         public function attach($path)
         {
             // if not array...
-            if (!is_array($path)) {
+            if (!Arrays::isArray($path)) {
                 // add
                 $this->attachments[] = $path;
             } else {
@@ -231,6 +250,11 @@
 
             // return
             return $result;
+        }
+
+        public function addHeader($key, $value)
+        {
+            $this->headers[] = $key . ': ' . $value;
         }
 
         private function smtpConnect()
@@ -314,6 +338,8 @@
 
         private function smtpConstruct()
         {
+            $headers = array();
+            $headers += $this->headers;
             // set unique boundary
             $boundary = md5(uniqid(time()));
 
@@ -405,7 +431,8 @@
                             $contents = chunk_split(base64_encode($contents));
 
                             // add attachment
-                            $headers[] = 'Content-Type: application/octet-stream; name="' . basename($path) . '"'; // use different content types here
+                            $headers[] = 'Content-Type: application/octet-stream; name="' . basename($path) . '"';
+                            // use different content types here
                             $headers[] = 'Content-Transfer-Encoding: base64';
                             $headers[] = 'Content-Disposition: attachment';
                             $headers[] = '';
@@ -425,7 +452,7 @@
             // build headers string
             $email = '';
             foreach ($headers as $header) {
-                $email .= $header.$this->newLine;
+                $email .= $header . $this->newLine;
             }
 
             // return
@@ -483,7 +510,7 @@
         {
             // report
             if ($this->debugMode) {
-                echo '<code><strong>' . $string . '</strong></code><br/>';
+                echo '<code><strong>' . $string . '</strong></code><br />';
             }
             // send
             fputs($this->connection, $string);

@@ -1,10 +1,33 @@
 <?php
     namespace Thin\Html;
+    use Thin\Blog as Blog;
+    use Thin\Data as Data;
+    use Thin\Arrays as Arrays;
+    use Thin\Inflector as Inflector;
     class Helper
     {
+
+        public static function adminSingular($type)
+        {
+            $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
+            if (ake('singular', $settings)) {
+                return static::display($settings['singular']);
+            }
+            return static::display($type);
+        }
+
+        public static function adminPlural($type)
+        {
+            $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
+            if (ake('plural', $settings)) {
+                return static::display($settings['plural']);
+            }
+            return static::display($type . 's');
+        }
+
         public static function display($str)
         {
-            return stripslashes(\Thin\Inflector::utf8($str));
+            return stripslashes(Inflector::utf8($str));
         }
 
         public static function date($date, $format = 'd/m/y')
@@ -53,6 +76,6 @@
 
         public static function bbdecode($str)
         {
-            return static::display(\Thin\Blog::parse($str));
+            return static::display(Blog::parse($str));
         }
     }

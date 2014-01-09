@@ -245,4 +245,17 @@
             return new \DateTime('now');
         }
 
+        public static function getMS()
+        {
+            $mt = microtime();
+            list($usec, $sec) = explode(' ', $mt);
+            $mt = repl('.', '', ($sec  + $usec));
+            if (13 == strlen($mt)) {
+                $mt .= '0';
+            } elseif (12 == strlen($mt)) {
+                $mt .= '00';
+            }
+            return $mt;
+        }
+
     }

@@ -21,10 +21,14 @@
             if (null !== $defaultRoute) {
                 return;
             }
-            $file = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
-            $configRoutes = include($file);
-            $routes = $configRoutes['collection'];
+            $file           = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
+            $configRoutes   = include($file);
+            $routes         = $configRoutes['collection'];
+            $routes         += null !== container()->getRoutes() ? container()->getRoutes() : array();
             foreach ($routes as $route) {
+                if (!$route instanceof Container) {
+                    continue;
+                }
                 $path = $route->getPath();
                 if ($path == $uri) {
                     return static::make($route);
@@ -101,15 +105,24 @@
         {
             $tab            = explode('/', substr(static::$_uri, 1));
             if (count($tab) > 1) {
-                $module         = Config::get('application.application.defaultModule');
-                $controller     = Inflector::lower(current($tab));
-                $action         = repl(array('.html', '.php', '.asp', '.jsp', '.cfm', '.py', '.pl'), array('', '', '', '', '', '', ''), $tab[1]);
-                $moduleDir      = APPLICATION_PATH . DS . 'modules' . DS . Inflector::lower($module);
+                if (3 != count($tab)) {
+                    $module         = container()->getConfig()->getDefaultModule();
+                    $module         = Inflector::lower($module);
+                    $controller     = Inflector::lower(Arrays::first($tab));
+                    $action         = $tab[1];
+                } else {
+                    list($module, $controller, $action) = $tab;
+                    $module         = Inflector::lower($module);
+                    $controller     = Inflector::lower($controller);
+                    $action         = Inflector::lower($action);
+                }
+                $action         = repl(array('.html', '.php', '.asp', '.jsp', '.cfm', '.py', '.pl'), array('', '', '', '', '', '', ''), $action);
+                $moduleDir      = APPLICATION_PATH . DS . 'modules' . DS . $module;
                 $controllerDir  = $moduleDir . DS . 'controllers';
-                $controllerFile = $controllerDir . DS . Inflector::lower($controller) . 'Controller.php';
+                $controllerFile = $controllerDir . DS . $controller . 'Controller.php';
                 if (true === File::exists($controllerFile)) {
                     require_once $controllerFile;
-                    $controllerClass    = 'Thin\\' . Inflector::lower($controller) . 'Controller';
+                    $controllerClass    = 'Thin\\' . $controller . 'Controller';
                     $controllerInstance = new $controllerClass;
                     $actions            = get_class_methods($controllerInstance);
                     $actionName         = $action . 'Action';
@@ -127,18 +140,44 @@
             return null;
         }
 
-        public static function run()
+        public static function language()
         {
-            Request::$route = $route = Utils::get('appDispatch');
+            $route = Utils::get('appDispatch');
+            $language = null === $route->getLanguage() ? container()->getConfig()->getDefaultLanguage() : $route->getLanguage();
             $module         = $route->getModule();
             $controller     = $route->getController();
             $action         = $route->getAction();
 
-            if ($controller == 'admin') {
-                Utils::set('isTranslate', false);
-            }
+            $module         = Inflector::lower($module);
+            $controller     = Inflector::lower($controller);
+            $action         = Inflector::lower($action);
 
-            $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . Inflector::lower($module);
+            $config                 = array();
+            $config['language']     = $language;
+            $config['module']       = $module;
+            $config['controller']   = $controller;
+            $config['action']       = $action;
+
+            $configLanguage = new configLanguage();
+            $configLanguage->populate($config);
+
+
+            container()->setLanguage(new Language($configLanguage));
+        }
+
+        public static function run()
+        {
+            Request::$route = $route = Utils::get('appDispatch');
+            container()->setRoute($route);
+            $module         = $route->getModule();
+            $controller     = $route->getController();
+            $action         = $route->getAction();
+
+            $module         = Inflector::lower($module);
+            $controller     = Inflector::lower($controller);
+            $action         = Inflector::lower($action);
+
+            $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . $module;
             if (!is_dir($moduleDir)) {
                 throw new Exception("The module '$module' does not exist.");
             }
@@ -147,24 +186,20 @@
                 throw new Exception("The controller '$controller' does not exist.");
             }
 
-            $controllerFile = $controllerDir . DS . Inflector::lower($controller) . 'Controller.php';
+            $controllerFile = $controllerDir . DS . $controller . 'Controller.php';
             if (!File::exists($controllerFile)) {
                 throw new Exception("The controller '$controllerFile' does not exist.");
             }
             require_once $controllerFile;
 
-            $controllerClass = 'Thin\\' . Inflector::lower($controller) . 'Controller';
-            $controller = new $controllerClass;
+            $controllerClass    = 'Thin\\' . $controller . 'Controller';
+            $controller         = new $controllerClass;
+            $controller->view   = new View($route->getView());
 
-            $controller->view = new View;
+            container()->setController($controller);
+
             $actions = get_class_methods($controllerClass);
-
-            if (Arrays::inArray('init', $actions)) {
-                $controller->init();
-            }
-            if (Arrays::inArray('preDispatch', $actions)) {
-                $controller->preDispatch();
-            }
+            container()->setAction($action);
 
             if (strstr($action, '-')) {
                 $words = explode('-', $action);
@@ -172,7 +207,7 @@
                 for ($i = 0 ; $i < count($words) ; $i++) {
                     $word = trim($words[$i]);
                     if ($i > 0) {
-                        $word = ucfirst(Inflector::lower($word));
+                        $word = ucfirst($word);
                     }
                     $newAction .= $word;
                 }
@@ -180,6 +215,13 @@
             }
 
             $actionName = $action . 'Action';
+
+            if (Arrays::inArray('init', $actions)) {
+                $controller->init();
+            }
+            if (Arrays::inArray('preDispatch', $actions)) {
+                $controller->preDispatch();
+            }
 
             if (!Arrays::inArray($actionName, $actions)) {
                 throw new Exception("The action '$actionName' does not exist.");
@@ -191,6 +233,11 @@
 
             if (Arrays::inArray('postDispatch', $actions)) {
                 $controller->postDispatch();
+            }
+
+            /* stats */
+            if (null !== Utils::get("showStats")) {
+                echo View::showStats();
             }
         }
 

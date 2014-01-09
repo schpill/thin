@@ -331,9 +331,6 @@
 
             foreach ($fields as $field => $fieldInfos) {
                 $label = (ake('label', $fieldInfos)) ? $fieldInfos['label'] : ucfirst(\Thin\Inflector::lower($field));
-                if (strstr($query, $field)) {
-                    $query = repl($field, Inflector::lower($label), $query);
-                }
                 if(ake('contentList', $fieldInfos)) {
                     $segs = explode(" '", $query);
                     for ($i = 0 ; $i < count($segs) ; $i++) {
@@ -341,12 +338,15 @@
                         if (strstr($seg, $field)) {
                             $goodSeg = trim($segs[$i + 1]);
                             list($oldValue, $dummy) = explode("'", $goodSeg, 2);
-                            $method = current($fieldInfos['contentList']);
-                            $value = \ThinHelper\Html::$method($oldValue, $fieldInfos['contentList'][1], end($fieldInfos['contentList']));
+                            $method = Arrays::first($fieldInfos['contentList']);
+                            $value = \ThinHelper\Html::$method($oldValue, $fieldInfos['contentList'][1], Arrays::last($fieldInfos['contentList']));
                             $newSeg = repl("$oldValue'", "$value'", $goodSeg);
                             $query = repl($goodSeg, $newSeg, $query);
                         }
                     }
+                }
+                if (strstr($query, $field)) {
+                    $query = repl($field, Inflector::lower($label), $query);
                 }
             }
             $query = repl('=', 'vaut', $query);

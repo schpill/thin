@@ -36,7 +36,7 @@
             $iv     = mcrypt_create_iv(static::iv_size(), static::randomizer());
             $value  = static::pad($value);
             $value  = mcrypt_encrypt(static::$cipher, static::key(), $value, static::$mode, $iv);
-            return base64_encode($iv.$value);
+            return base64_encode($iv . $value);
         }
 
         /**
@@ -135,6 +135,6 @@
          */
         protected static function key()
         {
-            return Config::get('application.key');
+            return config()->getKey();
         }
     }
