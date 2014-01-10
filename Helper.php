@@ -858,8 +858,11 @@
     }
 
     if (!function_exists('duration')) {
-        function duration($ts, $time = time())
+        function duration($ts, $time = null)
         {
+            if (empty($time)) {
+                $time = time();
+            }
             $years  = (int) ((($time - $ts) / (7 * 86400)) / 52.177457);
             $rem    = (int) (($time - $ts) - ($years * 52.177457 * 7 * 86400));
             $weeks  = (int) (($rem) / (7 * 86400));
