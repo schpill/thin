@@ -127,7 +127,7 @@
 
         public static function cleanCache($force = false)
         {
-            $cacheFiles = glob(CACHE_PATH . DS . '*');
+            $cacheFiles = glob(CACHE_PATH . DS . '*', GLOB_NOSORT);
             $minToKeep = !$force ? time() - 12 * 3600 : time();
             foreach ($cacheFiles as $cacheFile) {
                 $age = File::modified($cacheFile);

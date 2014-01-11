@@ -8,7 +8,7 @@
     {
         public static function getAll()
         {
-            $pages = glob(STORAGE_PATH . DS . 'pages' . DS . '*.page');
+            $pages = glob(STORAGE_PATH . DS . 'pages' . DS . '*.page', GLOB_NOSORT);
             return $pages;
         }
 

@@ -41,7 +41,7 @@
             if (ake($type, static::$_all)) {
                 $objects = static::$_all[$type];
             } else {
-                $objects    = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . '*.data');
+                $objects    = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . '*.data', GLOB_NOSORT);
             }
             if (!count($objects)) {
                 static::event($type);
@@ -60,7 +60,7 @@
 
             $firstDirectory = repl(DS . 'write', '', $directory);
             $readDirectory  = repl(DS . 'write', DS . 'read', $directory);
-            $firstFiles     = glob($firstDirectory . DS . '*.data');
+            $firstFiles     = glob($firstDirectory . DS . '*.data', GLOB_NOSORT);
 
             if (count($firstFiles)) {
                 foreach ($firstFiles as $firstFile) {
@@ -71,7 +71,7 @@
                 }
             }
 
-            $files = glob($directory . DS . '*.data');
+            $files = glob($directory . DS . '*.data', GLOB_NOSORT);
             if (count($files)) {
                 $collection = array();
                 foreach ($files as $file) {
@@ -418,7 +418,7 @@
                 $dirIndex = $indexDir . DS . $indexField . DS . md5($object->$indexField);
                 $continue = true;
                 if (is_dir($dirIndex)) {
-                    $objectsDir = glob($dirIndex . DS . '*.data');
+                    $objectsDir = glob($dirIndex . DS . '*.data', GLOB_NOSORT);
                     $continue   = 1 > count($objectsDir);
                 }
                 if (true === $continue) {
@@ -569,7 +569,7 @@
                             if (count($words)) {
                                 foreach ($words as $word) {
                                     $indexWordDir   = $indexDir . DS . $field . DS . md5($word);
-                                    $objects        = glob($indexWordDir . DS . '*.data');
+                                    $objects        = glob($indexWordDir . DS . '*.data', GLOB_NOSORT);
                                     if (count($objects)) {
                                         foreach ($objects as $tmpObject) {
                                             $tab = explode(DS, $tmpObject);
@@ -582,7 +582,7 @@
                             }
                         } else {
                             $indexDir       .= DS . $field . DS . md5($value);
-                            $objects        = glob($indexDir . DS . '*.data');
+                            $objects        = glob($indexDir . DS . '*.data', GLOB_NOSORT);
                             if (count($objects)) {
                                 foreach ($objects as $tmpObject) {
                                     $tab = explode(DS, $tmpObject);
@@ -1071,7 +1071,7 @@
             static::$_all[$type]        = array();
             static::$_indexes[$type]    = array();
             $dir                        = static::checkDir($type);
-            $cachedFiles                = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . '*.cache');
+            $cachedFiles                = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . '*.cache', GLOB_NOSORT);
             if (count($cachedFiles)) {
                 foreach ($cachedFiles as $cachedFile) {
                     $del = File::delete($cachedFile);

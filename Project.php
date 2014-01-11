@@ -9,7 +9,7 @@
         public static function getAll($type)
         {
             $dir        = static::checkDir($type);
-            $objects    = glob(STORAGE_PATH . DS . 'project' . DS . $dir . DS . '*.' . Inflector::lower($type));
+            $objects    = glob(STORAGE_PATH . DS . 'project' . DS . $dir . DS . '*.' . Inflector::lower($type), GLOB_NOSORT);
             return $objects;
         }
 

@@ -49,6 +49,7 @@
 
         public function query($condition)
         {
+            $this->firstQuery = false;
             Data::_incQueries(Data::_getTime());
             $queryKey   = sha1(serialize($condition) . 'QueryData');
             $cache      = Data::cache($this->type, $queryKey);
@@ -56,8 +57,6 @@
             if (!empty($cache)) {
                 return $cache;
             }
-
-            $this->firstQuery = false;
             $this->wheres[] = $condition;
             if (is_string($condition)) {
                 $res = Data::query($this->type, $condition);
@@ -214,18 +213,19 @@
             return $this->results;
         }
 
-        public function get()
+        public function get($results = null)
         {
-            $queryKey   = sha1(serialize($this->wheres) . serialize($this->results));
+            $resultsGet = null !== $results ? $results : $this->results;
+            $queryKey   = sha1(serialize($this->wheres) . serialize($resultsGet));
             $cache      = Data::cache($this->type, $queryKey);
 
             if (!empty($cache)) {
                 return $cache;
             }
 
-            if (count($this->results)) {
+            if (count($resultsGet)) {
                 if (0 < $this->limit) {
-                    $max    = count($this->results);
+                    $max    = count($resultsGet);
                     $number = $this->limit - $this->offset;
                     if ($number > $max) {
                         $this->offset = $max - $this->limit;
@@ -234,12 +234,12 @@
                         }
                         $this->limit = $max;
                     }
-                    $this->results = array_slice($this->results, $this->offset, $this->limit);
+                    $this->results = array_slice($resultsGet, $this->offset, $this->limit);
                 }
             }
             $collection = array();
-            if (count($this->results)) {
-                foreach ($this->results as $key => $id) {
+            if (count($resultsGet)) {
+                foreach ($resultsGet as $key => $id) {
                     $object         = Data::getById($this->type, $id);
                     $collection[]   = $object;
                 }

@@ -8,7 +8,7 @@
     {
         public static function getAll()
         {
-            $articles = glob(STORAGE_PATH . DS . 'articles' . DS . '*.message');
+            $articles = glob(STORAGE_PATH . DS . 'articles' . DS . '*.message', GLOB_NOSORT);
             return $articles;
         }
 

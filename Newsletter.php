@@ -112,7 +112,7 @@
             if (!is_dir($dirUser)) {
                 mkdir($dirUser, 0777);
             }
-            $count    = glob($dirUser . DS . '*.count');
+            $count    = glob($dirUser . DS . '*.count', GLOB_NOSORT);
             if (!count($count)) {
                 $key        = Inflector::quickRandom(9);
                 $newCount   = $dirUser . DS . $key . '.count';
@@ -134,7 +134,7 @@
         public function addView($idView)
         {
             $dirStatsViews  = STORAGE_PATH . DS . 'newsletters' . DS . 'stats' . DS . 'views';
-            $counts         = glob($dirStatsViews . DS . '*.count');
+            $counts         = glob($dirStatsViews . DS . '*.count', GLOB_NOSORT);
             foreach ($counts as $count) {
                 $tab = explode(DS, $count);
                 $keyComp = repl('.count', '', end($tab));
