@@ -7,7 +7,7 @@
         });
         set_error_handler(function($type, $message, $file, $line) {
             $exception = new \ErrorException($message, $type, 0, $file, $line);
-            var_dump($exception);
+            showException($exception);
         });
         register_shutdown_function(function() {
             $error = error_get_last();

@@ -1,4 +1,20 @@
 <?php
+    if (!function_exists('can')) {
+        function can($type, $action)
+        {
+            $action     = \Thin\Inflector::lower($action);
+            $type       = \Thin\Inflector::lower($type);
+            $session    = session('admin');
+            $user       = $session->getUser();
+            if (ake($type, \Thin\Data::$_fields) && ake($type, \Thin\Data::$_rights) && null !== $user) {
+                $rights = \Thin\Data::$_rights[$type];
+                if (ake($action, $rights)) {
+                    return $rights[$action];
+                }
+            }
+            return false;
+        }
+    }
     if (!function_exists('o')) {
         function o($name)
         {

@@ -13,7 +13,7 @@
             return request();
         }
 
-        public function forward($route)
+        public function forward($route, $alert = null)
         {
             $oldRoute   = container()->getRoute();
             $module     = null !== $route->getModule()      ? $route->getModule()       : $oldRoute->getModule();
@@ -31,6 +31,7 @@
             $dispatch->setModule($module);
             $dispatch->setController($controller);
             $dispatch->setAction($action);
+            $dispatch->setAlert($alert);
             Utils::set('appDispatch', $dispatch);
 
             Router::language();

@@ -145,7 +145,7 @@
         public function order($orderField, $orderDirection = 'ASC')
         {
             if (count($this->results) && null !== $orderField) {
-                $queryKey   = sha1(serialize($this->wheres));
+                $queryKey   = sha1(serialize($this->wheres) . $orderField . $orderDirection);
                 $cache      = Data::cache($this->type, $queryKey);
 
                 if (!empty($cache)) {

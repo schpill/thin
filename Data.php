@@ -8,6 +8,7 @@
     {
         public static $_fields               = array();
         public static $_settings             = array();
+        public static $_rights               = array();
         public static $_all                  = array();
         public static $_indexes              = array();
         public static $_objects              = array();
@@ -1073,9 +1074,14 @@
             $cachedFiles                = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . '*.cache');
             if (count($cachedFiles)) {
                 foreach ($cachedFiles as $cachedFile) {
-                    $del                = File::delete($cachedFile);
+                    $del = File::delete($cachedFile);
                 }
             }
+        }
+
+        public static function emptyCache($type)
+        {
+            return static::event($type);
         }
 
         public static function __callstatic($method, $args)

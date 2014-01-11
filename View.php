@@ -6,9 +6,8 @@
     namespace Thin;
     class View
     {
-        public $_viewFile;
-        public $_module;
-        public $_cache;
+        public $_viewFile, $_module, $_cache;
+        private $_alert;
         protected $_grammar = array();
         public $_compiled = true;
         /**
@@ -231,6 +230,11 @@
             return $file;
         }
 
+        public function alert($alert)
+        {
+            $this->_alert = $alert;
+        }
+
         protected function makeCompile($file)
         {
             $content = fgc($file);
@@ -273,6 +277,15 @@
                     $default    = Utils::cut('">', '</lang>', trim($row));
                     $content    = repl('<lang key="' . $key . '">' . $default . '</lang>', '<?php echo container()->getLanguage()->translate(\'' . stripslashes($key) . '\', \'' . base64_encode($default) . '\'); ?>', $content);
                 }
+            }
+
+            if (null !== $this->_alert) {
+                $js = '<script type="text/javascript">
+                window.onload = function() {
+                    alert("' . repl('"', '\\"', $this->_alert) . '");
+                }
+                </script>';
+                $content .= "\n" . $js;
             }
 
             return $content;

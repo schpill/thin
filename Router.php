@@ -172,6 +172,7 @@
             $module         = $route->getModule();
             $controller     = $route->getController();
             $action         = $route->getAction();
+            $alert          = $route->getAlert();
 
             $module         = Inflector::lower($module);
             $controller     = Inflector::lower($controller);
@@ -195,6 +196,10 @@
             $controllerClass    = 'Thin\\' . $controller . 'Controller';
             $controller         = new $controllerClass;
             $controller->view   = new View($route->getView());
+
+            if (null !== $alert) {
+                $controller->view->alert($alert);
+            }
 
             container()->setController($controller);
 
@@ -239,6 +244,11 @@
             if (null !== Utils::get("showStats")) {
                 echo View::showStats();
             }
+        }
+
+        public static function redirect($url)
+        {
+            Utils::go($url);
         }
 
         private static function cmsRoute()
