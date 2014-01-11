@@ -1,5 +1,5 @@
 <?php
-    namespace Yhin;
+    namespace Thin;
     class Cookies
     {
     	const ONE_DAY_AS_SECONDS = 86400;
