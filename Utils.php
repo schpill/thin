@@ -125,10 +125,10 @@
             }
         }
 
-        public static function cleanCache()
+        public static function cleanCache($force = false)
         {
             $cacheFiles = glob(CACHE_PATH . DS . '*');
-            $minToKeep = time() - 12 * 3600;
+            $minToKeep = !$force ? time() - 12 * 3600 : time();
             foreach ($cacheFiles as $cacheFile) {
                 $age = File::modified($cacheFile);
                 if ($age < $minToKeep) {
@@ -159,7 +159,7 @@
         {
             if (Arrays::isArray($array2)) {
                 foreach ($array2 as $key => $val) {
-                    if (is_array($array2[$key])) {
+                    if (Arrays::isArray($array2[$key])) {
                         $array1[$key] = (ake($key, $array1) && Arrays::isArray($array1[$key])) ? static::mergeOptions($array1[$key], $array2[$key]) : $array2[$key];
                     } else {
                         $array1[$key] = $val;
