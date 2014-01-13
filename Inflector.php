@@ -657,27 +657,36 @@
                     .chr(244).chr(245).chr(246).chr(248).chr(249).chr(250).chr(251)
                     .chr(252).chr(253).chr(255);
 
-                $chars['out'] = "EfSZszYcYuAAAAAACEEEEIIIINOOOOOOUUUUYaaaaaaceeeeiiiinoooooouuuuyy";
-
-                $string = strtr($string, $chars['in'], $chars['out']);
-                $doubleChars['in'] = array(chr(140), chr(156), chr(198), chr(208), chr(222), chr(223), chr(230), chr(240), chr(254));
+                $chars['out']       = "EfSZszYcYuAAAAAACEEEEIIIINOOOOOOUUUUYaaaaaaceeeeiiiinoooooouuuuyy";
+                $string             = strtr($string, $chars['in'], $chars['out']);
+                $doubleChars['in']  = array(chr(140), chr(156), chr(198), chr(208), chr(222), chr(223), chr(230), chr(240), chr(254));
                 $doubleChars['out'] = array('OE', 'oe', 'AE', 'DH', 'TH', 'ss', 'ae', 'dh', 'th');
-                $string = str_replace($doubleChars['in'], $doubleChars['out'], $string);
+                $string             = repl($doubleChars['in'], $doubleChars['out'], $string);
             }
-
             return $string;
+        }
+
+        public static function stripAccents($str)
+        {
+            return strtr(
+                utf8_decode($str),
+                utf8_decode(
+                    '’àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'
+                ),
+                '\'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY'
+            );
         }
 
         public static function urlSafeB64Encode($data)
         {
             $b64 = base64_encode($data);
-            $b64 = str_replace(array('+', '/', '\r', '\n', '='), array('-', '_'),  $b64);
+            $b64 = repl(array('+', '/', '\r', '\n', '='), array('-', '_'),  $b64);
             return $b64;
         }
 
         public static function urlSafeB64Decode($b64)
         {
-            $b64 = str_replace(array('-', '_'), array('+', '/'), $b64);
+            $b64 = repl(array('-', '_'), array('+', '/'), $b64);
             return base64_decode($b64);
         }
 

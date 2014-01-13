@@ -753,6 +753,36 @@
         }
     }
 
+    if (!function_exists('addError')) {
+        function addError($error, $type = "warning")
+        {
+            $type   = \Thin\Inflector::lower($type);
+            $errors = \Thin\Utils::get('thinErrors');
+            $errors = (empty($errors)) ? array() : $errors;
+            if (!ake($type, $errors)) {
+                $errors[$type] = array();
+            }
+            $errors[$type] = $error;
+            \Thin\Utils::set('thinErrors', $errors);
+        }
+    }
+
+    if (!function_exists('getErrors')) {
+        function getErrors($type = null)
+        {
+            $errors = \Thin\Utils::get('thinErrors');
+            $errors = (empty($errors)) ? array() : $errors;
+            if (null !== $type) {
+                $type = \Thin\Inflector::lower($type);
+                if (ake($type, $errors)) {
+                    return $errors[$type];
+                }
+            }
+
+            return $errors;
+        {
+    }
+
     if (!function_exists('error')) {
         function error($error)
         {
@@ -982,7 +1012,7 @@
     if (!function_exists('_extract')) {
         function _extract(array $array)
         {
-            extract($array, EXTR_PREFIX_ALL, 'Thin');
+            extract($array, EXTR_PREFIX_ALL, 'thin_');
         }
     }
 
@@ -1021,7 +1051,7 @@
     }
 
     if (!function_exists('call')) {
-        function call($callback)
+        function call()
         {
             $args = func_get_args();
             $callback = array_shift($args);
@@ -1142,13 +1172,13 @@
      * </code>
      */
     if (!function_exists('arrayGet')) {
-        function arrayGet($array, $key, $default = null)
+        function arrayGet($array, $key, $default = null, $separator = '.')
         {
             if (is_null($key)) {
                 return $array;
             }
 
-            foreach (explode('.', $key) as $segment) {
+            foreach (explode($separator, $key) as $segment) {
                 if (!is_array($array) || !ake($segment, $array)) {
                     return value($default);
                 }
@@ -1167,10 +1197,10 @@
      * </code>
      */
     if (!function_exists('arraySet')) {
-        function arraySet($array, $key, $value)
+        function arraySet($array, $key, $value, $separator = '.')
         {
-            if (strpos($key, '.') !== false) {
-                $keys = explode('.', $key, 2);
+            if (strpos($key, $separator) !== false) {
+                $keys = explode($separator, $key, 2);
                 if (strlen(current($keys)) && strlen($keys[1])) {
                     if (!ake(current($keys), $array)) {
                         if (current($keys) === '0' && !empty($array)) {
@@ -1202,12 +1232,12 @@
      * </code>
      */
     if (!function_exists('arrayUnset')) {
-        function arrayUnset(&$array, $key)
+        function arrayUnset(&$array, $key, $separator = '.')
         {
-            $keys = explode('.', $key);
+            $keys = explode($separator, $key);
             while (count($keys) > 1) {
                 $key = array_shift($keys);
-                if (! isset($array[$key]) || ! isArray($array[$key]))  {
+                if (!isset($array[$key]) || ! isArray($array[$key]))  {
                     return;
                 }
 
