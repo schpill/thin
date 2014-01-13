@@ -164,8 +164,9 @@
         public static function add($type, $data = array(), $checkTuple = null)
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $fields         = ake($type, static::$_fields)      ? static::$_fields[$type] : array();
+            $fields         = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
             $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
+            $hook           = ake('add', $settings)             ? $settings['add']          : null;
 
             if (ake('beforeAdd', $settings)) {
                 $settings['beforeAdd']($type, $data);
@@ -201,6 +202,12 @@
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
                     }
+                    if (ake('checkValue', $info)) {
+                        $xlosure = $info['checkValue'];
+                        if ($closure instanceof \Closure) {
+                            $val = $closure($val);
+                        }
+                    }
                 }
             }
 
@@ -217,6 +224,8 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
+            $hook           = ake('edit', $settings)            ? $settings['edit']         : null;
+            $fields         = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
 
             if (empty($data) && count($_POST)) {
                 $data += $_POST;
@@ -225,9 +234,25 @@
             if (ake('beforeEdit', $settings)) {
                 $settings['beforeEdit']($type, $id, $data);
             }
+            if (count($fields)) {
+                foreach ($fields as $field => $info) {
+                    $val = $data[$field];
+                    if (empty($val)) {
+                        if (!ake('canBeNull', $info)) {
+                            throw new Exception('The field ' . $field . ' cannot be null.');
+                        }
+                    }
+                    if (ake('checkValue', $info)) {
+                        $closure = $info['checkValue'];
+                        if ($closure instanceof \Closure) {
+
+                            $val = $closure($val);
+                        }
+                    }
+                }
+            }
 
             $object     = static::getById($type, $id);
-            // static::delete($type, $id);
             $infos      = array('id' => $id, 'date_create' => $object->getDateCreate()) + $data;
 
             $newPost    = static::store($type, $infos, $id);
@@ -242,6 +267,8 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $indexes        = ake('indexes', $settings)         ? $settings['indexes']      : null;
+            $hook           = ake('delete', $settings)          ? $settings['delete']       : null;
+
 
             if (ake('beforeDelete', $settings)) {
                 $settings['beforeDelete']($type, $id);
@@ -303,6 +330,7 @@
         public static function store($type, $flat, $key = null)
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('store', $settings)           ? $settings['store']        : null;
             $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
             $indexes        = ake('indexes', $settings)         ? $settings['indexes']      : null;
 
@@ -460,9 +488,13 @@
 
         public static function makeKey($type, $keyLength = 9)
         {
-            $dir    = static::checkDir($type);
-            $key    = Inflector::quickRandom($keyLength);
-            $check  = STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . $key . '.data';
+            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('makeKey', $settings)         ? $settings['makeKey']      : null;
+
+            $dir            = static::checkDir($type);
+            $key            = Inflector::quickRandom($keyLength);
+            $check          = STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . $key . '.data';
+
             if (File::exists($check)) {
                 return static::makeKey($type);
             }
@@ -471,6 +503,9 @@
 
         public static function checkDir($type)
         {
+            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('checkDir', $settings)        ? $settings['checkDir']     : null;
+
             $dirName    = Inflector::lower($type . 's');
             $dir        = STORAGE_PATH . DS . 'data' . DS . $dirName;
             $writeDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'write';
@@ -522,8 +557,11 @@
             }
         }
 
-        public static function query($type, $conditions = ''/*, $offset = 0, $limit = 0, $orderField = 'date_create', $orderDirection = 'ASC'*/)
+        public static function query($type, $conditions = '')
         {
+            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('query', $settings)           ? $settings['query']        : null;
+
             static::_incQueries(static::_getTime());
             $dirName    = static::checkDir($type);
             $indexDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'indexes';
@@ -541,7 +579,6 @@
             $resultsXor             = array();
 
             $fields                 = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
-            $settings               = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $indexes                = ake('indexes', $settings)         ? $settings["indexes"]      : array();
             $fields['id']           = array();
             $fields['date_create']  = array();
@@ -1054,6 +1091,8 @@
 
         public static function cache($type, $key, $data = null)
         {
+            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('cache', $settings)           ? $settings['cache']        : null;
             $dir    = static::checkDir($type);
             $file   = STORAGE_PATH . DS . 'data' . DS . $dir . DS . $key . '.cache';
             if (File::exists($file)) {
@@ -1068,6 +1107,8 @@
 
         public static function event($type)
         {
+            $settings                   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook                       = ake('event', $settings)           ? $settings['event']        : null;
             static::$_all[$type]        = array();
             static::$_indexes[$type]    = array();
             $dir                        = static::checkDir($type);
