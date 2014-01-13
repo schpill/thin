@@ -15,6 +15,7 @@
             return false;
         }
     }
+
     if (!function_exists('o')) {
         function o($name)
         {
@@ -39,6 +40,7 @@
             return array_key_exists($key, $tab) ? $tab[$key] : $default;
         }
     }
+
     if (!function_exists('f')) {
         function f()
         {
@@ -171,8 +173,14 @@
     }
 
     if (!function_exists('font')) {
-        function font($text = 'OK', $font = 'fb82491021a73de6ab8ee73cee1be93d', $size = 50, $fg = '000000', $bg = 'ffffff', $width = 700)
-        {
+        function font(
+            $text = 'OK',
+            $font = 'fb82491021a73de6ab8ee73cee1be93d',
+            $size = 50,
+            $fg = '000000',
+            $bg = 'ffffff',
+            $width = 700
+        ) {
             $url = "http://renderer.fontshop.com/fonts/font_rend.php?idt=f&id=$font&rs=$size&fg=$fg&bg=$bg&rt=$text&ls=$size&w=$width&t=pc";
             $key = sha1(serialize(func_get_args()));
             $file = CACHE_PATH . DS . $key . '.png';
@@ -780,7 +788,7 @@
             }
 
             return $errors;
-        {
+        }
     }
 
     if (!function_exists('error')) {

@@ -7,7 +7,8 @@
     namespace Thin;
     class Object extends \ArrayObject implements \ArrayAccess
     {
-        public $_fields = array();
+        public $_fields         = array();
+        public $_closures       = array();
 
         public function __construct()
         {
@@ -22,6 +23,12 @@
                 }
             }
             $this->_nameClass = Inflector::lower(get_class($this));
+            return $this;
+        }
+
+        public function closure($name, \Closure $closure)
+        {
+            $this->_closures[$name] = $closure;
             return $this;
         }
 
@@ -184,14 +191,22 @@
                 }
                 return $this;
             }
+
             if (Arrays::inArray($func, $this->_fields)) {
                 if ($this->$func instanceof \Closure) {
                     return call_user_func_array($this->$func, $argv);
                 }
             }
+            if (ake($func, $this->_closures)) {
+                if ($this->_closures[$func] instanceof \Closure) {
+                    return call_user_func_array($this->_closures[$func] , $argv);
+                }
+            }
+
             if (!is_callable($func) || substr($func, 0, 6) !== 'array_' || substr($func, 0, 3) !== 'set' || substr($func, 0, 3) !== 'get' || substr($func, 0, 3) !== 'has' || substr($func, 0, 3) !== 'add' || substr($func, 0, 6) !== 'remove') {
                 throw new \BadMethodCallException(__class__ . ' => ' . $func);
             }
+
             return call_user_func_array($func, array_merge(array($this->getArrayCopy()), $argv));
         }
 
