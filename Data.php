@@ -129,6 +129,9 @@
 
         public static function getObject($pathObject, $type = null)
         {
+            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('getObject', $settings)       ? $settings['getObject']    : null;
+            static::_hook($hook, func_get_args(), 'before');
             if (!is_string($pathObject)) {
                 $id = isset($pathObject->id) ? $pathObject->id : null;
                 if (null !== $id) {
@@ -143,21 +146,28 @@
                 $type = substr($type, 0, -1);
             }
             $object->setThinType($type);
+            static::_hook($hook, func_get_args(), 'after');
             return $object;
         }
 
         public static function getById($type, $id, $returnObject = true)
         {
+            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = ake('getById', $settings)         ? $settings['getById']      : null;
+            static::_hook($hook, func_get_args(), 'before');
             $dir    = static::checkDir($type);
             static::_clean(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'write', $type);
             $file   = STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . $id . '.data';
             if (true === File::exists($file)) {
                 if (true === $returnObject) {
+                    static::_hook($hook, func_get_args(), 'after');
                     return static::getObject($file, $type);
                 } else {
+                    static::_hook($hook, func_get_args(), 'after');
                     return $file;
                 }
             }
+            static::_hook($hook, func_get_args(), 'after');
             return null;
         }
 
@@ -167,6 +177,7 @@
             $fields         = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
             $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
             $hook           = ake('add', $settings)             ? $settings['add']          : null;
+            static::_hook($hook, func_get_args(), 'before');
 
             if (ake('beforeAdd', $settings)) {
                 $settings['beforeAdd']($type, $data);
@@ -190,6 +201,7 @@
                 }
                 if (count($res)) {
                     $row = Arrays::first($res);
+                    static::_hook($hook, func_get_args(), 'after');
                     return $row->getId();
                 }
             }
@@ -199,6 +211,7 @@
                     $val = $data[$field];
                     if (empty($val)) {
                         if (!ake('canBeNull', $info)) {
+                            static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
                     }
@@ -217,6 +230,7 @@
             if (ake('afterAdd', $settings)) {
                 $settings['afterAdd']($type, $data, $newPost);
             }
+            static::_hook($hook, func_get_args(), 'after');
             return $key;
         }
 
@@ -225,6 +239,7 @@
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
             $hook           = ake('edit', $settings)            ? $settings['edit']         : null;
+            static::_hook($hook, func_get_args(), 'before');
             $fields         = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
 
             if (empty($data) && count($_POST)) {
@@ -239,13 +254,13 @@
                     $val = $data[$field];
                     if (empty($val)) {
                         if (!ake('canBeNull', $info)) {
+                            static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
                     }
                     if (ake('checkValue', $info)) {
                         $closure = $info['checkValue'];
                         if ($closure instanceof \Closure) {
-
                             $val = $closure($val);
                         }
                     }
@@ -260,6 +275,7 @@
             if (ake('afterEdit', $settings)) {
                 $settings['afterEdit']($type, $data, $newPost);
             }
+            static::_hook($hook, func_get_args(), 'after');
             return $id;
         }
 
@@ -268,6 +284,7 @@
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $indexes        = ake('indexes', $settings)         ? $settings['indexes']      : null;
             $hook           = ake('delete', $settings)          ? $settings['delete']       : null;
+            static::_hook($hook, func_get_args(), 'before');
 
 
             if (ake('beforeDelete', $settings)) {
@@ -304,11 +321,13 @@
             static::event($type);
             $object = static::getById($type, $id, false);
             if (null !== $object) {
-                return File::delete($object);
+                static::_hook($hook, func_get_args(), 'after');
                 if (ake('afterDelete', $settings)) {
                     $settings['afterDelete']($type, $id);
                 }
+                return File::delete($object);
             }
+            static::_hook($hook, func_get_args(), 'after');
             return false;
         }
 
@@ -331,8 +350,14 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $hook           = ake('store', $settings)           ? $settings['store']        : null;
+            static::_hook($hook, func_get_args(), 'before');
             $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
             $indexes        = ake('indexes', $settings)         ? $settings['indexes']      : null;
+
+
+            if (ake('beforeStore', $settings)) {
+                $settings['beforeDelete']($type, $flat);
+            }
 
             static::event($type);
             $dir        = static::checkDir($type);
@@ -374,6 +399,7 @@
                 }
                 if (count($res)) {
                     $row = Arrays::first($res);
+                    static::_hook($hook, func_get_args(), 'after');
                     return $row;
                 }
             }
@@ -390,6 +416,7 @@
                     $val = $object->$field;
                     if (empty($val)) {
                         if (!ake('canBeNull', $info)) {
+                            static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
                     }
@@ -412,23 +439,36 @@
                 static::commit();
             }
 
+
+            if (ake('afterStore', $settings)) {
+                $settings['afterStore']($type, $flat);
+            }
+
+            static::_hook($hook, func_get_args(), 'after');
             return $object;
         }
 
         public static function indexRemove($indexField, $indexInfo, $object)
         {
             $type       = $object->thin_type;
+            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = ake('indexRemove', $settings)     ? $settings['indexRemove']  : null;
+            static::_hook($hook, func_get_args(), 'before');
             $dirName    = static::checkDir($type);
             $indexDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'indexes';
             $file = $indexDir . DS . $indexField . DS . md5($object->$indexField) . DS . $object->id . '.data';
             if (File::exists($file)) {
                 File::delete($file);
             }
+            static::_hook($hook, func_get_args(), 'after');
         }
 
         public static function indexCreate($indexField, $indexInfo, $object)
         {
             $type       = $object->thin_type;
+            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = ake('indexCreate', $settings)     ? $settings['indexCreate']  : null;
+            static::_hook($hook, func_get_args(), 'before');
             $dirName    = static::checkDir($type);
             $indexDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'indexes';
             File::mkdir($indexDir . DS . $indexField, 0777);
@@ -453,11 +493,13 @@
                     static::transaction('fileIndex', $indexDir, $indexField, $object->$indexField, $object->id);
                 } else {
                     $object->delete();
+                    static::_hook($hook, func_get_args(), 'after');
                     throw new Exception($indexField . ' est un index unique pour ' . $type . ".");
                 }
             } else {
                 static::transaction('fileIndex', $indexDir, $indexField, $object->$indexField, $object->id);
             }
+            static::_hook($hook, func_get_args(), 'after');
         }
 
         private static function transaction($method)
@@ -490,14 +532,17 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $hook           = ake('makeKey', $settings)         ? $settings['makeKey']      : null;
+            static::_hook($hook, func_get_args(), 'before');
 
             $dir            = static::checkDir($type);
             $key            = Inflector::quickRandom($keyLength);
             $check          = STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . $key . '.data';
 
             if (File::exists($check)) {
+                static::_hook($hook, func_get_args(), 'after');
                 return static::makeKey($type);
             }
+            static::_hook($hook, func_get_args(), 'after');
             return $key;
         }
 
@@ -505,6 +550,7 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $hook           = ake('checkDir', $settings)        ? $settings['checkDir']     : null;
+            static::_hook($hook, func_get_args(), 'before');
 
             $dirName    = Inflector::lower($type . 's');
             $dir        = STORAGE_PATH . DS . 'data' . DS . $dirName;
@@ -517,6 +563,7 @@
             File::mkdir($readDir,   0777);
             File::mkdir($versDir,   0777);
             File::mkdir($indexDir,  0777);
+            static::_hook($hook, func_get_args(), 'after');
             return $dirName;
         }
 
@@ -561,6 +608,7 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $hook           = ake('query', $settings)           ? $settings['query']        : null;
+            static::_hook($hook, func_get_args(), 'before');
 
             static::_incQueries(static::_getTime());
             $dirName    = static::checkDir($type);
@@ -570,6 +618,7 @@
             $cache = static::cache($type, $queryKey);
 
             if (!empty($cache)) {
+                static::_hook($hook, func_get_args(), 'after');
                 return $cache;
             }
 
@@ -584,6 +633,7 @@
             $fields['date_create']  = array();
             $datas                  = static::getAll($type);
             if(!count($datas)) {
+                static::_hook($hook, func_get_args(), 'after');
                 return $results;
             }
 
@@ -630,6 +680,7 @@
                             }
                         }
                         $cache = static::cache($type, $queryKey, $results);
+                        static::_hook($hook, func_get_args(), 'after');
                         return $results;
                     }
 
@@ -650,6 +701,7 @@
                 }
             }
             $cache = static::cache($type, $queryKey, $results);
+            static::_hook($hook, func_get_args(), 'after');
             return $results;
 
             if (!Arrays::isArray($orderField)) {
@@ -871,12 +923,16 @@
             }
 
             $cache = static::cache($type, $queryKey, $results);
+            static::_hook($hook, func_get_args(), 'after');
 
             return $results;
         }
 
         public static function order($type, $results, $field = 'date_create', $orderDirection = 'ASC')
         {
+            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = ake('order', $settings)           ? $settings['order']        : null;
+            static::_hook($hook, func_get_args(), 'before');
             $queryKey   = sha1(serialize(func_get_args()));
             $cache      = static::cache($type, $queryKey);
 
@@ -946,6 +1002,7 @@
                 array_push($collection, $tmpObject);
             }
             $cache = static::cache($type, $queryKey, $collection);
+            static::_hook($hook, func_get_args(), 'after');
             return $collection;
         }
 
@@ -1004,18 +1061,27 @@
 
         private static function getModel($type)
         {
+            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = ake('getModel', $settings)        ? $settings['getModel']     : null;
+            static::_hook($hook, func_get_args(), 'before');
             if (ake($type, static::$_fields)) {
+                static::_hook($hook, func_get_args(), 'after');
                 return static::$_fields[$type];
             }
+            static::_hook($hook, func_get_args(), 'after');
             return array();
         }
 
         public static function makeQuery($queryJs, $type)
         {
+            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = ake('makeQuery', $settings)       ? $settings['makeQuery']    : null;
+            static::_hook($hook, func_get_args(), 'before');
             $queryJs = substr($queryJs, 9, -2);
 
             $query = repl('##', ' && ', $queryJs);
             $query = repl('%%', ' ', $query);
+            static::_hook($hook, func_get_args(), 'after');
             return $query;
         }
 
@@ -1093,15 +1159,19 @@
         {
             $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $hook           = ake('cache', $settings)           ? $settings['cache']        : null;
+            static::_hook($hook, func_get_args(), 'before');
             $dir    = static::checkDir($type);
             $file   = STORAGE_PATH . DS . 'data' . DS . $dir . DS . $key . '.cache';
             if (File::exists($file)) {
+                static::_hook($hook, func_get_args(), 'after');
                 return unserialize(gzuncompress(File::get($file)));
             }
             if (null !== $data) {
                 File::put($file, gzcompress(serialize($data), -1));
+                static::_hook($hook, func_get_args(), 'after');
                 return true;
             }
+            static::_hook($hook, func_get_args(), 'after');
             return null;
         }
 
@@ -1109,6 +1179,7 @@
         {
             $settings                   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
             $hook                       = ake('event', $settings)           ? $settings['event']        : null;
+            static::_hook($hook, func_get_args(), 'before');
             static::$_all[$type]        = array();
             static::$_indexes[$type]    = array();
             $dir                        = static::checkDir($type);
@@ -1118,6 +1189,7 @@
                     $del = File::delete($cachedFile);
                 }
             }
+            static::_hook($hook, func_get_args(), 'after');
         }
 
         public static function emptyCache($type)
@@ -1206,5 +1278,24 @@
         {
             $text = Inflector::urlize(strip_tags(Blog::parse($text)));
             return explode('-', $text);
+        }
+
+        private static function _hook($hook, $args, $when)
+        {
+            if (null !== $hook) {
+                if (Arrays::isArray($hook)) {
+                    if (ake($when, $hook)) {
+                        if ($hook[$when] instanceof \Closure) {
+                            $objClosure = new ThinClosure;
+                            $arg = array();
+                            if (count($args)) {
+                                $params = params($args);
+                                $arg = $objClosure->populate($params);
+                            }
+                            $hook[$when]($arg);
+                        }
+                    }
+                }
+            }
         }
     }

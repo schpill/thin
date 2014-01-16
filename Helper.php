@@ -1,4 +1,18 @@
 <?php
+    if (!function_exists('params')) {
+        function params($args = array())
+        {
+            $params = array();
+            if (count($args)) {
+                foreach ($args as $k => $arg) {
+                    $num = $k + 1;
+                    $key = 'param' . $num;
+                    $params[$key] = $arg;
+                }
+            }
+            return $params;
+        }
+    }
     if (!function_exists('can')) {
         function can($type, $action)
         {
