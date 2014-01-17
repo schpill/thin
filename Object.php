@@ -133,9 +133,16 @@
                             throw new Exception($var . ' is not defined in the model => ' . $this->_fields);
                         } else {
                             $settingsField = $fields[$var];
-                            if (ake('checkData', $settingsField)) {
-                                $functionCheck = $settingsField['checkData'];
-                                $functionCheck($value);
+                            if (ake('checkValue', $settingsField)) {
+                                $functionCheck = $settingsField['checkValue'];
+                                $value = $functionCheck($value);
+                            }
+                            if (is_object($value)) {
+                                if (isset($value->thin_type)) {
+                                    if ($value->thin_type == $var) {
+                                        $value = $value->id;
+                                    }
+                                }
                             }
                         }
                     }

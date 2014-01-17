@@ -49,6 +49,26 @@
             return $objects;
         }
 
+        public static function first($type)
+        {
+            $all = static::getAll($type);
+            if (count($all)) {
+                $first = Arrays::first($all);
+                return static::getObject($first, $type);
+            }
+            return static::newOne($type);
+        }
+
+        public static function last($type)
+        {
+            $all = static::getAll($type);
+            if (count($all)) {
+                $first = Arrays::last($all);
+                return static::getObject($first, $type);
+            }
+            return static::newOne($type);
+        }
+
         private static function _clean($directory, $type)
         {
             $settings       = ake($type, static::$_settings) ? static::$_settings[$type] : array();

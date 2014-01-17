@@ -17,7 +17,7 @@
             $proxy_namespace        = static::getConfig('proxy_namespace');
             $proxy_dir              = static::getConfig('proxy_dir');
             $metadata_path          = static::getConfig('metadata_path');
-            $yaml_dir               = static::getConfig('yaml_dir');
+            $config_dir             = static::getConfig('config_dir');
 
             $config = new \Doctrine\DBAL\Configuration();
             $connectionParams = array(
@@ -32,7 +32,7 @@
             $conn       = \Doctrine\DBAL\DriverManager::getConnection($connectionParams);
             $config     = new \Doctrine\ORM\Configuration();
             $config->setMetadataCacheImpl(new \Doctrine\Common\Cache\ZendDataCache);
-            $driverImpl = new \Doctrine\ORM\Mapping\Driver\YamlDriver($yaml_dir);
+            $driverImpl = new Doctrine\Thindriver($config_dir);
             $config->setMetadataDriverImpl($driverImpl);
             $config->setProxyDir($metadata_path);
             $config->setProxyNamespace($proxy_namespace);
