@@ -85,6 +85,8 @@
 
         private static function is404()
         {
+            header('HTTP/1.0 404 Not Found');
+            die(config('html_not_found'));
             $dispatch = new Dispatch;
             $dispatch->setModule('www');
             $dispatch->setController('static');
