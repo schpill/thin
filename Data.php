@@ -207,25 +207,6 @@
                 $data += $_POST;
             }
 
-            if (!empty($checkTuple)) {
-                if (is_string($checkTuple)) {
-                    $res = static::query($type, $checkTuple . ' = ' . $data[$checkTuple]);
-                }
-                if (Arrays::isArray($checkTuple)) {
-                    $query  = '';
-                    foreach ($checkTuple as $ct) {
-                        $query .= $ct . ' = ' . $data[$ct] . ' && ';
-                    }
-                    $query  = substr($query, 0, -4);
-                    $res    = static::query($type, $query);
-                }
-                if (count($res)) {
-                    $row = Arrays::first($res);
-                    static::_hook($hook, func_get_args(), 'after');
-                    return $row->getId();
-                }
-            }
-
             if (count($fields)) {
                 foreach ($fields as $field => $info) {
                     $val = $data[$field];
@@ -236,7 +217,7 @@
                         }
                     }
                     if (ake('checkValue', $info)) {
-                        $xlosure = $info['checkValue'];
+                        $closure = $info['checkValue'];
                         if ($closure instanceof \Closure) {
                             $val = $closure($val);
                         }
@@ -359,7 +340,11 @@
             if (Arrays::isArray($what)) {
                 $newWhat = array();
                 foreach ($what as $key => $value) {
-                    $newWhat[$key] = html_entity_decode($value);
+                    if (!Arrays::isArray($value)) {
+                        $newWhat[$key] = html_entity_decode($value);
+                    } else {
+                        $newWhat[$key] = array_map('html_entity_decode', $value);
+                    }
                 }
                 return $newWhat;
             }
@@ -415,7 +400,21 @@
                         $query .= $ct . ' = ' . $flat[$ct] . ' && ';
                     }
                     $query  = substr($query, 0, -4);
-                    $res    = static::query($type, $query);
+
+                    $tabConditions  = explode(' && ', $query);
+                    $init           = true;
+                    foreach ($tabConditions as $cond) {
+                        $db          = new Querydata($type);
+                        $res         = $db->where($cond)->sub();
+                        if (true === $init) {
+                            $init    = false;
+                            $results = $res;
+                        } else {
+                            $results = array_intersect($results, $res);
+                        }
+                    }
+                    $db         = new Querydata($type);
+                    $res    = $db->get($results);
                 }
                 if (count($res)) {
                     $row = Arrays::first($res);

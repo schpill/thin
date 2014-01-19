@@ -255,20 +255,20 @@
 
         private static function cmsRoute()
         {
-            $uri = substr(static::$_uri, 1);
-            $routes = Cms::getRoutes();
-            foreach ($routes as $idRoute => $route) {
-                if ($uri == $route) {
-                    $page = Cms::getById($idRoute);
-                    $dispatch = new Dispatch;
-                    $dispatch->setModule('www');
-                    $dispatch->setController('cms');
-                    $dispatch->setAction('view');
-                    Utils::set('appDispatch', $dispatch);
-                    Utils::set('cmsPage', $page);
-                    return true;
-                }
-            }
+            // $uri = substr(static::$_uri, 1);
+            // $routes = Cms::getRoutes();
+            // foreach ($routes as $idRoute => $route) {
+            //     if ($uri == $route) {
+            //         $page = Cms::getById($idRoute);
+            //         $dispatch = new Dispatch;
+            //         $dispatch->setModule('www');
+            //         $dispatch->setController('cms');
+            //         $dispatch->setAction('view');
+            //         Utils::set('appDispatch', $dispatch);
+            //         Utils::set('cmsPage', $page);
+            //         return true;
+            //     }
+            // }
             return null;
         }
     }

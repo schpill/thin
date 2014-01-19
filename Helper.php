@@ -120,6 +120,35 @@
         }
     }
 
+    if (!function_exists('cms_objects')) {
+        function cms_objects($collection)
+        {
+            $q      = new \Thin\Querydata('collection');
+            $res    = $q->where('name = ' . $collection)->get();
+            if (count($res)) {
+                $row        = Arrays::first($res);
+                $q          = new \Thin\Querydata('object');
+                $objects    = $q->where('collection = ' . $row->getId())->get();
+                return $objects;
+            }
+            return array();
+        }
+    }
+
+    if (!function_exists('cms_option')) {
+        function cms_option($option)
+        {
+            return \Thin\Cms::getOption($option);
+        }
+    }
+
+    if (!function_exists('t')) {
+        function t($str, $module = 'general')
+        {
+            return \Thin\Cms::translate($str, $module);
+        }
+    }
+
     if (!function_exists('arrayXpathValue')) {
         /**
          * Get value of an array by using "root/branch/leaf" notation
@@ -1812,7 +1841,7 @@
     if (!function_exists('getLanguage')) {
         function getLanguage()
         {
-            $session    = session('app_lng');
+            $session = session('app_lng');
             return $session->getLanguage();
         }
     }
