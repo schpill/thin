@@ -19,7 +19,7 @@
             $res        = $query->where("url = $url")->get();
 
             if (count($res)) {
-                $page           = Arrays::first($res);
+                $page           = $query->first($res);
                 $displaymode    = Inflector::lower($page->getDisplaymode()->getName());
                 $datePub        = $page->getDateIn();
                 $dateDepub      = $page->getDateOut();
@@ -58,7 +58,6 @@
                         container()->setCmsPage(404);
                     }
                 }
-
             } else {
                 container()->setCmsPage(404);
             }

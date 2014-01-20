@@ -253,4 +253,26 @@
         {
             return Data::newOne($this->type, $data);
         }
+
+        public function first(array $results)
+        {
+            if (count($results)) {
+                $row = Arrays::first($results);
+                if (is_object($row)) {
+                    return $row;
+                }
+            }
+            return null;
+        }
+
+        public function last(array $results)
+        {
+            if (count($results)) {
+                $row = Arrays::last($results);
+                if (is_object($row)) {
+                    return $row;
+                }
+            }
+            return null;
+        }
     }
