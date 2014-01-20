@@ -341,7 +341,7 @@
                 $newWhat = array();
                 foreach ($what as $key => $value) {
                     if (!Arrays::isArray($value)) {
-                        $newWhat[$key] = html_entity_decode($value);
+                        $newWhat[$key] = html_entity_decode($value, ENT_COMPAT, 'utf-8');
                     } else {
                         $newWhat[$key] = array_map('html_entity_decode', $value);
                     }

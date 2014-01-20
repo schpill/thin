@@ -11,6 +11,11 @@
             $query      = new Querydata('page');
             $url        = substr($_SERVER['REQUEST_URI'], 1);
             $url        = !strlen($url) ? 'home' : $url;
+            if ('home' == $url) {
+                container()->setCmsIsHomePage(true);
+            } else {
+                container()->setCmsIsHomePage(false);
+            }
             $res        = $query->where("url = $url")->get();
 
             if (count($res)) {

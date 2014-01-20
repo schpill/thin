@@ -1037,4 +1037,27 @@
             }
             return $str;
         }
+
+        public static function html($string, $keepHtml = true)
+        {
+            if(true === $keepHtml) {
+                return stripslashes(
+                    implode(
+                        '',
+                        preg_replace(
+                            '/^([^<].+[^>])$/e',
+                            "htmlentities('\\1', ENT_COMPAT, 'utf-8')",
+                            preg_split(
+                                '/(<.+?>)/',
+                                $string,
+                                -1,
+                                PREG_SPLIT_DELIM_CAPTURE
+                            )
+                        )
+                    )
+                );
+            } else {
+                return htmlentities($string, ENT_COMPAT, 'utf-8');
+            }
+        }
     }
