@@ -34,7 +34,7 @@
 		 */
 		public function get($key, $default = null)
 		{
-			if (ake($key, $this->attributes)) {
+			if (Arrays::exists($key, $this->attributes)) {
 				return $this->attributes[$key];
 			}
 

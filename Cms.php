@@ -101,7 +101,7 @@
             $query      = new Querydata('option');
             $res        = $query->where("name = $key")->get();
             if (count($res)) {
-                $row    = Arrays::first($res);
+                $row    = $query->first($res);
                 return $row->getValue();
             }
             return null;
@@ -110,7 +110,7 @@
         public static function lng($value, $lng)
         {
             if (Arrays::isArray($value)) {
-                if (ake($lng, $value)) {
+                if (Arrays::exists($lng, $value)) {
                     return $value[$lng];
                 }
             }
@@ -121,10 +121,8 @@
         {
             $page       = container()->getCmsPage();
             $content    = static::sanitize(static::lng($page->getHtml(), container()->getCmsLanguage()));
-            $file       = CACHE_PATH . DS . md5($content . $page->getName()) . '.compiled';
-            if (File::exists($file)) {
-                File::delete($file);
-            }
+            $file       = CACHE_PATH . DS . md5($content . $page->getName()) . '.cms';
+            File::delete($file);
             File::put($file, $content);
             require $file;
         }

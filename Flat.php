@@ -125,7 +125,7 @@
             }
             $label = Html\Helper::display($fieldInfos['label']);
             $oldValue = $value;
-            if (ake('contentForm', $fieldInfos)) {
+            if (Arrays::exists('contentForm', $fieldInfos)) {
                 if (!empty($fieldInfos['contentForm'])) {
                     $content = $fieldInfos['contentForm'];
                     $content = repl(array('##self##', '##field##', '##type##'), array($value, $field, $type), $content);

@@ -19,7 +19,7 @@
             foreach ($articles as $tmpArticle) {
                 $article = static::getArticle($tmpArticle);
                 $cat = $article->getCategory();
-                if (!ake($cat, $collection)) {
+                if (!Arrays::exists($cat, $collection)) {
                     $collection[$cat] = 1;
                 } else {
                     $collection[$cat]++;

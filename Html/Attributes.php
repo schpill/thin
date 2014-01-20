@@ -27,7 +27,7 @@
                     $this->add($attribute->getArray());
                 } else {
                     $attribute = strval($attribute);
-                    if(!ake($attribute, $this->attributes)) {
+                    if(!\Thin\Arrays::exists($attribute, $this->attributes)) {
                         $this->attributes[$attribute] = array();
                     }
 
@@ -104,7 +104,7 @@
         {
             $attribute = strval($attribute);
 
-            if(ake($attribute, $this->attributes)) {
+            if(\Thin\Arrays::exists($attribute, $this->attributes)) {
                 if(null === $value) {
                     unset($this->attributes[$attribute]);
                 } else {
@@ -152,7 +152,7 @@
         {
             if(null !== $attribute) {
                 $attribute = strval($attribute);
-                if(ake($attribute, $this->attributes)) {
+                if(\Thin\Arrays::exists($attribute, $this->attributes)) {
                     return $attribute . '="' . implode(' ', $this->attributes[$attribute]) . '"';
                 }
             } else {
@@ -188,7 +188,7 @@
         {
             $attribute = strval($attribute);
 
-            if(ake($attribute, $this->attributes)) {
+            if(\Thin\Arrays::exists($attribute, $this->attributes)) {
                 if(null === $value || in_array(strval($value), $this->attributes[$attribute])) {
                     return true;
                 }

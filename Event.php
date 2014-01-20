@@ -12,7 +12,7 @@
 
         public static function listeners($event)
         {
-            return ake($event, static::$events);
+            return Arrays::exists($event, static::$events);
         }
 
         public static function set($event, $callback, $once = false)
@@ -55,7 +55,7 @@
         {
             foreach (static::$flushers[$queue] as $flusher)
             {
-                if (!ake($queue, static::$queued)) {
+                if (!Arrays::exists($queue, static::$queued)) {
                     continue;
                 }
 

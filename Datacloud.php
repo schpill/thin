@@ -128,7 +128,7 @@
             }
             $label = Html\Helper::display($fieldInfos['label']);
             $oldValue = $value;
-            if (ake('contentForm', $fieldInfos)) {
+            if (Arrays::exists('contentForm', $fieldInfos)) {
                 if (!empty($fieldInfos['contentForm'])) {
                     $content = $fieldInfos['contentForm'];
                     $content = repl(array('##self##', '##field##', '##type##'), array($value, $field, $type), $content);
@@ -174,12 +174,12 @@
             $fields['id']           = array();
             $fields['date_create']  = array();
             if (!Arrays::isArray($orderField)) {
-                if (null !== $orderField && !ake($orderField, $fields)) {
+                if (null !== $orderField && !Arrays::exists($orderField, $fields)) {
                     $fields[$orderField] = array();
                 }
             } else {
                 foreach ($orderField as $tmpField) {
-                    if (null !== $tmpField && !ake($tmpField, $fields)) {
+                    if (null !== $tmpField && !Arrays::exists($tmpField, $fields)) {
                         $fields[$tmpField] = array();
                     }
                 }

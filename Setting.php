@@ -77,7 +77,7 @@
          */
         public function get($name, $default = null)
         {
-            if (ake($name, $this->data)) {
+            if (Arrays::exists($name, $this->data)) {
                 return $this->data[$name];
             }
 
@@ -335,7 +335,7 @@
         {
             /** @var Setting $value */
             foreach ($merge as $key => $value) {
-                if (ake($key, $this->data)) {
+                if (Arrays::exists($key, $this->data)) {
                     if (is_int($key)) {
                         $this->data[] = $value;
                     } elseif ($value instanceof self && $this->data[$key] instanceof self) {

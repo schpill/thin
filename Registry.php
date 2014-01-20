@@ -21,7 +21,7 @@
 
         public static function get($key)
         {
-            return ake($key, static::$objects) ? static::$objects[$key] : null;
+            return Arrays::exists($key, static::$objects) ? static::$objects[$key] : null;
         }
 
         public static function set($key, $value = null)
@@ -42,6 +42,6 @@
 
         public static function has($key)
         {
-            return ake($key, static::$objects);
+            return Arrays::exists($key, static::$objects);
         }
     }

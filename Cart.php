@@ -67,14 +67,14 @@
                 // recursively call the add function
                 if($this->isMulti($id)) {
                     foreach($id as $item) {
-                        $options = ake('options', $item) ? $item['options'] : array();
+                        $options = Arrays::exists('options', $item) ? $item['options'] : array();
                         $this->addRow($item['id'], $item['name'], $item['qty'], $item['price'], $options);
                     }
 
                     return;
                 }
 
-                $options = ake('options', $id) ? $id['options'] : array();
+                $options = Arrays::exists('options', $id) ? $id['options'] : array();
                 return $this->addRow($id['id'], $id['name'], $id['qty'], $id['price'], $options);
             }
 

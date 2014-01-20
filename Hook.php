@@ -18,7 +18,7 @@
         public function before($function, $action)
         {
             $hooks = Utils::get('ThinHooks');
-            if (!ake($function, $hooks)) {
+            if (!Arrays::exists($function, $hooks)) {
                 $hooks[$function] = array();
             }
             $hooks[$function]['before'] = $action;
@@ -29,7 +29,7 @@
         public function after($function, $action)
         {
             $hooks = Utils::get('ThinHooks');
-            if (!ake($function, $hooks)) {
+            if (!Arrays::exists($function, $hooks)) {
                 $hooks[$function] = array();
             }
             $hooks[$function]['after'] = $action;
@@ -41,8 +41,8 @@
         {
             $hooks = Utils::get('ThinHooks');
             $res = null;
-            if (ake($function, $hooks)) {
-                if (ake('before', $hooks[$function])) {
+            if (Arrays::exists($function, $hooks)) {
+                if (Arrays::exists('before', $hooks[$function])) {
                     $action = $hooks[$function]['before'];
                     if (is_callable($action, true, $before)) {
                         $res = $before();
@@ -54,7 +54,7 @@
 
                 $res .= call_user_func_array($function, $params);
 
-                if (ake('after', $hooks[$function])) {
+                if (Arrays::exists('after', $hooks[$function])) {
                     $action = $hooks[$function]['after'];
                     if (is_callable($action, true, $after)) {
                         $res .= $after();

@@ -43,7 +43,7 @@
 			$countBt = count($arrBacktrace);
 			for($i = $countBt - 1 ; $i >= 0 ; $i--) {
 				$arrCurrent = $arrBacktrace[$i];
-				if(ake("function", $arrCurrent) && (Arrays::inArray($arrCurrent["function"], $arrInclude) || (0 != strcasecmp($arrCurrent["function"], "dbug")))) {
+				if(Arrays::exists("function", $arrCurrent) && (Arrays::inArray($arrCurrent["function"], $arrInclude) || (0 != strcasecmp($arrCurrent["function"], "dbug")))) {
 					continue;
 				}
 

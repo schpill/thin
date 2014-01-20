@@ -32,7 +32,7 @@
             if (null === $sentences) {
                 return $sentence;
             }
-            if (ake($sentence, $sentences)) {
+            if (Arrays::exists($sentence, $sentences)) {
                 return $sentences[$sentence];
             }
 
@@ -53,8 +53,8 @@
 
             $res = dwn($url);
             $tab = json_decode($res, true);
-            if (ake('responseData', $tab)) {
-                if (ake('translatedText', $tab['responseData'])) {
+            if (Arrays::exists('responseData', $tab)) {
+                if (Arrays::exists('translatedText', $tab['responseData'])) {
                     $translation = $tab['responseData']['translatedText'];
                     $data = array(
                         'source'        => $source,

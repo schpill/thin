@@ -7,7 +7,7 @@
 
         public static function get($key, $default = null)
         {
-            return ake($key, static::$vars) ? static::$vars[$key] : $default;
+            return Arrays::exists($key, static::$vars) ? static::$vars[$key] : $default;
         }
 
         public static function set($key, $value = null)
@@ -23,7 +23,7 @@
 
         public static function has($key)
         {
-            return ake($key, static::$vars);
+            return Arrays::exists($key, static::$vars);
         }
 
         public static function clear($key = null)
@@ -31,7 +31,7 @@
             if (null === $key) {
                 static::$vars = array();
             } else {
-                if (ake($key, static::$vars)) {
+                if (Arrays::exists($key, static::$vars)) {
                     unset(static::$vars[$key]);
                 }
             }
@@ -96,7 +96,7 @@
 
         public static function getInstance($class, array $params = array())
         {
-            if (!ake($class, static::$_instances)) {
+            if (!Arrays::exists($class, static::$_instances)) {
                 self::$_instances[$class] = static::newInstance($class, $params);
             }
 
@@ -160,7 +160,7 @@
             if (Arrays::isArray($array2)) {
                 foreach ($array2 as $key => $val) {
                     if (Arrays::isArray($array2[$key])) {
-                        $array1[$key] = (ake($key, $array1) && Arrays::isArray($array1[$key])) ? static::mergeOptions($array1[$key], $array2[$key]) : $array2[$key];
+                        $array1[$key] = (Arrays::exists($key, $array1) && Arrays::isArray($array1[$key])) ? static::mergeOptions($array1[$key], $array2[$key]) : $array2[$key];
                     } else {
                         $array1[$key] = $val;
                     }

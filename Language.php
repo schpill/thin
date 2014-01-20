@@ -20,7 +20,7 @@
 
                 if (File::exists($file)) {
                     $translation = include($file);
-                    $this->_translation->populate(ake($config->getAction(), $translation) ? $translation[$config->getAction()] : $translation);
+                    $this->_translation->populate(Arrays::exists($config->getAction(), $translation) ? $translation[$config->getAction()] : $translation);
                 }
             }
         }

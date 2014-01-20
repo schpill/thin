@@ -71,7 +71,7 @@
          */
         public function bindIf($abstract, $concrete = null, $shared = false)
         {
-            if (!ake($abstract, $this)) {
+            if (!Arrays::exists($abstract, $this)) {
                 $this->bind($abstract, $concrete, $shared);
             }
         }
@@ -117,7 +117,7 @@
          */
         public function extend($abstract, \Closure $closure)
         {
-            if (!ake($abstract, $this->bindings)) {
+            if (!Arrays::exists($abstract, $this->bindings)) {
                 throw new \InvalidArgumentException("Type {$abstract} is not bound.");
             }
             // To "extend" a binding, we will grab the old "resolver" Closure and pass it
@@ -182,7 +182,7 @@
             // If an instance of the type is currently being managed as a singleton we'll
             // just return an existing instance instead of instantiating new instances
             // so the developer can keep using the same objects instance every time.
-            if (ake($abstract, $this->instances)) {
+            if (Arrays::exists($abstract, $this->instances)) {
                 return $this->instances[$abstract];
             }
             $concrete = $this->getConcrete($abstract);
@@ -217,7 +217,7 @@
             // If we don't have a registered resolver or concrete for the type, we'll just
             // assume each type is a concrete name and will attempt to resolve it as is
             // since the container should be able to resolve concretes automatically.
-            if (!ake($abstract, $this->bindings)) {
+            if (!Arrays::exists($abstract, $this->bindings)) {
                 return $abstract;
             } else {
                 return $this->bindings[$abstract]['concrete'];
@@ -308,7 +308,6 @@
                 return $parameter->getDefaultValue();
             } else {
                 $message = "Unresolvable dependency resolving [$parameter].";
-
                 throw new Exception($message);
             }
         }
@@ -345,7 +344,7 @@
          */
         protected function getAlias($abstract)
         {
-            return ake($abstract, $this->aliases) ? $this->aliases[$abstract] : $abstract;
+            return Arrays::exists($abstract, $this->aliases) ? $this->aliases[$abstract] : $abstract;
         }
 
         /**
@@ -366,7 +365,7 @@
          */
         public function offsetExists($key)
         {
-            return ake($key, $this->bindings);
+            return Arrays::exists($key, $this->bindings);
         }
 
         /**

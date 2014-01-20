@@ -50,7 +50,7 @@
         {
             $tab = json_decode(file_get_contents("http://api.deezer.com/2.0/playlist/$id/tracks?output=json"), true);
             $data = $tab['data'];
-            if (ake('next', $tab)) {
+            if (Arrays::exists('next', $tab)) {
                 $next = $tab['next'];
                 if (isset($next)) {
                     return static::next($next, $data);
@@ -64,7 +64,7 @@
 
             $tab = json_decode(file_get_contents($url), true);
             $data = array_merge($data, $tab['data']);
-            if (ake('next', $tab)) {
+            if (Arrays::exists('next', $tab)) {
                 $next = $tab['next'];
                 if (isset($next)) {
                     return static::next($next, $data);
