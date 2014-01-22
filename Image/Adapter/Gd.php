@@ -11,12 +11,12 @@
         * Stores function names for each image type
         */
         protected $_imgLoaders = array(
-            'image/jpeg'  => 'imagecreatefromjpeg',
-            'image/jpg'  => 'imagecreatefromjpeg',
-            'image/pjpeg' => 'imagecreatefromjpeg',
-            'image/png'   => 'imagecreatefrompng',
+            'image/jpeg'    => 'imagecreatefromjpeg',
+            'image/jpg'     => 'imagecreatefromjpeg',
+            'image/pjpeg'   => 'imagecreatefromjpeg',
+            'image/png'     => 'imagecreatefrompng',
             'image/x-png'   => 'imagecreatefrompng',
-            'image/gif'   => 'imagecreatefromgif'
+            'image/gif'     => 'imagecreatefromgif'
         );
 
         /**
@@ -229,5 +229,49 @@
             }
 
             return $this;
+        }
+
+        public function thumb($sourcefile, $endfile, $thumbWidth, $thumbHeight, $quality)
+        {
+            // Load image and get image size.
+            $img = imagecreatefrompng($sourcefile);
+            $width = imagesx( $img );
+            $height = imagesy( $img );
+
+            if($width == $height)
+            {
+                $newwidth = $thumbwidth;
+                $newheight = $thumbheight;
+            }
+
+            else if ($width > $height)
+            {
+                $newwidth = $thumbwidth;
+                $newheight = $thumbheight;
+            }
+
+            else
+            {
+                $newheight = $thumbheight;
+                $newwidth = $thumbwidth;
+            }
+
+            // Create a new temporary image.
+            $tmpimg = imagecreatetruecolor( $newwidth, $newheight );
+            imagealphablending($tmpimg, false);
+            imagesavealpha($tmpimg,true);
+            $transparent = imagecolorallocatealpha($tmpimg, 255, 255, 255, 127);
+            imagefilledrectangle($tmpimg, 0, 0, $newwidth, $newheight, $transparent);
+            // Copy and resize old image into new image.
+            imagecopyresampled( $tmpimg, $img, 0, 0, 0, 0, $newwidth, $newheight, $width, $height );
+
+            // Save thumbnail into a file.
+            $finalResult = imagepng( $tmpimg, $endfile, $quality);
+
+            // release the memory
+            imagedestroy($tmpimg);
+            imagedestroy($img);
+
+            return $finalResult;
         }
     }
