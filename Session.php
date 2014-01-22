@@ -27,10 +27,10 @@
                 session_start();
             }
             $this->_sessionName = $name;
-            if (!ake('__Thin__', $_SESSION)) {
+            if (!Arrays::exists('__Thin__', $_SESSION)) {
                 $_SESSION['__Thin__'] = array();
             }
-            if (!ake($this->_sessionName, $_SESSION['__Thin__'])) {
+            if (!Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
                 $_SESSION['__Thin__'][$this->_sessionName] = array();
                 $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $duration;
                 $_SESSION['__Thin__'][$this->_sessionName]['__start__'] = time();
@@ -51,10 +51,10 @@
 
         public function save()
         {
-            if (!ake('__Thin__', $_SESSION)) {
+            if (!Arrays::exists('__Thin__', $_SESSION)) {
                 $_SESSION['__Thin__'] = array();
             }
-            if (!ake($this->_sessionName, $_SESSION['__Thin__'])) {
+            if (!Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
                 $_SESSION['__Thin__'][$this->_sessionName] = array();
                 $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $this->_duration;
                 $_SESSION['__Thin__'][$this->_sessionName]['__start__'] = time();
@@ -139,7 +139,7 @@
 
         public function checkTimeout()
         {
-            if (ake($this->_sessionName, $_SESSION['__Thin__'])) {
+            if (Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
                 $timeout = $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'];
                 $start = $_SESSION['__Thin__'][$this->_sessionName]['__start__'];
                 if ($timeout + $start < time()) {
@@ -154,7 +154,7 @@
                 unset($_SESSION['__Thin__'][$this->_sessionName]);
                 return $this;
             } else {
-                if (ake($key, $_SESSION['__Thin__'][$this->_sessionName])) {
+                if (Arrays::exists($key, $_SESSION['__Thin__'][$this->_sessionName])) {
                     $_SESSION['__Thin__'][$this->_sessionName][$key] = null;
                     unset($_SESSION['__Thin__'][$this->_sessionName][$key]);
                     return $this;

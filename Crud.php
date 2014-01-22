@@ -33,7 +33,7 @@
             $now = array();
             $path = repl('crud.', '', $path);
             list($model, $seg) = explode('.', $path, 2);
-            return ake($model, $config) ? $config[$model][$seg] : null;
+            return Arrays::exists($model, $config) ? $config[$model][$seg] : null;
         }
 
         public function create($data)
@@ -330,8 +330,8 @@
             $query = repl('%', '', $query);
 
             foreach ($fields as $field => $fieldInfos) {
-                $label = (ake('label', $fieldInfos)) ? $fieldInfos['label'] : ucfirst(\Thin\Inflector::lower($field));
-                if(ake('contentList', $fieldInfos)) {
+                $label = (Arrays::exists('label', $fieldInfos)) ? $fieldInfos['label'] : ucfirst(\Thin\Inflector::lower($field));
+                if(Arrays::exists('contentList', $fieldInfos)) {
                     $segs = explode(" '", $query);
                     for ($i = 0 ; $i < count($segs) ; $i++) {
                         $seg = trim($segs[$i]);
@@ -704,7 +704,7 @@
             }
             $label = Html\Helper::display($fieldInfos['label']);
             $oldValue = $value;
-            if (ake('contentForm', $fieldInfos)) {
+            if (Arrays::exists('contentForm', $fieldInfos)) {
                 if (!empty($fieldInfos['contentForm'])) {
                     $content = $fieldInfos['contentForm'];
                     $content = repl(array('##self##', '##field##', '##em##'), array($value, $field, $em), $content);

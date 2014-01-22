@@ -293,7 +293,7 @@
 
         public function setGrammar($grammar, $replace)
         {
-            if (!ake($grammar, $this->_grammar)) {
+            if (!Arrays::exists($grammar, $this->_grammar)) {
                 $this->_grammar[$grammar] = $replace;
             }
             return $this;

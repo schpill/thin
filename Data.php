@@ -21,14 +21,14 @@
 
         public static function newOne($type, $data = array())
         {
-            $settings   = ake($type, static::$_settings) ? static::$_settings[$type] : array();
-            $fields     = ake($type, static::$_fields) ? static::$_fields[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : array();
+            $fields     = Arrays::exists($type, static::$_fields) ? static::$_fields[$type] : array();
 
             $obj = new Object;
             $obj->thin_type = $type;
             if (count($fields)) {
                 foreach ($fields as $key => $infos) {
-                    $obj->$key = (ake($key, $data)) ? $data[$key] : null;
+                    $obj->$key = (Arrays::exists($key, $data)) ? $data[$key] : null;
                 }
             }
             return $obj;
@@ -38,7 +38,7 @@
         {
             $dir        = static::checkDir($type);
             static::_clean(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'write', $type);
-            if (ake($type, static::$_all)) {
+            if (Arrays::exists($type, static::$_all)) {
                 $objects = static::$_all[$type];
             } else {
                 $objects    = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . '*.data', GLOB_NOSORT);
@@ -71,10 +71,10 @@
 
         private static function _clean($directory, $type)
         {
-            $settings       = ake($type, static::$_settings) ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : array();
             $versioning     = false;
 
-            if (ake('versioning', $settings)) {
+            if (Arrays::exists('versioning', $settings)) {
                 $versioning = $settings['versioning'];
             }
 
@@ -98,7 +98,7 @@
                     $tab        = explode(DS, $file);
                     $fileName   = Arrays::last($tab);
                     list($id, $timestamp) = explode('_', repl('.data', '', $fileName), 2);
-                    if (!ake($id, $collection)) {
+                    if (!Arrays::exists($id, $collection)) {
                         $collection[$id] = $timestamp;
                     } else {
                         if ($collection[$id] < $timestamp) {
@@ -127,7 +127,7 @@
 
         public static function indexes($type)
         {
-            if (!ake($type, static::$_indexes)) {
+            if (!Arrays::exists($type, static::$_indexes)) {
                 $collection = array();
                 $objects    = static::getAll($type);
                 if (count($objects)) {
@@ -149,8 +149,8 @@
 
         public static function getObject($pathObject, $type = null)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('getObject', $settings)       ? $settings['getObject']    : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('getObject', $settings)       ? $settings['getObject']    : null;
             static::_hook($hook, func_get_args(), 'before');
             if (!is_string($pathObject)) {
                 $id = isset($pathObject->id) ? $pathObject->id : null;
@@ -172,8 +172,8 @@
 
         public static function getById($type, $id, $returnObject = true)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('getById', $settings)         ? $settings['getById']      : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('getById', $settings)         ? $settings['getById']      : null;
             static::_hook($hook, func_get_args(), 'before');
             $dir    = static::checkDir($type);
             static::_clean(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'write', $type);
@@ -193,13 +193,13 @@
 
         public static function add($type, $data = array(), $checkTuple = null)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $fields         = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
-            $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
-            $hook           = ake('add', $settings)             ? $settings['add']          : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $fields         = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $checkTuple     = Arrays::exists('checkTuple', $settings)      ? $settings['checkTuple']   : null;
+            $hook           = Arrays::exists('add', $settings)             ? $settings['add']          : null;
             static::_hook($hook, func_get_args(), 'before');
 
-            if (ake('beforeAdd', $settings)) {
+            if (Arrays::exists('beforeAdd', $settings)) {
                 $settings['beforeAdd']($type, $data);
             }
 
@@ -211,12 +211,12 @@
                 foreach ($fields as $field => $info) {
                     $val = $data[$field];
                     if (empty($val)) {
-                        if (!ake('canBeNull', $info)) {
+                        if (!Arrays::exists('canBeNull', $info)) {
                             static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
                     }
-                    if (ake('checkValue', $info)) {
+                    if (Arrays::exists('checkValue', $info)) {
                         $closure = $info['checkValue'];
                         if ($closure instanceof \Closure) {
                             $val = $closure($val);
@@ -228,7 +228,7 @@
             $key        = static::makeKey($type);
             $infos      = array('id' => $key, 'date_create' => time()) + $data;
             $newPost    = static::store($type, $infos, $key);
-            if (ake('afterAdd', $settings)) {
+            if (Arrays::exists('afterAdd', $settings)) {
                 $settings['afterAdd']($type, $data, $newPost);
             }
             static::_hook($hook, func_get_args(), 'after');
@@ -237,29 +237,29 @@
 
         public static function edit($type, $id, $data = array())
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
-            $hook           = ake('edit', $settings)            ? $settings['edit']         : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $checkTuple     = Arrays::exists('checkTuple', $settings)      ? $settings['checkTuple']   : null;
+            $hook           = Arrays::exists('edit', $settings)            ? $settings['edit']         : null;
             static::_hook($hook, func_get_args(), 'before');
-            $fields         = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $fields         = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : array();
 
             if (empty($data) && count($_POST)) {
                 $data += $_POST;
             }
 
-            if (ake('beforeEdit', $settings)) {
+            if (Arrays::exists('beforeEdit', $settings)) {
                 $settings['beforeEdit']($type, $id, $data);
             }
             if (count($fields)) {
                 foreach ($fields as $field => $info) {
                     $val = $data[$field];
                     if (empty($val)) {
-                        if (!ake('canBeNull', $info)) {
+                        if (!Arrays::exists('canBeNull', $info)) {
                             static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
                     }
-                    if (ake('checkValue', $info)) {
+                    if (Arrays::exists('checkValue', $info)) {
                         $closure = $info['checkValue'];
                         if ($closure instanceof \Closure) {
                             $val = $closure($val);
@@ -273,7 +273,7 @@
 
             $newPost    = static::store($type, $infos, $id);
 
-            if (ake('afterEdit', $settings)) {
+            if (Arrays::exists('afterEdit', $settings)) {
                 $settings['afterEdit']($type, $data, $newPost);
             }
             static::_hook($hook, func_get_args(), 'after');
@@ -282,20 +282,20 @@
 
         public static function delete($type, $id)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $indexes        = ake('indexes', $settings)         ? $settings['indexes']      : null;
-            $hook           = ake('delete', $settings)          ? $settings['delete']       : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $indexes        = Arrays::exists('indexes', $settings)         ? $settings['indexes']      : null;
+            $hook           = Arrays::exists('delete', $settings)          ? $settings['delete']       : null;
             static::_hook($hook, func_get_args(), 'before');
 
 
-            if (ake('beforeDelete', $settings)) {
+            if (Arrays::exists('beforeDelete', $settings)) {
                 $settings['beforeDelete']($type, $id);
             }
 
-            if (ake('relationships', $settings)) {
+            if (Arrays::exists('relationships', $settings)) {
                 $cardinalities = array('oneToOne', 'oneToMany', 'manyToMany');
                 foreach ($settings['relationships'] as $field => $relationship) {
-                    if (ake('type', $relationship) && ake('onDelete', $relationship)) {
+                    if (Arrays::exists('type', $relationship) && Arrays::exists('onDelete', $relationship)) {
                         if (Arrays::inArray($relationship['type'], $cardinalities) && 'cascade' == $relationship['onDelete']) {
                             $fieldType = substr($field, 0, -1);
                             $datastoDelete = static::query($fieldType, $type . ' = ' . $id);
@@ -323,7 +323,7 @@
             $object = static::getById($type, $id, false);
             if (null !== $object) {
                 static::_hook($hook, func_get_args(), 'after');
-                if (ake('afterDelete', $settings)) {
+                if (Arrays::exists('afterDelete', $settings)) {
                     $settings['afterDelete']($type, $id);
                 }
                 return File::delete($object);
@@ -353,14 +353,14 @@
 
         public static function store($type, $flat, $key = null)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('store', $settings)           ? $settings['store']        : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('store', $settings)           ? $settings['store']        : null;
             static::_hook($hook, func_get_args(), 'before');
-            $checkTuple     = ake('checkTuple', $settings)      ? $settings['checkTuple']   : null;
-            $indexes        = ake('indexes', $settings)         ? $settings['indexes']      : null;
+            $checkTuple     = Arrays::exists('checkTuple', $settings)      ? $settings['checkTuple']   : null;
+            $indexes        = Arrays::exists('indexes', $settings)         ? $settings['indexes']      : null;
 
 
-            if (ake('beforeStore', $settings)) {
+            if (Arrays::exists('beforeStore', $settings)) {
                 $settings['beforeDelete']($type, $flat);
             }
 
@@ -427,14 +427,14 @@
             File::delete($file);
             File::put($file, $serialize);
 
-            $fields     = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $fields     = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : array();
             $versioning = false;
 
             if (count($fields)) {
                 foreach ($fields as $field => $info) {
                     $val = $object->$field;
                     if (empty($val)) {
-                        if (!ake('canBeNull', $info)) {
+                        if (!Arrays::exists('canBeNull', $info)) {
                             static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
                         }
@@ -442,7 +442,7 @@
                 }
             }
 
-            if (ake('versioning', $settings)) {
+            if (Arrays::exists('versioning', $settings)) {
                 $versioning = $settings['versioning'];
             }
 
@@ -459,7 +459,7 @@
             }
 
 
-            if (ake('afterStore', $settings)) {
+            if (Arrays::exists('afterStore', $settings)) {
                 $settings['afterStore']($type, $flat);
             }
 
@@ -470,8 +470,8 @@
         public static function indexRemove($indexField, $indexInfo, $object)
         {
             $type       = $object->thin_type;
-            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook       = ake('indexRemove', $settings)     ? $settings['indexRemove']  : null;
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = Arrays::exists('indexRemove', $settings)     ? $settings['indexRemove']  : null;
             static::_hook($hook, func_get_args(), 'before');
             $dirName    = static::checkDir($type);
             $indexDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'indexes';
@@ -485,14 +485,14 @@
         public static function indexCreate($indexField, $indexInfo, $object)
         {
             $type       = $object->thin_type;
-            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook       = ake('indexCreate', $settings)     ? $settings['indexCreate']  : null;
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = Arrays::exists('indexCreate', $settings)     ? $settings['indexCreate']  : null;
             static::_hook($hook, func_get_args(), 'before');
             $dirName    = static::checkDir($type);
             $indexDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'indexes';
             File::mkdir($indexDir . DS . $indexField, 0777);
 
-            $typeIndex = ake('type', $indexInfo) ? $indexInfo['type'] : 'none';
+            $typeIndex = Arrays::exists('type', $indexInfo) ? $indexInfo['type'] : 'none';
 
             if ('fulltext' == $typeIndex) {
                 $words = static::prepareFulltext($object->$indexField);
@@ -549,8 +549,8 @@
 
         public static function makeKey($type, $keyLength = 9)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('makeKey', $settings)         ? $settings['makeKey']      : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('makeKey', $settings)         ? $settings['makeKey']      : null;
             static::_hook($hook, func_get_args(), 'before');
 
             $dir            = static::checkDir($type);
@@ -567,8 +567,8 @@
 
         public static function checkDir($type)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('checkDir', $settings)        ? $settings['checkDir']     : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('checkDir', $settings)        ? $settings['checkDir']     : null;
             static::_hook($hook, func_get_args(), 'before');
 
             $dirName    = Inflector::lower($type . 's');
@@ -598,7 +598,7 @@
             }
             $label = Html\Helper::display($fieldInfos['label']);
             $oldValue = $value;
-            if (ake('contentForm', $fieldInfos)) {
+            if (Arrays::exists('contentForm', $fieldInfos)) {
                 if (!empty($fieldInfos['contentForm'])) {
                     $content = $fieldInfos['contentForm'];
                     $content = repl(array('##self##', '##field##', '##type##'), array($value, $field, $type), $content);
@@ -625,8 +625,8 @@
 
         public static function query($type, $conditions = '')
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('query', $settings)           ? $settings['query']        : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('query', $settings)           ? $settings['query']        : null;
             static::_hook($hook, func_get_args(), 'before');
 
             static::_incQueries(static::_getTime());
@@ -667,9 +667,9 @@
 
                     list($field, $op, $value) = explode(' ', $conditions, 3);
 
-                    if (ake($field, $indexes)) {
+                    if (Arrays::exists($field, $indexes)) {
                         $indexInfo      = $indexes[$field];
-                        $typeIndex      = ake('type', $indexInfo) ? $indexInfo['type'] : 'none';
+                        $typeIndex      = Arrays::exists('type', $indexInfo) ? $indexInfo['type'] : 'none';
                         if ('fulltext' == $typeIndex) {
                             $words = static::prepareFulltext($value);
                             if (count($words)) {
@@ -724,12 +724,12 @@
             return $results;
 
             if (!Arrays::isArray($orderField)) {
-                if (null !== $orderField && !ake($orderField, $fields)) {
+                if (null !== $orderField && !Arrays::exists($orderField, $fields)) {
                     $fields[$orderField] = array();
                 }
             } else {
                 foreach ($orderField as $tmpField) {
-                    if (null !== $tmpField && !ake($tmpField, $fields)) {
+                    if (null !== $tmpField && !Arrays::exists($tmpField, $fields)) {
                         $fields[$tmpField] = array();
                     }
                 }
@@ -949,8 +949,8 @@
 
         public static function order($type, $results, $field = 'date_create', $orderDirection = 'ASC')
         {
-            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook       = ake('order', $settings)           ? $settings['order']        : null;
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = Arrays::exists('order', $settings)           ? $settings['order']        : null;
             static::_hook($hook, func_get_args(), 'before');
             $queryKey   = sha1(serialize(func_get_args()));
             $cache      = static::cache($type, $queryKey);
@@ -962,12 +962,12 @@
             $fields['id']           = array();
             $fields['date_create']  = array();
             if (!Arrays::isArray($field)) {
-                if (null !== $field && !ake($field, $fields)) {
+                if (null !== $field && !Arrays::exists($field, $fields)) {
                     $fields[$field] = array();
                 }
             } else {
                 foreach ($field as $tmpField) {
-                    if (null !== $tmpField && !ake($tmpField, $fields)) {
+                    if (null !== $tmpField && !Arrays::exists($tmpField, $fields)) {
                         $fields[$tmpField] = array();
                     }
                 }
@@ -1080,10 +1080,10 @@
 
         private static function getModel($type)
         {
-            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook       = ake('getModel', $settings)        ? $settings['getModel']     : null;
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = Arrays::exists('getModel', $settings)        ? $settings['getModel']     : null;
             static::_hook($hook, func_get_args(), 'before');
-            if (ake($type, static::$_fields)) {
+            if (Arrays::exists($type, static::$_fields)) {
                 static::_hook($hook, func_get_args(), 'after');
                 return static::$_fields[$type];
             }
@@ -1093,8 +1093,8 @@
 
         public static function makeQuery($queryJs, $type)
         {
-            $settings   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook       = ake('makeQuery', $settings)       ? $settings['makeQuery']    : null;
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = Arrays::exists('makeQuery', $settings)       ? $settings['makeQuery']    : null;
             static::_hook($hook, func_get_args(), 'before');
             $queryJs = substr($queryJs, 9, -2);
 
@@ -1157,7 +1157,7 @@
             $new['id'] = $object->id;
             $new['date_create'] = $object->date_create;
             foreach ($fields as $field => $info) {
-                if (ake($field, $newData)) {
+                if (Arrays::exists($field, $newData)) {
                     $new[$field] = $newData[$field];
                 } else {
                     $value = !empty($object->$field) ? $object->$field : null;
@@ -1165,7 +1165,7 @@
                 }
             }
             foreach ($newData as $newField => $value) {
-                if (!ake($newField, $fields)) {
+                if (!Arrays::exists($newField, $fields)) {
                     $new[$newField] = $value;
                 }
             }
@@ -1176,8 +1176,8 @@
 
         public static function cache($type, $key, $data = null)
         {
-            $settings       = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook           = ake('cache', $settings)           ? $settings['cache']        : null;
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook           = Arrays::exists('cache', $settings)           ? $settings['cache']        : null;
             static::_hook($hook, func_get_args(), 'before');
             $dir    = static::checkDir($type);
             $file   = STORAGE_PATH . DS . 'data' . DS . $dir . DS . $key . '.cache';
@@ -1196,8 +1196,9 @@
 
         public static function event($type)
         {
-            $settings                   = ake($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $hook                       = ake('event', $settings)           ? $settings['event']        : null;
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $hook       = Arrays::exists('event', $settings)           ? $settings['event']        : null;
+
             static::_hook($hook, func_get_args(), 'before');
             static::$_all[$type]        = array();
             static::$_indexes[$type]    = array();
@@ -1303,7 +1304,7 @@
         {
             if (null !== $hook) {
                 if (Arrays::isArray($hook)) {
-                    if (ake($when, $hook)) {
+                    if (Arrays::exists($when, $hook)) {
                         if ($hook[$when] instanceof \Closure) {
                             $objClosure = new ThinClosure;
                             $arg = array();

@@ -89,7 +89,7 @@
          */
         public function has($name)
         {
-            return ake($name, $this->options) && false === empty($this->options[$name]) ;
+            return Arrays::exists($name, $this->options) && false === empty($this->options[$name]) ;
         }
 
         /**

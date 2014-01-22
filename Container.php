@@ -21,7 +21,7 @@
 
         public function offsetGet($id)
         {
-            if (!ake($id, $this->values)) {
+            if (!Arrays::exists($id, $this->values)) {
                 throw new Exception(sprintf('Identifier "%s" is not defined.', $id));
             }
 
@@ -62,7 +62,7 @@
 
         public function raw($id)
         {
-            if (!ake($id, $this->values)) {
+            if (!Arrays::exists($id, $this->values)) {
                 throw new Exception(sprintf('Identifier "%s" is not defined.', $id));
             }
 
@@ -71,7 +71,7 @@
 
         public function extend($id, \Closure $callable)
         {
-            if (!ake($id, $this->values)) {
+            if (!Arrays::exists($id, $this->values)) {
                 throw new Exception(sprintf('Identifier "%s" is not defined.', $id));
             }
 

@@ -36,7 +36,7 @@
 
             $whereList      = '';
 
-            if (ake('whereList', $this->_config)) {
+            if (\Thin\Arrays::exists('whereList', $this->_config)) {
                 $whereList = $this->_config['whereList'];
             }
 
@@ -88,7 +88,7 @@
             $deletable  = $this->_config['deletable'];
             $duplicable = $this->_config['duplicable'];
 
-            if (ake('export', $this->_config)) {
+            if (\Thin\Arrays::exists('export', $this->_config)) {
                 $export     = $this->_config['export'];
 
                 if (count($export)) {
@@ -137,7 +137,7 @@
                 foreach ($fields as $field => $infosField) {
                     if (true === $infosField['onList']) {
                         $content = $infosField['content'];
-                        $options = (ake('options', $infosField)) ? $infosField['options'] : array();
+                        $options = (\Thin\Arrays::exists('options', $infosField)) ? $infosField['options'] : array();
                         if (empty($options)) {
                             $options = array();
                         }

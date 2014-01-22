@@ -42,7 +42,7 @@
                     if (is_array($config)) {
                         if (true === $environment) {
                             $configMerge = $config['production'];
-                            if (ake(APPLICATION_ENV, $config)) {
+                            if (Arrays::exists(APPLICATION_ENV, $config)) {
                                 $configMerge = static::merge($configMerge, $config[APPLICATION_ENV]);
                             }
                             $config = $configMerge;
@@ -72,7 +72,7 @@
             $defines = get_defined_constants();
             $defined->populate($defines, 'defined');
             if (null !== $var) {
-                return (true === ake($var, $defines)) ? $defines[$var] : null;
+                return (true === Arrays::exists($var, $defines)) ? $defines[$var] : null;
             }
             return $defined;
         }
@@ -97,7 +97,7 @@
                 if (File::exists($file)) {
                     $config = include($file);
                     $configMerge = $config['production'];
-                    if (ake(APPLICATION_ENV, $config)) {
+                    if (Arrays::exists(APPLICATION_ENV, $config)) {
                         $configMerge = static::merge($configMerge, $config[APPLICATION_ENV]);
                     }
                     $config = $configMerge;
@@ -105,7 +105,7 @@
                     $actual = $config;
                     for ($i = 0 ; $i < count($keys) ; $i++) {
                         $key = trim($keys[$i]);
-                        if (ake($key, $actual)) {
+                        if (Arrays::exists($key, $actual)) {
                             $actual = $actual[$key];
                         }
                     }

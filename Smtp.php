@@ -52,7 +52,7 @@
             );
 
             foreach ($required as $field) {
-                if (!ake($field, $connection)) {
+                if (!Arrays::exists($field, $connection)) {
                     throw new Exception($field . " is mandatory to use this class.");
                 }
             }

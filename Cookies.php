@@ -22,7 +22,7 @@
          */
         public static function get($name, $default = null)
         {
-            if (ake($name, $_COOKIE)) {
+            if (Arrays::exists($name, $_COOKIE)) {
                 if (isset($_COOKIE[$name])) {
                     return $_COOKIE[$name];
                 }

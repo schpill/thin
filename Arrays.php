@@ -99,7 +99,7 @@
                 // The path has already been separated into keys
                 $keys = $path;
             } else {
-                if (ake($path, $array)) {
+                if (static::exists($path, $array)) {
                     // No need to do extra processing
                     return $array[$path];
                 }
@@ -247,7 +247,7 @@
          */
         public static function get($array, $key, $default = null)
         {
-            if (!ake($key, $array)) {
+            if (!static::exists($key, $array)) {
                 return $default;
             }
             return !empty($array[$key]) ? $array[$key] : $default;
@@ -683,5 +683,10 @@
                 }
             }
             return $param;
+        }
+
+        public static function exists($key, array $search)
+        {
+            return array_key_exists($key, $search);
         }
     }

@@ -67,7 +67,7 @@
                 $attributes['enctype'] = 'multipart/form-data';
             }
 
-            if (!ake('accept-charset', $attributes)) {
+            if (!Arrays::exists('accept-charset', $attributes)) {
                 $attributes['accept-charset'] = 'utf-8';
             }
 
@@ -175,7 +175,7 @@
         public static function input($type, $name, $value = null, $attributes = array(), $label = '', $checkbox = false)
         {
             $name = (isset($attributes['name'])) ? $attributes['name'] : $name;
-            if (!ake('required', $attributes)) {
+            if (!Arrays::exists('required', $attributes)) {
                 $required = false;
             } else {
                 $required = $attributes['required'];
@@ -183,7 +183,7 @@
             if (false === $required) {
                 unset($attributes['required']);
             }
-            if (!ake('id', $attributes)) {
+            if (!Arrays::exists('id', $attributes)) {
                 $attributes['id'] = $name;
             }
             $id = static::id($name, $attributes);
@@ -251,9 +251,9 @@
             $attributes['name'] = $name;
             $attributes['id'] = static::id($name, $attributes);
 
-            if ( ! ake('rows', $attributes)) $attributes['rows'] = 10;
-            if ( ! ake('cols', $attributes)) $attributes['cols'] = 50;
-            if ( ! ake('required', $attributes)) $attributes['required'] = false;
+            if ( ! Arrays::exists('rows', $attributes)) $attributes['rows'] = 10;
+            if ( ! Arrays::exists('cols', $attributes)) $attributes['cols'] = 50;
+            if ( ! Arrays::exists('required', $attributes)) $attributes['required'] = false;
 
             $required = $attributes['required'];
             if (false === $required) {
@@ -447,7 +447,7 @@
             // If an ID has been explicitly specified in the attributes, we will
             // use that ID. Otherwise, we will look for an ID in the array of
             // label names so labels and their elements have the same ID.
-            if (ake('id', $attributes)) {
+            if (Arrays::exists('id', $attributes)) {
                 return $attributes['id'];
             }
             if (in_array($name, static::$labels)) {

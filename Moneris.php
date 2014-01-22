@@ -433,7 +433,7 @@
             }
 
             if (Arrays::isArray($this->_classConfigs)) {
-                if (ake($key, $this->_classConfigs)) {
+                if (Arrays::exists($key, $this->_classConfigs)) {
                     return $this->_classConfigs[$key];
                 }
             }

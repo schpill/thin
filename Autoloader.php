@@ -8,7 +8,7 @@
 
         public static function registerNamespace($ns, $path)
         {
-            if (!ake($ns, static::$_paths)) {
+            if (!array_key_exists($ns, static::$_paths)) {
                 static::$_paths[$ns] = $path;
             }
         }
@@ -30,16 +30,16 @@
                 'c' => 'Thin\\Container',
                 'o' => 'Thin\\Object',
             );
-            if (ake($className, $aliases)) {
+            if (array_key_exists($className, $aliases)) {
                 class_alias($aliases[$className], $className);
                 $className = $aliases[$className];
             }
             $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $className) . '.php';
-            if(is_readable($check) && !ake($className, static::$_classes)) {
+            if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
                 require_once $check;
                 $classes[$className] = true;
             } else {
-                if (!ake($className, static::$_classes)) {
+                if (!array_key_exists($className, static::$_classes)) {
                     if (strstr($className, 'ResultModelCollection')) {
                         if (!class_exists($className)) {
                             $addLoadMethod = 'public function first() {return $this->cursor(1);} public function last() {return $this->cursor(count($this));} public function cursor($key) {$val = $key - 1; return $this[$val];} public function load(){$coll = $this->_args[0][0];$pk = $coll->pk();$objId = $coll->$pk;return $coll->find($objId);}';
@@ -53,7 +53,7 @@
                             static::$_classes[$className] = true;
                         }
                     }
-                    if (!ake($className, static::$_classes)) {
+                    if (!array_key_exists($className, static::$_classes)) {
                         class_alias('Thin\\Container', $className);
                         static::$_classes[$className] = true;
                     }

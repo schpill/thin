@@ -245,7 +245,7 @@
             Config::load('mimes');
             $mimes = (null !== config::get('mimes')) ? config::get('mimes') : array();
 
-            if (!ake($extension, $mimes)) {
+            if (!Arrays::exists($extension, $mimes)) {
                 return $default;
             }
 

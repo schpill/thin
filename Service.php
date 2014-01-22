@@ -62,7 +62,7 @@
 
         public function get($id)
         {
-            if (!ake($id, $this->services)) {
+            if (!Arrays::exists($id, $this->services)) {
                 throw new InvalidArgumentException(sprintf('Service "%s" is not defined.', $id));
             }
 
@@ -76,7 +76,7 @@
 
         public function getByPrefix($prefix)
         {
-            if (!ake($prefix, $this->prefixed)) {
+            if (!Arrays::exists($prefix, $this->prefixed)) {
                 return array();
             }
 
@@ -90,7 +90,7 @@
 
         public function remove($id)
         {
-            if (!ake($id, $this->services)) {
+            if (!Arrays::exists($id, $this->services)) {
                 throw new InvalidArgumentException(sprintf('Service "%s" is not defined.', $id));
             }
 

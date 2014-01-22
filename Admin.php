@@ -19,7 +19,7 @@
             $file = APPLICATION_PATH . DS . 'config' . DS . 'admin.php';
             $infos = include($file);
             list($types, $fields) = $infos;
-            if (ake($type, $fields)) {
+            if (Arrays::exists($type, $fields)) {
                 return $fields[$type];
             }
             return null;
@@ -144,7 +144,7 @@
             }
             $label = Html\Helper::display($fieldInfos['label']);
             $oldValue = $value;
-            if (ake('contentForm', $fieldInfos)) {
+            if (Arrays::exists('contentForm', $fieldInfos)) {
                 if (!empty($fieldInfos['contentForm'])) {
                     $content = $fieldInfos['contentForm'];
                     $content = repl(array('##self##', '##field##', '##type##'), array($value, $field, $type), $content);

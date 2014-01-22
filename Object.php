@@ -37,7 +37,7 @@
             if (isset($this->thin_type)) {
                 $type = $this->thin_type;
                 $data = array();
-                if (ake($type, Data::$_fields)) {
+                if (Arrays::exists($type, Data::$_fields)) {
                     $fields = Data::$_fields[$type];
                     foreach ($fields as $field => $info) {
                         $data[$field] = (isset($this->$field)) ? $this->$field : null;
@@ -57,7 +57,7 @@
         {
             if (isset($this->thin_type)) {
                 $type = $this->thin_type;
-                if (ake($type, Data::$_fields)) {
+                if (Arrays::exists($type, Data::$_fields)) {
                     if (isset($this->id)) {
                         $del = Data::delete($type, $this->id);
                     }
@@ -83,9 +83,9 @@
                 if (isset($this->$var)) {
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
-                        $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                        if (ake('relationships', $settings)) {
-                            if (ake($var, $settings['relationships'])) {
+                        $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                        if (Arrays::exists('relationships', $settings)) {
+                            if (Arrays::exists($var, $settings['relationships'])) {
                                 return Data::getById($var, $this->$var);
                             }
                         }
@@ -94,10 +94,10 @@
                 } else {
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
-                        $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                        $relationships = ake('relationships', $settings) ? $settings['relationships'] : array();
-                        if (ake($var, $relationships) && 's' == $var[strlen($var) - 1]) {
-                            if (ake($var, $relationships)) {
+                        $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                        $relationships = Arrays::exists('relationships', $settings) ? $settings['relationships'] : array();
+                        if (Arrays::exists($var, $relationships) && 's' == $var[strlen($var) - 1]) {
+                            if (Arrays::exists($var, $relationships)) {
                                 $res = Data::query(substr($var, 0, -1), "$type = " . $this->id);
                                 $collection = array();
                                 if (count($res)) {
@@ -108,9 +108,9 @@
                                 }
                                 return (1 == count($collection)) ? Arrays::first($collection) : $collection;
                             }
-                        } elseif (ake('defaultValues', $settings)) {
+                        } elseif (Arrays::exists('defaultValues', $settings)) {
                             if (Arrays::isArray($settings['defaultValues'])) {
-                                if(ake($this->$var, $settings['defaultValues'])) {
+                                if(Arrays::exists($this->$var, $settings['defaultValues'])) {
                                     return $settings['defaultValues'][$this->$var];
                                 }
                             }
@@ -128,12 +128,12 @@
                 $var = Inflector::lower($uncamelizeMethod);
                 if (!empty($var)) {
                     if (isset($this->thin_type)) {
-                        $fields = ake($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : array();
-                        if(!ake($var, $fields)) {
+                        $fields = Arrays::exists($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : array();
+                        if(!Arrays::exists($var, $fields)) {
                             throw new Exception($var . ' is not defined in the model => ' . $this->_fields);
                         } else {
                             $settingsField = $fields[$var];
-                            if (ake('checkValue', $settingsField)) {
+                            if (Arrays::exists('checkValue', $settingsField)) {
                                 $functionCheck = $settingsField['checkValue'];
                                 $value = $functionCheck($value);
                             }
@@ -204,7 +204,7 @@
                     return call_user_func_array($this->$func, $argv);
                 }
             }
-            if (ake($func, $this->_closures)) {
+            if (Arrays::exists($func, $this->_closures)) {
                 if ($this->_closures[$func] instanceof \Closure) {
                     return call_user_func_array($this->_closures[$func] , $argv);
                 }
@@ -237,12 +237,12 @@
             if (isset($this->$key)) {
                 if (isset($this->thin_type)) {
                     $type = $this->thin_type;
-                    $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                    if (ake('relationships', $settings)) {
-                        if (ake($key, $settings['relationships']) && 's' != $key[strlen($key) - 1]) {
+                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                    if (Arrays::exists('relationships', $settings)) {
+                        if (Arrays::exists($key, $settings['relationships']) && 's' != $key[strlen($key) - 1]) {
                             return Data::getById($key, $this->$key);
                         }
-                        if (ake($key, $settings['relationships']) && 's' == $key[strlen($key) - 1]) {
+                        if (Arrays::exists($key, $settings['relationships']) && 's' == $key[strlen($key) - 1]) {
                             return Data::query(substr($key, 0, -1), "$type = " . $this->id);
                         }
                     }
@@ -303,9 +303,9 @@
             if (isset($this->$var)) {
                 if (isset($this->thin_type)) {
                     $type = $this->thin_type;
-                    $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                    if (ake('relationships', $settings)) {
-                        if (ake($var, $settings['relationships'])) {
+                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                    if (Arrays::exists('relationships', $settings)) {
+                        if (Arrays::exists($var, $settings['relationships'])) {
                             return Data::getById($var, $this->$var);
                         }
                     }
@@ -314,9 +314,9 @@
             } else {
                 if (isset($this->thin_type)) {
                     $type = $this->thin_type;
-                    $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                    if (ake($var, $settings['relationships']) && 's' == $var[strlen($var) - 1]) {
-                        if (ake($var, $settings['relationships'])) {
+                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                    if (Arrays::exists($var, $settings['relationships']) && 's' == $var[strlen($var) - 1]) {
+                        if (Arrays::exists($var, $settings['relationships'])) {
                             $res = Data::query(substr($var, 0, -1), "$type = " . $this->id);
                             $collection = array();
                             if (count($res)) {
@@ -407,7 +407,7 @@
             if (isset($this->thin_type)) {
                 $type = $this->thin_type;
 
-                if (ake($type, Data::$_fields)) {
+                if (Arrays::exists($type, Data::$_fields)) {
                     $fields = array();
                     $dataFields = Data::$_fields[$type];
                     foreach ($dataFields as $dataField => $info) {
