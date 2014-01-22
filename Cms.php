@@ -117,6 +117,27 @@
             return $value;
         }
 
+        public static function translate($key, $params = array(), $default = null)
+        {
+            $page       = container()->getCmsPage();
+            $idPage     = $page->getId();
+            $query      = new Querydata('translation');
+            $res        = $query->where("page = $idPage")->whereAnd("key = $key")->get();
+            if (count($res)) {
+                $row    = $query->first($res);
+                $value  = static::lng($row->getValue(), container()->getCmsLanguage());
+            } else {
+                $value = $default;
+            }
+            if (!empty($value) && !empty($params)) {
+                foreach ($params as $k => $v) {
+                    $needle = "##$k##";
+                    $value = repl($needle, $v, $value);
+                }
+            }
+            return $default;
+        }
+
         public static function display()
         {
             $page       = container()->getCmsPage();
@@ -125,6 +146,36 @@
             File::delete($file);
             File::put($file, $content);
             require $file;
+        }
+
+        public static function execSnippet($name, $params = array())
+        {
+            $page       = container()->getCmsPage();
+            $query      = new Querydata('snippet');
+            $res        = $query->where("name = $name")->get();
+            if (count($res)) {
+                $row    = $query->first($res);
+                $code   = $row->getCode();
+
+                if (!empty($code) && !empty($params)) {
+                    foreach ($params as $k => $v) {
+                        $needle = "##$k##";
+                        $code = repl($needle, $v, $code);
+                    }
+                }
+
+                $content    = static::sanitize('{{' . "\n" . $code);
+                $file       = CACHE_PATH . DS . md5($content . $page->getName()) . '.cms';
+                File::delete($file);
+                File::put($file, $content);
+                ob_start();
+                require $file;
+                $render = ob_get_contents();
+                ob_end_clean();
+                File::delete($file);
+                return $render;
+            }
+            return null;
         }
 
         private static function sanitize($content)

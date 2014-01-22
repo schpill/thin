@@ -120,6 +120,34 @@
         }
     }
 
+    if (!function_exists('cms_url_theme')) {
+        function cms_url_theme()
+        {
+            $theme = \Thin\Cms::getOption('theme');
+            return URLSITE . 'themes/' . $theme;
+        }
+    }
+
+    if (!function_exists('cms_url_page')) {
+        function cms_url_page()
+        {
+            $page = container()->getCmsPage();
+            return URLSITE . $page->getUrl();
+        }
+    }
+
+    if (!function_exists('cms_snippet')) {
+        function cms_snippet($name, $params = array(), $echo = true)
+        {
+            $snippet = \Thin\Cms::execSnippet($name, $params);
+            if (true === $echo) {
+                echo $snippet;
+            } else {
+                return $snippet;
+            }
+        }
+    }
+
     if (!function_exists('cms_objects')) {
         function cms_objects($collection)
         {
@@ -142,10 +170,10 @@
         }
     }
 
-    if (!function_exists('t')) {
-        function t($str, $module = 'general')
+    if (!function_exists('cms_translate')) {
+        function cms_translate($key, $params = array(), $default = null)
         {
-            return \Thin\Cms::translate($str, $module);
+            return \Thin\Cms::translate($key, $params, $default);
         }
     }
 
