@@ -61,8 +61,8 @@
             $args = func_get_args();
             if (0 < count($args)) {
                 $closure = array_shift($args);
-                if(is_callable($callback)) {
-                    return call_user_func_array($callback, $args);
+                if(is_callable($closure)) {
+                    return call_user_func_array($closure, $args);
                 }
             }
             return null;
@@ -117,6 +117,101 @@
 
             // set value of the target cell
             $pointer = $value;
+        }
+    }
+
+    if (!function_exists('cms_facebook')) {
+        function cms_twitter($echo = true)
+        {
+            $page               = container()->getCmsPage();
+            $urlPage            = URLSITE . $page->getUrl();
+            $url = 'http://www.facebook.com/sharer.php?u=' . $urlPage . '&amp;t=' . urlencode(cms_translate('title'));
+
+            if (true === $echo) {
+                echo $url;
+            } else {
+                return $url;
+            }
+        }
+    }
+
+    if (!function_exists('cms_twitter')) {
+        function cms_twitter($echo = true)
+        {
+            $page               = container()->getCmsPage();
+            $urlPage            = URLSITE . $page->getUrl();
+            $twitterAccount     = cms_option('twitter_account');
+            if (empty($twitterAccount)) {
+                $twitterAccount = 'thinCMS';
+            }
+            $url = 'http://twitter.com/share?url=' . $urlPage . '&amp;text=' . urlencode(cms_translate('title')) . '&amp;via=' . $twitterAccount;
+
+            if (true === $echo) {
+                echo $url;
+            } else {
+                return $url;
+            }
+        }
+
+    if (!function_exists('cms_linkedin')) {
+        function cms_linkedin($echo = true)
+        {
+            $page               = container()->getCmsPage();
+            $urlPage            = URLSITE . $page->getUrl();
+            $linkedinAccount    = cms_option('linkedin_account');
+            if (empty($linkedinAccount)) {
+                $linkedinAccount = 'thinCMS';
+            }
+            $url = 'https://www.linkedin.com/shareArticle?url=' . $urlPage . '&amp;title=' . urlencode(cms_translate('title')) . '&amp;source=' . $linkedinAccount;
+
+            if (true === $echo) {
+                echo $url;
+            } else {
+                return $url;
+            }
+        }
+    }
+
+    if (!function_exists('cms_translate')) {
+        function cms_translate($field)
+        {
+            $page   = container()->getCmsPage();
+            $getter = getter($field);
+            $value  = $page->$getter();
+            return \Thin\Cms::lng($value);
+        }
+    }
+
+    if (!function_exists('cms_partial')) {
+        function cms_partial($name, $params = array(), $echo = true)
+        {
+            $query      = new \Thin\Querydata('partial');
+            $res        = $query->where("name = $key")->get();
+            if (count($res)) {
+                $row    = $query->first($res);
+                $html   = \Thin\Cms::executePHP($row->getValue());
+
+                if (count($params)) {
+                    foreach ($params as $k => $v) {
+                        $needle = '##' . $k . '##';
+                        $html = repl($needle, $v, $html);
+                    }
+                }
+
+                if (true === $echo) {
+                    echo $html;
+                } else {
+                    return $html;
+                }
+            }
+            return null;
+        }
+    }
+
+    if (!function_exists('cms_language')) {
+        function cms_language()
+        {
+            return container()->getCmsLanguage();
         }
     }
 

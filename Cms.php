@@ -145,8 +145,12 @@
             return null;
         }
 
-        public static function lng($value, $lng)
+        public static function lng($value, $lng = null)
         {
+            if (null === $lng) {
+                $lng = container()->getCmsLanguage();
+            }
+
             if (Arrays::isArray($value)) {
                 if (Arrays::exists($lng, $value)) {
                     return $value[$lng];
@@ -201,22 +205,27 @@
                         $code = repl($needle, $v, $code);
                     }
                 }
-
-                $content    = static::sanitize('{{' . "\n" . $code);
-                $file       = CACHE_PATH . DS . md5($content . $page->getName()) . '.cms';
-                File::delete($file);
-                File::put($file, $content);
-                ob_start();
-                require $file;
-                $render = ob_get_contents();
-                ob_end_clean();
-                File::delete($file);
-                return $render;
+                return static::executePHP($code);
             }
             return null;
         }
 
-        private static function sanitize($content)
+        public static function executePHP($code)
+        {
+            $page       = container()->getCmsPage();
+            $content    = static::sanitize('{{' . "\n" . $code);
+            $file       = CACHE_PATH . DS . md5($content . $page->getName()) . '.cms';
+            File::delete($file);
+            File::put($file, $content);
+            ob_start();
+            require $file;
+            $render = ob_get_contents();
+            ob_end_clean();
+            File::delete($file);
+            return $render;
+        }
+
+        public static function sanitize($content)
         {
             $content = repl('<php>', '<?php ', $content);
             $content = repl('<php>=', '<?php echo ', $content);
