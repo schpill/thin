@@ -22,7 +22,7 @@
 
             if (count($pages)) {
                 foreach ($pages as $row) {
-                    $pageTmp = Data::getObject($row, 'page');
+                    $pageTmp                    = Data::getIt('page', $row);
                     $routes[$pageTmp->getUrl()] = $pageTmp;
                 }
             }
@@ -55,7 +55,7 @@
 
                 if ('online' == $displaymode) {
                     container()->setCmsPage($page);
-                } elseif ('offline' == $displaymode) {
+                } elseif ('offline' == $displaymode || 'brouillon' == $displaymode) {
                     container()->setCmsPage(404);
                 } else {
                     container()->setCmsPage($displaymode);

@@ -147,6 +147,11 @@
             return STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . $id . '.data';
         }
 
+        public static function getIt($type, $path)
+        {
+            return static::getObject($path, $type);
+        }
+
         public static function getObject($pathObject, $type = null)
         {
             $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
