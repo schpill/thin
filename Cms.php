@@ -16,10 +16,26 @@
             } else {
                 container()->setCmsIsHomePage(false);
             }
-            $res        = $query->where("url = $url")->get();
 
-            if (count($res)) {
-                $page           = $query->first($res);
+            $pages      = Data::getAll('page');
+            $routes     = array();
+
+            if (count($pages)) {
+                foreach ($pages as $row) {
+                    $pageTmp = Data::getObject($row, 'page');
+                    $routes[$pageTmp->getUrl()] = $pageTmp;
+                }
+            }
+
+            $found = Arrays::exists($url, $routes);
+
+            if (false === $found) {
+                $found = static::match($routes);
+            }
+
+            if (true === $found) {
+
+                $page           = $routes[$url];
                 $displaymode    = Inflector::lower($page->getDisplaymode()->getName());
                 $datePub        = $page->getDateIn();
                 $dateDepub      = $page->getDateOut();
@@ -61,6 +77,28 @@
             } else {
                 container()->setCmsPage(404);
             }
+        }
+
+        private static function match($routes)
+        {
+            $path   = substr($_SERVER['REQUEST_URI'], 1);
+            foreach ($routes as $pathComp => $page) {
+                $regex  = '#^' . $pathComp . '#i';
+                $res    = preg_match($regex, $path, $values);
+
+                if ($res === 0) {
+                    continue;
+                }
+
+                foreach ($values as $i => $value) {
+                    if (!is_int($i) || $i === 0) {
+                        unset($values[$i]);
+                    }
+                }
+                container()->setViewParams($values);
+                return true;
+            }
+            return false;
         }
 
         public static function language()

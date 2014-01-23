@@ -129,9 +129,19 @@
     }
 
     if (!function_exists('cms_url_page')) {
-        function cms_url_page()
+        function cms_url_page($page = null)
         {
-            $page = container()->getCmsPage();
+            if (null === $page) {
+                $page = container()->getCmsPage();
+            } else {
+                $query = new \Thin\Querydata('page');
+                $res = $query->where("name = $page")->get();
+                if (count($res)) {
+                    $page = $query->first($res);
+                } else {
+                    return URLSITE . $page;
+                }
+            }
             return URLSITE . $page->getUrl();
         }
     }
