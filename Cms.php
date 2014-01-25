@@ -104,7 +104,7 @@
         public static function language()
         {
             $session = session('cms_lng');
-            $lng = $session->getLanguage();
+            $lng     = $session->getLanguage();
             if (null === $lng) {
                 $lng = static::getOption('default_language');
                 if (null === $lng) {
@@ -149,6 +149,9 @@
         {
             if (null === $lng) {
                 $lng = container()->getCmsLanguage();
+                if (null === $lng) {
+                    $lng = static::getOption('default_language');
+                }
             }
 
             if (Arrays::isArray($value)) {

@@ -13,12 +13,8 @@
 
         public function __construct($type, $results = array())
         {
-            $settings   = Arrays::exists($type, Data::$_settings)  ? Data::$_settings[$type]   : array();
-            $fields     = Arrays::exists($type, Data::$_fields)    ? Data::$_fields[$type]     : array();
-
-            if (!count($fields) || !count($settings)) {
-                throw new Exception("The type $type is not configured.");
-            }
+            $settings   = Arrays::exists($type, Data::$_settings)  ? Data::$_settings[$type]   : Data::defaultConfig($type);
+            $fields     = Arrays::exists($type, Data::$_fields)    ? Data::$_fields[$type]     : Data::noConfigFields($type);
 
             $this->type     = $type;
             $this->fields   = $fields;

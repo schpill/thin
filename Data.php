@@ -21,8 +21,8 @@
 
         public static function newOne($type, $data = array())
         {
-            $settings   = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : array();
-            $fields     = Arrays::exists($type, static::$_fields) ? static::$_fields[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : static::defaultConfig($type);
+            $fields     = Arrays::exists($type, static::$_fields) ? static::$_fields[$type] : static::noConfigFields($type);
 
             $obj = new Object;
             $obj->thin_type = $type;
@@ -71,7 +71,7 @@
 
         private static function _clean($directory, $type)
         {
-            $settings       = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : static::defaultConfig($type);
             $versioning     = false;
 
             if (Arrays::exists('versioning', $settings)) {
@@ -154,7 +154,7 @@
 
         public static function getObject($pathObject, $type = null)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('getObject', $settings)       ? $settings['getObject']    : null;
             static::_hook($hook, func_get_args(), 'before');
             if (!is_string($pathObject)) {
@@ -177,7 +177,7 @@
 
         public static function getById($type, $id, $returnObject = true)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('getById', $settings)         ? $settings['getById']      : null;
             static::_hook($hook, func_get_args(), 'before');
             $dir    = static::checkDir($type);
@@ -196,10 +196,10 @@
             return null;
         }
 
-        public static function add($type, $data = array(), $checkTuple = null)
+        public static function add($type, $data = array())
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
-            $fields         = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
+            $fields         = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : static::noConfigFields($type);
             $checkTuple     = Arrays::exists('checkTuple', $settings)      ? $settings['checkTuple']   : null;
             $hook           = Arrays::exists('add', $settings)             ? $settings['add']          : null;
             static::_hook($hook, func_get_args(), 'before');
@@ -242,11 +242,11 @@
 
         public static function edit($type, $id, $data = array())
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $checkTuple     = Arrays::exists('checkTuple', $settings)      ? $settings['checkTuple']   : null;
             $hook           = Arrays::exists('edit', $settings)            ? $settings['edit']         : null;
             static::_hook($hook, func_get_args(), 'before');
-            $fields         = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $fields         = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : static::noConfigFields($type);
 
             if (empty($data) && count($_POST)) {
                 $data += $_POST;
@@ -287,7 +287,7 @@
 
         public static function delete($type, $id)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $indexes        = Arrays::exists('indexes', $settings)         ? $settings['indexes']      : null;
             $hook           = Arrays::exists('delete', $settings)          ? $settings['delete']       : null;
             static::_hook($hook, func_get_args(), 'before');
@@ -358,7 +358,7 @@
 
         public static function store($type, $flat, $key = null)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('store', $settings)           ? $settings['store']        : null;
             static::_hook($hook, func_get_args(), 'before');
             $checkTuple     = Arrays::exists('checkTuple', $settings)      ? $settings['checkTuple']   : null;
@@ -418,21 +418,21 @@
                             $results = array_intersect($results, $res);
                         }
                     }
-                    $db         = new Querydata($type);
+                    $db     = new Querydata($type);
                     $res    = $db->get($results);
                 }
                 if (count($res)) {
-                    $row = Arrays::first($res);
+                    $row = $db->first($res);
                     static::_hook($hook, func_get_args(), 'after');
                     return $row;
                 }
             }
 
-            $file       = repl(DS . 'versions' . DS, DS . 'write' . DS, $versionFile);
+            $file = repl(DS . 'versions' . DS, DS . 'write' . DS, $versionFile);
             File::delete($file);
             File::put($file, $serialize);
 
-            $fields     = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $fields     = Arrays::exists($type, static::$_fields)      ? static::$_fields[$type]   : static::noConfigFields($type);
             $versioning = false;
 
             if (count($fields)) {
@@ -475,7 +475,7 @@
         public static function indexRemove($indexField, $indexInfo, $object)
         {
             $type       = $object->thin_type;
-            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook       = Arrays::exists('indexRemove', $settings)     ? $settings['indexRemove']  : null;
             static::_hook($hook, func_get_args(), 'before');
             $dirName    = static::checkDir($type);
@@ -490,7 +490,7 @@
         public static function indexCreate($indexField, $indexInfo, $object)
         {
             $type       = $object->thin_type;
-            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook       = Arrays::exists('indexCreate', $settings)     ? $settings['indexCreate']  : null;
             static::_hook($hook, func_get_args(), 'before');
             $dirName    = static::checkDir($type);
@@ -554,7 +554,7 @@
 
         public static function makeKey($type, $keyLength = 9)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('makeKey', $settings)         ? $settings['makeKey']      : null;
             static::_hook($hook, func_get_args(), 'before');
 
@@ -572,7 +572,7 @@
 
         public static function checkDir($type)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('checkDir', $settings)        ? $settings['checkDir']     : null;
             static::_hook($hook, func_get_args(), 'before');
 
@@ -630,7 +630,7 @@
 
         public static function query($type, $conditions = '')
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('query', $settings)           ? $settings['query']        : null;
             static::_hook($hook, func_get_args(), 'before');
 
@@ -651,7 +651,7 @@
             $resultsOr              = array();
             $resultsXor             = array();
 
-            $fields                 = ake($type, static::$_fields)      ? static::$_fields[$type]   : array();
+            $fields                 = ake($type, static::$_fields)      ? static::$_fields[$type]   : static::noConfigFields($type);
             $indexes                = ake('indexes', $settings)         ? $settings["indexes"]      : array();
             $fields['id']           = array();
             $fields['date_create']  = array();
@@ -954,7 +954,7 @@
 
         public static function order($type, $results, $field = 'date_create', $orderDirection = 'ASC')
         {
-            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook       = Arrays::exists('order', $settings)           ? $settings['order']        : null;
             static::_hook($hook, func_get_args(), 'before');
             $queryKey   = sha1(serialize(func_get_args()));
@@ -1083,9 +1083,9 @@
             return false;
         }
 
-        private static function getModel($type)
+        public static function getModel($type)
         {
-            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook       = Arrays::exists('getModel', $settings)        ? $settings['getModel']     : null;
             static::_hook($hook, func_get_args(), 'before');
             if (Arrays::exists($type, static::$_fields)) {
@@ -1093,12 +1093,12 @@
                 return static::$_fields[$type];
             }
             static::_hook($hook, func_get_args(), 'after');
-            return array();
+            return static::noConfigFields($type);
         }
 
         public static function makeQuery($queryJs, $type)
         {
-            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook       = Arrays::exists('makeQuery', $settings)       ? $settings['makeQuery']    : null;
             static::_hook($hook, func_get_args(), 'before');
             $queryJs = substr($queryJs, 9, -2);
@@ -1157,7 +1157,7 @@
 
         public static function update($type, $object, $newData)
         {
-            $fields = static::$_fields[$type];
+            $fields = static::getModel($type);
             $new    = array();
             $new['id'] = $object->id;
             $new['date_create'] = $object->date_create;
@@ -1181,7 +1181,7 @@
 
         public static function cache($type, $key, $data = null)
         {
-            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings       = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook           = Arrays::exists('cache', $settings)           ? $settings['cache']        : null;
             static::_hook($hook, func_get_args(), 'before');
             $dir    = static::checkDir($type);
@@ -1201,7 +1201,7 @@
 
         public static function event($type)
         {
-            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : array();
+            $settings   = Arrays::exists($type, static::$_settings)    ? static::$_settings[$type] : static::defaultConfig($type);
             $hook       = Arrays::exists('event', $settings)           ? $settings['event']        : null;
 
             static::_hook($hook, func_get_args(), 'before');
@@ -1322,5 +1322,39 @@
                     }
                 }
             }
+        }
+
+        public static function defaultConfig($type)
+        {
+            $config = array();
+            $getter = 'getConfigData' . ucfirst(Inflector::lower($type));
+            $containerConfig = container()->$getter();
+
+            $configReturn =  !empty($containerConfig) ? $containerConfig : $config;
+            static::$_settings[$type] = $configReturn;
+            return $configReturn;
+        }
+
+        public static function noConfigFields($type)
+        {
+            $fields = array();
+            $getter = 'getFieldsData' . ucfirst(Inflector::lower($type));
+            $containerFields = container()->$getter();
+            if (!empty($containerFields)) {
+                static::$_fields[$type] = $containerFields;
+                return $containerFields;
+            }
+            $all = static::getAll($type);
+            if (count($all)) {
+                $obj = static::getIt($type, Arrays::first($all));
+                $_fields = $obj->_fields;
+                foreach ($_fields as $__field) {
+                    if ($__field != 'id' && $__field != 'date_create' && $__field != 'thin_type') {
+                        $fields[$__field] = array();
+                    }
+                }
+            }
+            static::$_fields[$type] = $fields;
+            return $fields;
         }
     }

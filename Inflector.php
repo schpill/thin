@@ -35,7 +35,7 @@
             '/ü/' => 'ue', '/Ä/' => 'Ae',
             '/Ü/' => 'Ue', '/Ö/' => 'Oe',
             '/ß/' => 'ss'
-        );
+       );
 
         /**
          * Indexed array of words which are the same in both singular and plural form.  You can add
@@ -57,7 +57,7 @@
             'sea[- ]bass', 'series', 'Shavese', 'shears', 'siemens', 'species', 'swine', 'testes',
             'trousers', 'trout','tuna', 'Vermontese', 'Wenchowese', 'whiting', 'wildebeest',
             'Yengeese'
-        );
+       );
 
         /**
          * Contains the list of pluralization rules.
@@ -106,12 +106,12 @@
                 '/(n)ews$/i' => '\1\2ews',
                 '/^(.*us)$/' => '\\1',
                 '/s$/i' => ''
-            ),
+           ),
             'irregular' => array(),
             'uninflected' => array(
                 '.*[nrlm]ese', '.*deer', '.*fish', '.*measles', '.*ois', '.*pox', '.*sheep', '.*ss'
-            )
-        );
+           )
+       );
 
         /**
          * Contains a cache map of previously singularized words.
@@ -156,7 +156,7 @@
                 '/s$/' => 's',
                 '/^$/' => '',
                 '/$/' => 's'
-            ),
+           ),
             'irregular' => array(
                 'atlas' => 'atlases', 'beef' => 'beefs', 'brother' => 'brothers',
                 'child' => 'children', 'corpus' => 'corpuses', 'cow' => 'cows',
@@ -167,11 +167,11 @@
                 'octopus' => 'octopuses', 'opus' => 'opuses', 'ox' => 'oxen', 'penis' => 'penises',
                 'person' => 'people', 'sex' => 'sexes', 'soliloquy' => 'soliloquies',
                 'testis' => 'testes', 'trilby' => 'trilbys', 'turf' => 'turfs'
-            ),
+           ),
             'uninflected' => array(
                 '.*[nrlm]ese', '.*deer', '.*fish', '.*measles', '.*ois', '.*pox', '.*sheep'
-            )
-        );
+           )
+       );
 
         /**
          * Contains a cache map of previously pluralized words.
@@ -239,7 +239,7 @@
                     }
                     static::$_transliteration = array_merge(
                         $_config, static::$_transliteration, $_config
-                    );
+                   );
                 break;
                 case 'uninflected':
                     static::$_uninflected = array_merge(static::$_uninflected, (array) $config);
@@ -264,7 +264,7 @@
                     } else {
                         static::${$var}['rules'] = array_merge(
                             $config, static::${$var}['rules'], $config
-                        );
+                       );
                     }
                 break;
             }
@@ -284,8 +284,8 @@
             extract(static::$_plural);
 
             if (!isset($regexUninflected) || !isset($regexIrregular)) {
-                $regexUninflected = static::_enclose(join( '|', $uninflected + static::$_uninflected));
-                $regexIrregular = static::_enclose(join( '|', array_keys($irregular)));
+                $regexUninflected = static::_enclose(join('|', $uninflected + static::$_uninflected));
+                $regexIrregular = static::_enclose(join('|', array_keys($irregular)));
                 static::$_plural += compact('regexUninflected', 'regexIrregular');
             }
             if (preg_match('/(' . $regexUninflected . ')$/i', $word, $regs)) {
@@ -361,7 +361,7 @@
                 '/ü/' => 'ue', '/Ä/' => 'Ae',
                 '/Ü/' => 'Ue', '/Ö/' => 'Oe',
                 '/ß/' => 'ss'
-            );
+           );
         }
 
         /**
@@ -423,7 +423,7 @@
                 '/[^\w\s]/' => ' ', '/\\s+/' => $replacement,
                 '/(?<=[a-z])([A-Z])/' => $replacement . '\\1',
                 repl(':rep', preg_quote($replacement, '/'), '/^[:rep]+|[:rep]+$/') => ''
-            );
+           );
             return preg_replace(array_keys($map), array_values($map), $string);
         }
 
@@ -672,9 +672,9 @@
                 utf8_decode($str),
                 utf8_decode(
                     '’àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'
-                ),
+               ),
                 '\'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY'
-            );
+           );
         }
 
         public static function urlSafeB64Encode($data)
@@ -1052,12 +1052,64 @@
                                 $string,
                                 -1,
                                 PREG_SPLIT_DELIM_CAPTURE
-                            )
-                        )
-                    )
-                );
+                           )
+                       )
+                   )
+               );
             } else {
                 return htmlentities($string, ENT_COMPAT, 'utf-8');
             }
+        }
+
+        public static function isSerialized($data, $strict = true)
+        {
+            if (!is_string($data)) return false;
+            $data = trim($data);
+            if ('N;' == $data) return true;
+            $length = strlen($data);
+            if ($length < 4) return false;
+            if (':' !== $data[1]) return false;
+            if ($strict) {
+                $lastc = $data[ $length - 1 ];
+                if (';' !== $lastc && '}' !== $lastc) return false;
+            } else {
+                $semicolon = strpos($data, ';');
+                $brace     = strpos($data, '}');
+                // Either ; or } must exist.
+                if (false === $semicolon && false === $brace) return false;
+                // But neither must be in the first X characters.
+                if (false !== $semicolon && $semicolon < 3) return false;
+                if (false !== $brace && $brace < 4) return false;
+            }
+            $token = $data[0];
+            switch ($token) {
+                case 's' :
+                    if ($strict) {
+                        if ('"' !== $data[$length - 2]) return false;
+                    } elseif (false === strpos($data, '"')) {
+                        return false;
+                    }
+                    // or else fall through
+                case 'a' :
+                case 'O' :
+                    return (bool) preg_match("/^{$token}:[0-9]+:/s", $data);
+                case 'b' :
+                case 'i' :
+                case 'd' :
+                    $end = $strict ? '$' : '';
+                    return (bool) preg_match("/^{$token}:[0-9.E-]+;$end/", $data);
+            }
+            return false;
+        }
+
+        public static function extractUrls($content)
+        {
+            preg_match_all(
+                "#((?:[\w-]+://?|[\w\d]+[.])[^\s()<>]+[.](?:\([\w\d]+\)|(?:[^`!()\[\]{};:'\".,<>?«»“”‘’\s]|(?:[:]\d+)?/?)+))#",
+                $content,
+                $links
+            );
+            $links = array_unique(array_map('html_entity_decode', current($links)));
+            return array_values($links);
         }
     }

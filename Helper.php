@@ -1,4 +1,46 @@
 <?php
+    if (!function_exists('infosIP')) {
+        function infosIP($localhost = false)
+        {
+            $session = session('web');
+            $infosIP = $session->getInfosIp();
+            if (empty($infosIP)) {
+                $ip = $_SERVER["REMOTE_ADDR"];
+                if (true === $localhost) {
+                    $url = "http://ip-api.com/json";
+                } else {
+                    $url = "http://ip-api.com/json/$ip";
+                }
+                $json = dwn($url);
+                $json = str_replace(
+                    array(
+                        'query',
+                        'countryCode',
+                        'regionName'
+                    ),
+                    array(
+                        'ip',
+                        'country_code',
+                        'region_name'
+                    ),
+                    $json
+                );
+                $infos = json_decode($json, true);
+                if (is_array($infos)) {
+                    if (ake('status', $infos)) {
+                        if ($infos['status'] == 'fail') {
+                            return infosIP(true);
+                        }
+                    }
+                    $InfosIp = o("IP");
+                    $InfosIp->populate($infos);
+                    $session->setInfosIp($InfosIp);
+                }
+            }
+            return $infosIP;
+        }
+    }
+
     if (!function_exists('params')) {
         function params($args = array())
         {
@@ -33,17 +75,17 @@
     if (!function_exists('o')) {
         function o($name)
         {
-            $objects = \Thin\Utils::get('thinObjects');
+            $objects = Thin\Utils::get('thinObjects');
             if (null === $objects) {
                 $objects = array();
             }
             if (ake($name, $objects)) {
                 return $objects[$name];
             }
-            $newObj = new \Thin\Container;
+            $newObj = new Thin\Container;
             $newObj->setIsThinObject($name);
             $objects[$name] = $newObj;
-            \Thin\Utils::set('thinObjects', $objects);
+            Thin\Utils::set('thinObjects', $objects);
             return $newObj;
         }
     }
@@ -120,12 +162,44 @@
         }
     }
 
-    if (!function_exists('cms_facebook')) {
-        function cms_twitter($echo = true)
+    if (!function_exists('cms_ga')) {
+        function cms_ga($account, $domain = null, $echo = true)
         {
-            $page               = container()->getCmsPage();
-            $urlPage            = URLSITE . $page->getUrl();
-            $url = 'http://www.facebook.com/sharer.php?u=' . $urlPage . '&amp;t=' . urlencode(cms_translate('title'));
+            if (empty($domain)) {
+                $domain = $_SERVER['SERVER_NAME'];
+            }
+
+            $html = '<script type="text/javascript">
+var _gaq=_gaq||[];
+_gaq.push([\'_setAccount\', \'' . $account . '\']);
+_gaq.push([\'_setDomainName\', \'' . $domain . '\']);
+_gaq.push([\'_trackPageview\']);
+(function(){
+var ga=document.createElement(\'script\');ga.type=\'text/javascript\';ga.async=true;
+ga.src=(\'https:\'==document.location.protocol?\'https://ssl\':\'http://www\')+\'.google-analytics.com/ga.js\';
+var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,s);
+})();
+</script>';
+            if (true === $echo) {
+                echo $html;
+            } else {
+                return $html;
+            }
+        }
+    }
+
+    if (!function_exists('cms_hook')) {
+        function cms_hook()
+        {
+            return call(func_get_args());
+        }
+    }
+
+    if (!function_exists('cms_facebook')) {
+        function cms_facebook($echo = true)
+        {
+            $urlPage = getUrl();
+            $url     = 'http://www.facebook.com/sharer.php?u=' . $urlPage . '&amp;t=' . urlencode(cms_translate('title'));
 
             if (true === $echo) {
                 echo $url;
@@ -138,8 +212,7 @@
     if (!function_exists('cms_twitter')) {
         function cms_twitter($echo = true)
         {
-            $page               = container()->getCmsPage();
-            $urlPage            = URLSITE . $page->getUrl();
+            $urlPage            = getUrl();
             $twitterAccount     = cms_option('twitter_account');
             if (empty($twitterAccount)) {
                 $twitterAccount = 'thinCMS';
@@ -152,12 +225,12 @@
                 return $url;
             }
         }
+    }
 
     if (!function_exists('cms_linkedin')) {
         function cms_linkedin($echo = true)
         {
-            $page               = container()->getCmsPage();
-            $urlPage            = URLSITE . $page->getUrl();
+            $urlPage            = getUrl();
             $linkedinAccount    = cms_option('linkedin_account');
             if (empty($linkedinAccount)) {
                 $linkedinAccount = 'thinCMS';
@@ -227,7 +300,7 @@
         function cms_url_page($page = null)
         {
             if (null === $page) {
-                $page = container()->getCmsPage();
+                return getUrl();
             } else {
                 $query = new \Thin\Querydata('page');
                 $res = $query->where("name = $page")->get();
@@ -253,18 +326,52 @@
         }
     }
 
-    if (!function_exists('cms_objects')) {
-        function cms_objects($collection)
+    if (!function_exists('cms_object')) {
+        function cms_object($collection, $objectName, $array = false)
         {
+            $object = new cmsObj();
             $q      = new \Thin\Querydata('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
-                $row        = Arrays::first($res);
+                $row  = $q->first($res);
+                $q    = new \Thin\Querydata('object');
+                $res  = $q->where('collection = ' . $row->getId())->whereAnd("name = $objectName")->get();
+                if (count($res)) {
+                    $obj        = $q->first($res);
+                    $objectLng  = \Thin\Cms::lng($obj->getValue());
+                    $ini        = parse_ini_string($objectLng, true);
+                    $object->populate($ini);
+                }
+            }
+            return $object;
+        }
+    }
+
+    if (!function_exists('cms_objects')) {
+        function cms_objects($collection, $array = false)
+        {
+            $coll   = array();
+            $q      = new \Thin\Querydata('collection');
+            $res    = $q->where('name = ' . $collection)->get();
+            if (count($res)) {
+                $row        = $q->first($res);
                 $q          = new \Thin\Querydata('object');
                 $objects    = $q->where('collection = ' . $row->getId())->get();
-                return $objects;
+                if (count($objects)) {
+                    foreach ($objects as $object) {
+                        $objectLng  = \Thin\Cms::lng($object->getValue());
+                        $ini        = parse_ini_string($objectLng, true);
+                        if (true === $array) {
+                            array_push($coll, $ini);
+                        } else {
+                            $obj = new cmsObj();
+                            $obj->populate($ini);
+                            array_push($coll, $obj);
+                        }
+                    }
+                }
             }
-            return array();
+            return $coll;
         }
     }
 
@@ -646,18 +753,18 @@
 
         function transaction($class, $method)
         {
-            $transactions = \Thin\Utils::get('thinTransactions');
+            $transactions = container()->getThinTransactions();
             if (null === $transactions) {
                 $transactions = array();
             }
             $params = array_slice(func_get_args(), 2);
             array_push($transactions, array($class, $method, $params));
-            \Thin\Utils::set('thinTransactions', $transactions);
+            container()->setThinTransactions($transactions);
         }
 
         function commit()
         {
-            $transactions = \Thin\Utils::get('thinTransactions');
+            $transactions = container()->getThinTransactions();
             if (null !== $transactions) {
                 if (is_array($transactions)) {
                     if (count($transactions)) {

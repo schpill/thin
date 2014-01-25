@@ -12,7 +12,7 @@
 
         public static function dispatch()
         {
-            static::$_uri = $uri = $_SERVER['REQUEST_URI'];
+            static::$_uri = $uri = trim($_SERVER['REQUEST_URI'], static::URI_DELIMITER);
             $cmsRoute = static::cmsRoute();
             if (null !== $cmsRoute) {
                 return;

@@ -36,6 +36,7 @@
         {
             if (isset($this->thin_type)) {
                 $type = $this->thin_type;
+                Data::getModel($type);
                 $data = array();
                 if (Arrays::exists($type, Data::$_fields)) {
                     $fields = Data::$_fields[$type];
@@ -57,6 +58,7 @@
         {
             if (isset($this->thin_type)) {
                 $type = $this->thin_type;
+                Data::getModel($type);
                 if (Arrays::exists($type, Data::$_fields)) {
                     if (isset($this->id)) {
                         $del = Data::delete($type, $this->id);
@@ -83,6 +85,7 @@
                 if (isset($this->$var)) {
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
+                        Data::getModel($type);
                         $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
                         if (Arrays::exists('relationships', $settings)) {
                             if (Arrays::exists($var, $settings['relationships'])) {
@@ -94,6 +97,7 @@
                 } else {
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
+                        Data::getModel($type);
                         $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
                         $relationships = Arrays::exists('relationships', $settings) ? $settings['relationships'] : array();
                         if (Arrays::exists($var, $relationships) && 's' == $var[strlen($var) - 1]) {
@@ -128,6 +132,7 @@
                 $var = Inflector::lower($uncamelizeMethod);
                 if (!empty($var)) {
                     if (isset($this->thin_type)) {
+                        Data::getModel($this->thin_type);
                         $fields = Arrays::exists($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : array();
                         if(!Arrays::exists($var, $fields)) {
                             throw new Exception($var . ' is not defined in the model => ' . $this->_fields);
@@ -237,6 +242,7 @@
             if (isset($this->$key)) {
                 if (isset($this->thin_type)) {
                     $type = $this->thin_type;
+                    Data::getModel($this->thin_type);
                     $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
                     if (Arrays::exists('relationships', $settings)) {
                         if (Arrays::exists($key, $settings['relationships']) && 's' != $key[strlen($key) - 1]) {
@@ -302,6 +308,7 @@
         {
             if (isset($this->$var)) {
                 if (isset($this->thin_type)) {
+                    Data::getModel($this->thin_type);
                     $type = $this->thin_type;
                     $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
                     if (Arrays::exists('relationships', $settings)) {
@@ -313,6 +320,7 @@
                 return $this->$var;
             } else {
                 if (isset($this->thin_type)) {
+                    Data::getModel($this->thin_type);
                     $type = $this->thin_type;
                     $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
                     if (Arrays::exists($var, $settings['relationships']) && 's' == $var[strlen($var) - 1]) {
@@ -405,6 +413,7 @@
         public function fields()
         {
             if (isset($this->thin_type)) {
+                Data::getModel($this->thin_type);
                 $type = $this->thin_type;
 
                 if (Arrays::exists($type, Data::$_fields)) {
