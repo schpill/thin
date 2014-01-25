@@ -55,6 +55,14 @@
             return $params;
         }
     }
+
+    if (!function_exists('cdn')) {
+        function cdn($file)
+        {
+            return 'http://web.gpweb.co/u/45880241/cdn/' . $file;
+        }
+    }
+
     if (!function_exists('can')) {
         function can($type, $action)
         {
