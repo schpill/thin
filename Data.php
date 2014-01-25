@@ -38,11 +38,7 @@
         {
             $dir        = static::checkDir($type);
             static::_clean(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'write', $type);
-            if (Arrays::exists($type, static::$_all)) {
-                $objects = static::$_all[$type];
-            } else {
-                $objects    = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . '*.data', GLOB_NOSORT);
-            }
+            $objects    = glob(STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . '*.data', GLOB_NOSORT);
             if (!count($objects)) {
                 static::event($type);
             }
