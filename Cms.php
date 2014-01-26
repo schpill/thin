@@ -259,6 +259,7 @@
 
         private static function check($url)
         {
+            $url = $_SERVER['REDIRECT_URL'];
             $theme = static::getOption('theme');
             if (strstr($url, 'themes' . DS . $theme . DS)) {
                 list($dummy, $path) = explode('themes' . DS . $theme . DS, $url, 2);
