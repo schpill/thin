@@ -56,6 +56,7 @@
         $r = repl($protocol . ':/', $protocol . '://', $r);
         $urlSite = $r;
     }
+    container()->setNonRoot(false);
 
 
     if (null !== request()->getFromHtaccess()) {
@@ -66,6 +67,7 @@
             $uri = repl($htaccessDir . DS, '', $uri);
             $_SERVER['REQUEST_URI'] = DS . $uri;
             $urlSite .= repl(DS, '', $htaccessDir) . DS;
+            container()->setNonRoot(true);
         }
     }
 
