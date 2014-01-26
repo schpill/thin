@@ -253,6 +253,27 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         }
     }
 
+    if (!function_exists('cms_title')) {
+        function cms_title()
+        {
+            return cms_translate('title');
+        }
+    }
+
+    if (!function_exists('cms_keywords')) {
+        function cms_keywords()
+        {
+            return cms_translate('keywords');
+        }
+    }
+
+    if (!function_exists('cms_description')) {
+        function cms_description()
+        {
+            return cms_translate('description');
+        }
+    }
+
     if (!function_exists('cms_translate')) {
         function cms_translate($field)
         {
@@ -289,6 +310,17 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         }
     }
 
+    if (!function_exists('cms_fa')) {
+        function cms_fa($name, $plus = '', $echo = true)
+        {
+            if (false === $echo) {
+                return "<i class=\"fa fa-$name $plus\"></i> ";
+            } else {
+                echo "<i class=\"fa fa-$name $plus\"></i> ";
+            }
+        }
+    }
+
     if (!function_exists('cms_language')) {
         function cms_language()
         {
@@ -296,11 +328,54 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         }
     }
 
-    if (!function_exists('cms_url_theme')) {
-        function cms_url_theme()
+    if (!function_exists('cms_header')) {
+        function cms_header()
+        {
+            cms_render('header');
+        }
+    }
+
+    if (!function_exists('cms_footer')) {
+        function cms_footer()
+        {
+            cms_render('footer');
+        }
+    }
+
+    if (!function_exists('cms_render')) {
+        function cms_render($tpl)
+        {
+            $file = cms_theme_path() . DS . Thin\Inflector::lower($tpl) . '.php';
+            if (Thin\File::exists($file)) {
+                require_once $file;
+            }
+        }
+    }
+
+    if (!function_exists('cms_content_display')) {
+        function cms_content_display()
+        {
+            echo \Thin\Cms::display();
+        }
+    }
+
+    if (!function_exists('cms_theme_path')) {
+        function cms_theme_path()
         {
             $theme = \Thin\Cms::getOption('theme');
-            return URLSITE . 'themes/' . $theme;
+            return THEME_PATH . DS . $theme;
+        }
+    }
+
+    if (!function_exists('cms_url_theme')) {
+        function cms_url_theme($echo = true)
+        {
+            $theme = \Thin\Cms::getOption('theme');
+            if (false === $echo) {
+                return URLSITE . 'themes/' . $theme;
+            } else {
+                echo URLSITE . 'themes/' . $theme;
+            }
         }
     }
 
@@ -976,6 +1051,43 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             }
         }
     }
+
+    if (!function_exists('get_content_type')) {
+        function get_content_type($file)
+        {
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if (strlen($ext)) {
+                switch ($ext) {
+                    case 'xml': return 'text/xml';
+                    case 'atom': return 'application/atom+xml';
+                    case 'txt': return 'text/plain';
+                    case 'html': return 'text/html';
+                    case 'rss': return 'application/rss+xml; charset=UTF-8';
+                    case 'pdf': return 'application/pdf';
+                    case 'doc': return 'application/msword';
+                    case 'xls': return 'application/msexcel';
+                    case 'json': return 'application/json';
+                    case 'jpeg': case 'jpg' : return 'image/jpeg';
+                    case 'gif': return 'image/gif';
+                    case 'png': return 'image/png';
+                    case 'bmp': return 'image/bmp';
+                    case 'js': return 'text/javascript';
+                    case 'css': return 'text/css';
+                    case 'less': return 'text/less';
+                    default: return 'text/html';
+                }
+            }
+            return 'text/html';
+        }
+    }
+
+    if (!function_exists('extension')) {
+        function extension($file)
+        {
+            return strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        }
+    }
+
     if (!function_exists('email')) {
         function email()
         {

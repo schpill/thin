@@ -10,6 +10,7 @@
         {
             $query      = new Querydata('page');
             $url        = substr($_SERVER['REQUEST_URI'], 1);
+            static::check($url);
             $url        = !strlen($url) ? 'home' : $url;
             if ('home' == $url) {
                 container()->setCmsIsHomePage(true);
@@ -254,5 +255,21 @@
             $content = repl('[/endswitch]', 'endswitch;', $content);
 
             return $content;
+        }
+
+        private static function check($url)
+        {
+            $theme = static::getOption('theme');
+            if (strstr($url, 'themes' . DS . $theme . DS)) {
+                list($dummy, $path) = explode('themes' . DS . $theme . DS, $url, 2);
+                $file = cms_theme_path() . DS . $path;
+                if (File::exists($file)) {
+                    $ct = get_content_type($file);
+                    $content = fgc($file);
+                    header('content-type: ' . $ct);
+                    header('Cache-Control: max-age=31536000, must-revalidate');
+                    die($content);
+                }
+            }
         }
     }
