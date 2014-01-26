@@ -259,8 +259,8 @@
 
         private static function check($url)
         {
-            $url = $_SERVER['REDIRECT_URL'];
-            $theme = static::getOption('theme');
+            $url    = ake('REDIRECT_URL', $_SERVER) ? $_SERVER['REDIRECT_URL'] : $url;
+            $theme  = static::getOption('theme');
             if (strstr($url, 'themes' . DS . $theme . DS)) {
                 list($dummy, $path) = explode('themes' . DS . $theme . DS, $url, 2);
                 $file = cms_theme_path() . DS . $path;
