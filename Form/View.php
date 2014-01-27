@@ -19,7 +19,7 @@
 
         public function __call($method, $parameters)
         {
-            $html = call_user_func_array(array(FTV_Form, $method), $parameters);
+            $html = call_user_func_array(array('Thin\\Form', $method), $parameters);
             $this->add($html);
             return $this;
         }

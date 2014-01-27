@@ -53,7 +53,7 @@
                             static::$_classes[$className] = true;
                         }
                     }
-                    if (!array_key_exists($className, static::$_classes)) {
+                    if (!array_key_exists($className, static::$_classes) && !strstr($className, 'this_')) {
                         class_alias('Thin\\Container', $className);
                         static::$_classes[$className] = true;
                     }

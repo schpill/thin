@@ -78,8 +78,18 @@
         {
             foreach (static::$_values as $key => $value) {
                 $getter = 'getParam' . $key;
-                $setter = $route->$getter();
-                $_REQUEST[$setter] = $value;
+                $requestKey = $route->$getter();
+                $_REQUEST[$requestKey] = $value;
+            }
+
+            list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
+            if (strlen($query)) {
+                $str = parse_str($query, $output);
+                if (count($output)) {
+                    foreach ($output as $k => $v) {
+                        $_GET[$k] = $v;
+                    }
+                }
             }
         }
 

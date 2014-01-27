@@ -41,6 +41,14 @@
         }
     }
 
+    if (!function_exists('this')) {
+        function unstatic($class)
+        {
+            $obj = new Thin\Unstatic($class);
+            return $obj;
+        }
+    }
+
     if (!function_exists('params')) {
         function params($args = array())
         {
@@ -1262,6 +1270,13 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function s($name)
         {
             return session($name);
+        }
+    }
+
+    if (!function_exists('c')) {
+        function c()
+        {
+            return container();
         }
     }
 

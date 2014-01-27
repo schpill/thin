@@ -60,7 +60,7 @@
 
 
     if (null !== request()->getFromHtaccess()) {
-        if ('true' == request()->getFromHtaccess()) {
+        if ('true' == request()->getFromHtaccess() && !getenv('FROM_ROOT')) {
             $dir = $_SERVER['SCRIPT_NAME'];
             $htaccessDir = repl(DS . 'web' . DS . 'index.php', '', $dir);
             $uri = $_SERVER['REQUEST_URI'];
