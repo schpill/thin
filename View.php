@@ -71,9 +71,17 @@
                 $isTranslate = Utils::get('isTranslate');
                 if (true === $isTranslate) {
                     $lng = getLanguage();
-                    $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                    if (true === container()->getMultiSite()) {
+                        $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                    } else {
+                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                    }
                 } else {
-                    $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                    if (true === container()->getMultiSite()) {
+                        $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                    } else {
+                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                    }
                 }
             }
 
@@ -97,7 +105,11 @@
                 $viewFile = $partial;
             } else {
                 $module = (null === $module) ? $this->_module : $module;
-                $viewFile = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                if (true === container()->getMultiSite()) {
+                    $viewFile = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                } else {
+                    $viewFile = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                }
             }
 
             if (File::exists($viewFile)) {

@@ -13,15 +13,15 @@
         public static function dispatch()
         {
             static::$_uri = $uri = trim($_SERVER['REQUEST_URI'], static::URI_DELIMITER);
-            $cmsRoute = static::cmsRoute();
-            if (null !== $cmsRoute) {
-                return;
-            }
             $defaultRoute = static::defaultRoute();
             if (null !== $defaultRoute) {
                 return;
             }
-            $file           = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
+            if (true === container()->getMultiSite()) {
+                $file           = APPLICATION_PATH . DS . 'config' . DS . SITE_NAME . DS . 'routes.php';
+            } else {
+                $file           = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
+            }
             $configRoutes   = include($file);
             $routes         = $configRoutes['collection'];
             $routes         += null !== container()->getRoutes() ? container()->getRoutes() : array();
@@ -32,6 +32,14 @@
                 $path = $route->getPath();
                 if ($path == $uri) {
                     return static::make($route);
+                }
+            }
+            foreach ($routes as $route) {
+                if (!$route instanceof Container) {
+                    continue;
+                }
+                if (!strlen($route->getPath())) {
+                    continue;
                 }
                 $matched = static::match($route->getPath());
                 if (false === $matched) {
@@ -81,13 +89,15 @@
                 $requestKey = $route->$getter();
                 $_REQUEST[$requestKey] = $value;
             }
-
-            list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
-            if (strlen($query)) {
-                $str = parse_str($query, $output);
-                if (count($output)) {
-                    foreach ($output as $k => $v) {
-                        $_GET[$k] = $v;
+            $tab = explode('?', $_SERVER['REQUEST_URI']);
+            if (count($tab) > 1) {
+                list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
+                if (strlen($query)) {
+                    $str = parse_str($query, $output);
+                    if (count($output)) {
+                        foreach ($output as $k => $v) {
+                            $_GET[$k] = $v;
+                        }
                     }
                 }
             }
@@ -129,7 +139,11 @@
                     $action         = Inflector::lower($action);
                 }
                 $action         = repl(array('.html', '.php', '.asp', '.jsp', '.cfm', '.py', '.pl'), array('', '', '', '', '', '', ''), $action);
-                $moduleDir      = APPLICATION_PATH . DS . 'modules' . DS . $module;
+                if (true === container()->getMultiSite()) {
+                    $moduleDir      = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module;
+                } else {
+                    $moduleDir      = APPLICATION_PATH . DS . 'modules' . DS . $module;
+                }
                 $controllerDir  = $moduleDir . DS . 'controllers';
                 $controllerFile = $controllerDir . DS . $controller . 'Controller.php';
                 if (true === File::exists($controllerFile)) {
@@ -189,8 +203,11 @@
             $module         = Inflector::lower($module);
             $controller     = Inflector::lower($controller);
             $action         = Inflector::lower($action);
-
-            $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . $module;
+            if (true === container()->getMultiSite()) {
+                $moduleDir = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module;
+            } else {
+                $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . $module;
+            }
             if (!is_dir($moduleDir)) {
                 throw new Exception("The module '$module' does not exist.");
             }
@@ -265,20 +282,6 @@
 
         private static function cmsRoute()
         {
-            // $uri = substr(static::$_uri, 1);
-            // $routes = Cms::getRoutes();
-            // foreach ($routes as $idRoute => $route) {
-            //     if ($uri == $route) {
-            //         $page = Cms::getById($idRoute);
-            //         $dispatch = new Dispatch;
-            //         $dispatch->setModule('www');
-            //         $dispatch->setController('cms');
-            //         $dispatch->setAction('view');
-            //         Utils::set('appDispatch', $dispatch);
-            //         Utils::set('cmsPage', $page);
-            //         return true;
-            //     }
-            // }
             return null;
         }
     }
