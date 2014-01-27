@@ -41,7 +41,7 @@
         }
     }
 
-    if (!function_exists('this')) {
+    if (!function_exists('unstatic')) {
         function unstatic($class)
         {
             $obj = new Thin\Unstatic($class);
@@ -67,7 +67,7 @@
     if (!function_exists('cdn')) {
         function cdn($file)
         {
-            return 'http://web.gpweb.co/u/45880241/cdn/' . $file;
+            return 'http://cdn.cityzend.com/u/45880241/cdn/' . $file;
         }
     }
 
