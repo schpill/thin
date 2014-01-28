@@ -26,7 +26,7 @@
                     $json
                 );
                 $infos = json_decode($json, true);
-                if (is_array($infos)) {
+                if (Thin\Arrays::isArray($infos)) {
                     if (ake('status', $infos)) {
                         if ($infos['status'] == 'fail') {
                             return infosIP(true);
@@ -2329,31 +2329,58 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     }
 
     if (!function_exists('option')) {
-        function option($name = null, $value = null)
+        function globals($object = true)
         {
-            static $options = array();
+            $globals = null !== container()->getThinGlobals() ? container()->getThinGlobals() : array();
+            if (true === $object) {
+                $g = o('globals');
+                $g->populate($globals);
+                return $g;
+            }
+            return $globals;
+        }
+
+        function _global()
+        {
+            $args       = func_get_args();
+            $globals    = null !== container()->getThinGlobals() ? container()->getThinGlobals() : array();
+            if(func_num_args() == 2) {
+                $key    = array_shift($args);
+                $value  = Thin\Arrays::first($args);
+                $globals[$key] = $value;
+                container()->setThinGlobals($globals);
+            } elseif (func_num_args() == 1) {
+                $key = Thin\Arrays::first($args);
+                return ake($key, $globals) ? $globals[$key] : null;
+            }
+        }
+
+        function option()
+        {
+            $options = null !== container()->getThinOptions() ? container()->getThinOptions() : array();
             $args = func_get_args();
 
             if(func_num_args() > 0) {
                 $name = array_shift($args);
                 if(is_null($name)) {
-                    # Reset options
                     $options = array();
                     return $options;
                 }
-                if(\Thin\Arrays::isArray($name)) {
+                if(Thin\Arrays::isArray($name)) {
                     $options = array_merge($options, $name);
-                    return $options;
+                    container()->setThinOptions($options);
                 }
                 $nargs = count($args);
                 if($nargs > 0) {
-                    $value = $nargs > 1 ? $args : $args[0];
+                    $value = $nargs > 1 ? $args : Thin\Arrays::first($args);
                     $options[$name] = value($value);
                 }
                 return ake($name, $options) ? $options[$name] : null;
+            } else {
+                container()->setThinOptions(array());
             }
 
-            return $options;
+            return container()->getThinOptions();
         }
     }
 

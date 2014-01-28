@@ -127,6 +127,11 @@
             return ($first === $second);
         }
 
+        public static function isStrict($first, $second)
+        {
+            return ($first === $second);
+        }
+
         public static function isNotSame($first, $second)
         {
             return ($first !== $second);
@@ -195,6 +200,11 @@
         public static function checkScalar($value)
         {
             return is_scalar($value);
+        }
+
+        public static function checkContain($needle, $chain)
+        {
+            return contain($needle, $chain);
         }
 
         public static function isUrl($url)
