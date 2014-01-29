@@ -53,6 +53,13 @@
                             static::$_classes[$className] = true;
                         }
                     }
+                    if (!array_key_exists($className, static::$_classes)) {
+                        $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, 'Thin\\' . $className) . '.php';
+                        if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                            require_once $check;
+                            $classes[$className] = true;
+                        }
+                    }
                     if (!array_key_exists($className, static::$_classes) && !strstr($className, 'this_')) {
                         class_alias('Thin\\Container', $className);
                         static::$_classes[$className] = true;

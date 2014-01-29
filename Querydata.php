@@ -209,6 +209,17 @@
             return $this->results;
         }
 
+        public function count($results = null)
+        {
+            $results = null !== $results ? $results : $this->results;
+            return count($results);
+        }
+
+        public function fetch($results = null)
+        {
+            return static::get($results);
+        }
+
         public function get($results = null)
         {
             $resultsGet = null !== $results ? $results : $this->results;
@@ -270,5 +281,11 @@
                 }
             }
             return null;
+        }
+
+        public static function __callstatic($method, $parameters)
+        {
+            array_unshift($parameters, $this->type);
+            return call_user_func_array(array("Thin\\Data", $method), $parameters);
         }
     }
