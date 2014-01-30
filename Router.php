@@ -168,15 +168,20 @@
 
         public static function language()
         {
-            $route = Utils::get('appDispatch');
-            $language = null === $route->getLanguage() ? container()->getConfig()->getDefaultLanguage() : $route->getLanguage();
-            $module         = $route->getModule();
-            $controller     = $route->getController();
-            $action         = $route->getAction();
+            $route                  = Utils::get('appDispatch');
+            $session                = session('website');
+            $language               = $session->getLanguage();
+            if (null === $language) {
+                $language           = null === $route->getLanguage() ? container()->getConfig()->getDefaultLanguage() : $route->getLanguage();
+                $session->setLanguage($language);
+            }
+            $module                 = $route->getModule();
+            $controller             = $route->getController();
+            $action                 = $route->getAction();
 
-            $module         = Inflector::lower($module);
-            $controller     = Inflector::lower($controller);
-            $action         = Inflector::lower($action);
+            $module                 = Inflector::lower($module);
+            $controller             = Inflector::lower($controller);
+            $action                 = Inflector::lower($action);
 
             $config                 = array();
             $config['language']     = $language;
@@ -184,7 +189,7 @@
             $config['controller']   = $controller;
             $config['action']       = $action;
 
-            $configLanguage = new configLanguage();
+            $configLanguage         = new configLanguage();
             $configLanguage->populate($config);
 
 
