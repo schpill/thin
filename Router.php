@@ -289,4 +289,9 @@
         {
             return null;
         }
+
+        public static function ssl()
+        {
+            Utils::go(repl('http:', 'https:', trim(URLSITE, '/')) . Request::uri());
+        }
     }
