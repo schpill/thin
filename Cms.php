@@ -10,7 +10,7 @@
         {
             $query      = new Querydata('page');
             $url        = substr($_SERVER['REQUEST_URI'], 1);
-            $homeUrl    = null !== static::getOption('home_page_url') ? static::getOption('home_page_name') : 'home';
+            $homeUrl    = null !== static::getOption('home_page_url') ? static::getOption('home_page_url') : 'home';
             $url        = !strlen($url) ? $homeUrl : $url;
 
             if ('home' == $url) {
