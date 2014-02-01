@@ -139,17 +139,22 @@
 
         public function checkTimeout()
         {
-            if (Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
-                $timeout = $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'];
-                $start = $_SESSION['__Thin__'][$this->_sessionName]['__start__'];
-                if ($timeout + $start < time()) {
-                    $this->erase();
+            if (Arrays::exists('__Thin__', $_SESSION)) {
+                if (Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
+                    $timeout = $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'];
+                    $start = $_SESSION['__Thin__'][$this->_sessionName]['__start__'];
+                    if ($timeout + $start < time()) {
+                        $this->erase();
+                    }
                 }
             }
         }
 
         public function erase($key = null)
         {
+            if (!Arrays::exists('__Thin__', $_SESSION)) {
+                $_SESSION['__Thin__'] = array();
+            }
             if (null === $key) {
                 unset($_SESSION['__Thin__'][$this->_sessionName]);
                 return $this;

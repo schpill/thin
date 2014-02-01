@@ -10,7 +10,8 @@
         {
             $query      = new Querydata('page');
             $url        = substr($_SERVER['REQUEST_URI'], 1);
-            $url        = !strlen($url) ? 'home' : $url;
+            $homeUrl    = null !== static::getOption('home_page_url') ? static::getOption('home_page_name') : 'home';
+            $url        = !strlen($url) ? $homeUrl : $url;
 
             if ('home' == $url) {
                 container()->setCmsIsHomePage(true);
@@ -18,12 +19,11 @@
                 container()->setCmsIsHomePage(false);
             }
 
-            $pages      = Data::getAll('page');
+            $pages      = static::getPages();
             $routes     = array();
 
             if (count($pages)) {
-                foreach ($pages as $row) {
-                    $pageTmp                    = Data::getIt('page', $row);
+                foreach ($pages as $pageTmp) {
                     $routes[$pageTmp->getUrl()] = $pageTmp;
                 }
             }
@@ -35,7 +35,6 @@
             }
 
             if (true === $found) {
-
                 $page           = $routes[$url];
                 $displaymode    = Inflector::lower($page->getDisplaymode()->getName());
                 $datePub        = $page->getDateIn();
@@ -160,7 +159,7 @@
                     return $value[$lng];
                 }
             }
-            return $value;
+            return '';
         }
 
         public static function translate($key, $params = array(), $default = null)
@@ -214,10 +213,14 @@
             return null;
         }
 
-        public static function executePHP($code)
+        public static function executePHP($code, $purePHP = true)
         {
             $page       = container()->getCmsPage();
-            $content    = static::sanitize('{{' . "\n" . $code);
+            if (true === $purePHP) {
+                $content    = static::sanitize('{{' . "\n" . $code);
+            } else {
+                $content    = static::sanitize($code);
+            }
             $file       = CACHE_PATH . DS . md5($content . $page->getName()) . '.cms';
             File::delete($file);
             File::put($file, $content);
@@ -255,5 +258,18 @@
             $content = repl('[/endswitch]', 'endswitch;', $content);
 
             return $content;
+        }
+
+        public static function getPages()
+        {
+            $collection = array();
+            $sql        = new Querydata('page');
+            $pages      = $sql->all()->order('name')->get();
+            if (count($pages)) {
+                foreach($pages as $page) {
+                    $collection[] = $page;
+                }
+            }
+            return $collection;
         }
     }

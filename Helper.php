@@ -161,7 +161,7 @@
             foreach ($parts as $part) {
                 // fail if the part is empty
                 if (empty($part)) {
-                    throw new Exception('Invalid path specified: ' . $path);
+                    throw new Thin\Exception('Invalid path specified: ' . $path);
                 }
 
                 // create the cell if it doesn't exist
@@ -288,18 +288,18 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $page   = container()->getCmsPage();
             $getter = getter($field);
             $value  = $page->$getter();
-            return \Thin\Cms::lng($value);
+            return Thin\Cms::lng($value);
         }
     }
 
     if (!function_exists('cms_partial')) {
         function cms_partial($name, $params = array(), $echo = true)
         {
-            $query      = new \Thin\Querydata('partial');
+            $query      = new Thin\Querydata('partial');
             $res        = $query->where("name = $key")->get();
             if (count($res)) {
                 $row    = $query->first($res);
-                $html   = \Thin\Cms::executePHP($row->getValue());
+                $html   = Thin\Cms::executePHP($row->getValue());
 
                 if (count($params)) {
                     foreach ($params as $k => $v) {
@@ -339,14 +339,18 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_header')) {
         function cms_header()
         {
-            cms_render('header');
+            $page   = container()->getCmsPage();
+            $html = Thin\Cms::executePHP($page->getHeader()->getHtml(), false);
+            echo $html;
         }
     }
 
     if (!function_exists('cms_footer')) {
         function cms_footer()
         {
-            cms_render('footer');
+            $page   = container()->getCmsPage();
+            $html = Thin\Cms::executePHP($page->getFooter()->getHtml(), false);
+            echo $html;
         }
     }
 
@@ -363,14 +367,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_content_display')) {
         function cms_content_display()
         {
-            echo \Thin\Cms::display();
+            echo Thin\Cms::display();
         }
     }
 
     if (!function_exists('cms_theme_path')) {
         function cms_theme_path()
         {
-            $theme = \Thin\Cms::getOption('theme');
+            $theme = Thin\Cms::getOption('theme');
             return THEME_PATH . DS . $theme;
         }
     }
@@ -378,7 +382,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_url_theme')) {
         function cms_url_theme($echo = true)
         {
-            $theme = \Thin\Cms::getOption('theme');
+            $theme = Thin\Cms::getOption('theme');
             if (false === $echo) {
                 return URLSITE . 'themes/' . $theme;
             } else {
@@ -393,7 +397,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (null === $page) {
                 return getUrl();
             } else {
-                $query = new \Thin\Querydata('page');
+                $query = new Thin\Querydata('page');
                 $res = $query->where("name = $page")->get();
                 if (count($res)) {
                     $page = $query->first($res);
@@ -408,7 +412,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_snippet')) {
         function cms_snippet($name, $params = array(), $echo = true)
         {
-            $snippet = \Thin\Cms::execSnippet($name, $params);
+            $snippet = Thin\Cms::execSnippet($name, $params);
             if (true === $echo) {
                 echo $snippet;
             } else {
@@ -421,15 +425,15 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_object($collection, $objectName, $array = false)
         {
             $object = new cmsObj();
-            $q      = new \Thin\Querydata('collection');
+            $q      = new Thin\Querydata('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
                 $row  = $q->first($res);
-                $q    = new \Thin\Querydata('object');
+                $q    = new Thin\Querydata('object');
                 $res  = $q->where('collection = ' . $row->getId())->whereAnd("name = $objectName")->get();
                 if (count($res)) {
                     $obj        = $q->first($res);
-                    $objectLng  = \Thin\Cms::lng($obj->getValue());
+                    $objectLng  = Thin\Cms::lng($obj->getValue());
                     $ini        = parse_ini_string($objectLng, true);
                     $object->populate($ini);
                 }
@@ -442,15 +446,15 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_objects($collection, $array = false)
         {
             $coll   = array();
-            $q      = new \Thin\Querydata('collection');
+            $q      = new Thin\Querydata('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
                 $row        = $q->first($res);
-                $q          = new \Thin\Querydata('object');
+                $q          = new Thin\Querydata('object');
                 $objects    = $q->where('collection = ' . $row->getId())->get();
                 if (count($objects)) {
                     foreach ($objects as $object) {
-                        $objectLng  = \Thin\Cms::lng($object->getValue());
+                        $objectLng  = Thin\Cms::lng($object->getValue());
                         $ini        = parse_ini_string($objectLng, true);
                         if (true === $array) {
                             array_push($coll, $ini);
@@ -469,14 +473,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_option')) {
         function cms_option($option)
         {
-            return \Thin\Cms::getOption($option);
+            return Thin\Cms::getOption($option);
         }
     }
 
     if (!function_exists('cms_translate')) {
         function cms_translate($key, $params = array(), $default = null)
         {
-            return \Thin\Cms::translate($key, $params, $default);
+            return Thin\Cms::translate($key, $params, $default);
         }
     }
 

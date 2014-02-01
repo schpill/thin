@@ -1,4 +1,5 @@
 <?php
+    clearstatcache();
     if (true === $debug) {
         error_reporting(-1);
 
@@ -39,6 +40,8 @@
         $protocol = 'https';
     }
 
+    container()->setProtocol($protocol);
+
     $urlSite = "$protocol://" . $_SERVER["SERVER_NAME"] . "/";
 
     if (strstr($urlSite, '//')) {
@@ -73,3 +76,5 @@
 
     \Thin\Utils::set("urlsite", $urlSite);
     define('URLSITE', $urlSite);
+    container()->setUrlsite(URLSITE);
+
