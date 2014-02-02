@@ -147,16 +147,26 @@
                     $this->results = $cache;
                     return $this;
                 }
+
                 if (Arrays::isArray($orderField)) {
                     $orderFields = $orderField;
                 } else {
                     $orderFields = array($orderField);
                 }
+
+                if (Arrays::isArray($orderDirection)) {
+                    $orderDirections = $orderDirection;
+                } else {
+                    $orderDirections = array($orderDirection);
+                }
+                $cnt = 0;
                 foreach ($orderFields as $orderField) {
                     $sort = array();
                     foreach($this->results as $id) {
-                        $objectCreated  = (is_string($id)) ? Data::getById($this->type, $id) : $id;
-                        $sort['id'][]   = $objectCreated->id;
+                        $objectCreated           = (is_string($id)) ? Data::getById($this->type, $id) : $id;
+                        $sort['id'][]            = $objectCreated->id;
+                        $sort['date_create'][]   = $objectCreated->date_create;
+
                         foreach ($this->fields as $k => $infos) {
                             $value      = isset($objectCreated->$k) ? $objectCreated->$k : null;
                             $sort[$k][] = $value;
@@ -174,6 +184,8 @@
                         }
                     }
 
+                    $orderDirection = $orderDirections[$cnt];
+
                     if ('ASC' == Inflector::upper($orderDirection)) {
                         array_multisort($$orderField, SORT_ASC, $asort);
                     } else {
@@ -187,6 +199,7 @@
                     $cache = Data::cache($this->type, $queryKey, $collection);
 
                     $this->results = $collection;
+                    $cnt++;
                 }
             }
             return $this;

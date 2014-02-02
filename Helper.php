@@ -74,12 +74,12 @@
     if (!function_exists('can')) {
         function can($type, $action)
         {
-            $action     = \Thin\Inflector::lower($action);
-            $type       = \Thin\Inflector::lower($type);
+            $action     = Thin\Inflector::lower($action);
+            $type       = Thin\Inflector::lower($type);
             $session    = session('admin');
             $user       = $session->getUser();
-            if (ake($type, \Thin\Data::$_fields) && ake($type, \Thin\Data::$_rights) && null !== $user) {
-                $rights = \Thin\Data::$_rights[$type];
+            if (ake($type, Thin\Data::$_fields) && ake($type, Thin\Data::$_rights) && null !== $user) {
+                $rights = Thin\Data::$_rights[$type];
                 if (ake($action, $rights)) {
                     return $rights[$action];
                 }
@@ -340,7 +340,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_header()
         {
             $page   = container()->getCmsPage();
-            $html = Thin\Cms::executePHP($page->getHeader()->getHtml(), false);
+            $html = Thin\Cms::executePHP(Thin\Cms::lng($page->getHeader()->getHtml()), false);
             echo $html;
         }
     }
@@ -349,7 +349,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_footer()
         {
             $page   = container()->getCmsPage();
-            $html = Thin\Cms::executePHP($page->getFooter()->getHtml(), false);
+            $html = Thin\Cms::executePHP(Thin\Cms::lng($page->getFooter()->getHtml()), false);
             echo $html;
         }
     }

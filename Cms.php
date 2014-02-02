@@ -168,19 +168,22 @@
             $idPage     = $page->getId();
             $query      = new Querydata('translation');
             $res        = $query->where("page = $idPage")->whereAnd("key = $key")->get();
+
             if (count($res)) {
                 $row    = $query->first($res);
                 $value  = static::lng($row->getValue(), container()->getCmsLanguage());
             } else {
-                $value = $default;
+                $value  = $default;
             }
-            if (!empty($value) && !empty($params)) {
+
+            if (!empty($value) && count($params)) {
                 foreach ($params as $k => $v) {
                     $needle = "##$k##";
-                    $value = repl($needle, $v, $value);
+                    $value  = repl($needle, $v, $value);
                 }
             }
-            return $default;
+
+            return $value;
         }
 
         public static function display()

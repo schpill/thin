@@ -220,7 +220,7 @@
                     if (Arrays::exists('checkValue', $info)) {
                         $closure = $info['checkValue'];
                         if ($closure instanceof \Closure) {
-                            $val = $closure($val);
+                            $data[$field] = $closure($val);
                         }
                     }
                 }
@@ -263,7 +263,7 @@
                     if (Arrays::exists('checkValue', $info)) {
                         $closure = $info['checkValue'];
                         if ($closure instanceof \Closure) {
-                            $val = $closure($val);
+                            $data[$field] = $closure($val);
                         }
                     }
                 }
@@ -381,6 +381,7 @@
 
             if (true === $edit) {
                 $oldFile        = STORAGE_PATH . DS . 'data' . DS . $dir . DS . 'read' . DS . $key . '.data';
+                $oldObject = static::getIt($type, $oldFile);
                 if (count($indexes)) {
                     foreach ($indexes as $indexField => $indexInfo) {
                         static::indexRemove($indexField, $indexInfo, static::getObject($oldFile));
@@ -438,6 +439,16 @@
                         if (!Arrays::exists('canBeNull', $info)) {
                             static::_hook($hook, func_get_args(), 'after');
                             throw new Exception('The field ' . $field . ' cannot be null.');
+                        }
+                    } else {
+                        if (Arrays::exists('sha1', $info)) {
+                            if (!preg_match('/^[0-9a-f]{40}$/i', $val) || strlen($val) != 40) {
+                                $object->$field = sha1($val);
+                            }
+                        } elseif (Arrays::exists('md5', $info)) {
+                            if (!preg_match('/^[0-9a-f]{32}$/i', $val) || strlen($val) != 32) {
+                                $object->$field = md5($val);
+                            }
                         }
                     }
                 }
