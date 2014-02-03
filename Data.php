@@ -325,7 +325,9 @@
             if (null !== $object) {
                 static::_hook($hook, func_get_args(), 'after');
                 if (Arrays::exists('afterDelete', $settings)) {
-                    $settings['afterDelete']($type, $id);
+                    if ($settings['afterDelete'] instanceof \Closure) {
+                        $settings['afterDelete']($type, $id);
+                    }
                 }
                 return File::delete($object);
             }
@@ -420,7 +422,7 @@
                 }
                 if (count($res)) {
                     $row = $db->first($res);
-                    static::_hook($hook, func_get_args(), 'after');
+                    static::_hook($hook, array("thin_type" => $type) + $flat, 'after');
                     return $row;
                 }
             }
@@ -472,7 +474,9 @@
 
 
             if (Arrays::exists('afterStore', $settings)) {
-                $settings['afterStore']($type, $flat);
+                if ($settings['afterStore'] instanceof \Closure) {
+                    $settings['afterStore']($type, $flat);
+                }
             }
 
             static::_hook($hook, func_get_args(), 'after');
