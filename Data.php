@@ -396,7 +396,8 @@
 
             if (!empty($checkTuple)) {
                 if (is_string($checkTuple)) {
-                    $res = static::query($type, $checkTuple . ' = ' . $flat[$checkTuple]);
+                    $db     = new Querydata($type);
+                    $res = $db->where($checkTuple . ' = ' . $flat[$checkTuple])->get();
                 }
                 if (Arrays::isArray($checkTuple)) {
                     $query  = '';
