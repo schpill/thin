@@ -79,7 +79,7 @@
             }
         }
 
-        private static function match($routes)
+        public static function match($routes)
         {
             $path   = substr($_SERVER['REQUEST_URI'], 1);
             foreach ($routes as $pathComp => $page) {
@@ -143,6 +143,23 @@
                 return $row->getValue();
             }
             return null;
+        }
+
+        public static function __($value, $lng = null)
+        {
+            if (null === $lng) {
+                $lng = getLanguage();
+                if (null === $lng) {
+                    $lng = static::getOption('default_language');
+                }
+            }
+
+            if (Arrays::isArray($value)) {
+                if (Arrays::exists($lng, $value)) {
+                    return $value[$lng];
+                }
+            }
+            return '';
         }
 
         public static function lng($value, $lng = null)
@@ -219,6 +236,10 @@
         public static function executePHP($code, $purePHP = true)
         {
             $page       = container()->getCmsPage();
+            $page = empty($page) ? new Page : $page;
+            if (empty($page->getName())) {
+                $page->setName(container()->getModule() . container()->getAction());
+            }
             if (true === $purePHP) {
                 $content    = static::sanitize('{{' . "\n" . $code);
             } else {
@@ -267,7 +288,36 @@
         {
             $collection = array();
             $sql        = new Querydata('page');
-            $pages      = $sql->all()->order('name')->get();
+            $pages      = $sql->all()->order('hierarchy')->get();
+            if (count($pages)) {
+                foreach($pages as $page) {
+                    $collection[] = $page;
+                }
+            }
+            return $collection;
+        }
+
+        public static function getParents()
+        {
+            $collection = array();
+            $sql        = new Querydata('page');
+            $pages      = $sql->all()->order('hierarchy')->get();
+            if (count($pages)) {
+                foreach($pages as $page) {
+                    $parent = $page->getParent();
+                    if (empty($parent)) {
+                        $collection[] = $page;
+                    }
+                }
+            }
+            return $collection;
+        }
+
+        public static function getChildren($page)
+        {
+            $collection = array();
+            $sql        = new Querydata('page');
+            $pages      = $sql->where('parent = ' . $page->getId())->order('hierarchy')->get();
             if (count($pages)) {
                 foreach($pages as $page) {
                     $collection[] = $page;

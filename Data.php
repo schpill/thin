@@ -481,6 +481,7 @@
             }
 
             static::_hook($hook, func_get_args(), 'after');
+            static::emptyCache($type);
             return $object;
         }
 

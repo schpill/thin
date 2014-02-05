@@ -8,13 +8,13 @@
 
         public function __construct($config)
         {
-            $session    = session('app_lng');
+            $session    = session('web');
             $session->setLanguage($config->getLanguage());
             $this->_config = $config;
-            if ($config->getLanguage() == container()->getConfig()->getDefaultLanguage()) {
+            if ($config->getLanguage() == Cms::getOption('default_language')) {
                 $this->_needTranslate = false;
             } else {
-                $file = APPLICATION_PATH . DS . 'modules' . DS . $config->getModule() . DS . 'languages' . DS . $config->getController() . ucFirst($config->getLanguage()) . '.php';
+                $file = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $config->getModule() . DS . 'languages' . DS . $config->getController() . ucFirst($config->getLanguage()) . '.php';
 
                 $this->_translation = new languageTranslation;
 
@@ -31,5 +31,10 @@
                 return base64_decode($default);
             }
             return null !== $this->_translation->$key ? $this->_translation->$key : base64_decode($default);
+        }
+
+        public function getLanguage()
+        {
+            return $this->_config->getLanguage();
         }
     }

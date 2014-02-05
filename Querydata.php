@@ -137,10 +137,10 @@
             return $this;
         }
 
-        public function order($orderField, $orderDirection = 'ASC')
+        public function order($orderFields, $orderDirections = 'ASC')
         {
-            if (count($this->results) && null !== $orderField) {
-                $queryKey   = sha1(serialize($this->wheres) . $orderField . $orderDirection);
+            if (count($this->results) && null !== $orderFields) {
+                $queryKey   = sha1(serialize($this->wheres) . serialize($orderFields) . serialize($orderDirections));
                 $cache      = Data::cache($this->type, $queryKey);
 
                 if (!empty($cache)) {
@@ -148,16 +148,16 @@
                     return $this;
                 }
 
-                if (Arrays::isArray($orderField)) {
-                    $orderFields = $orderField;
+                if (Arrays::isArray($orderFields)) {
+                    $orderFields = $orderFields;
                 } else {
-                    $orderFields = array($orderField);
+                    $orderFields = array($orderFields);
                 }
 
-                if (Arrays::isArray($orderDirection)) {
-                    $orderDirections = $orderDirection;
+                if (Arrays::isArray($orderDirections)) {
+                    $orderDirections = $orderDirections;
                 } else {
-                    $orderDirections = array($orderDirection);
+                    $orderDirections = array($orderDirections);
                 }
                 $cnt = 0;
                 foreach ($orderFields as $orderField) {
@@ -184,7 +184,18 @@
                         }
                     }
 
-                    $orderDirection = $orderDirections[$cnt];
+                    $orderDirection = isset($orderDirections[$cnt]) ? $orderDirections[$cnt] : Arrays::first($orderDirections);
+
+                    if (count($$orderField) != count($asort)) {
+                        $newTab = array();
+                        $h = $$orderField;
+                        for ($i = count($asort) + 1, $j = count($h) + 1; $i >= 0 ; $i--, $j--) {
+                            if (isset($h[$j])) {
+                                $newTab[$i] = $h[$j];
+                            }
+                        }
+                        $$orderField = array_reverse($newTab);
+                    }
 
                     if ('ASC' == Inflector::upper($orderDirection)) {
                         array_multisort($$orderField, SORT_ASC, $asort);

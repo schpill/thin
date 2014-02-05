@@ -1,6 +1,22 @@
 <?php
+
+    use Thin\Data;
+    use Thin\Querydata;
+    use Thin\Container;
+    use Thin\Object;
+    use Thin\Inflector;
+    use Thin\Arrays;
+    use Thin\Utils;
+    use Thin\Cms;
+    use Thin\Orm;
+    use Thin\File;
+    use Thin\View;
+    use Thin\Session;
+    use Thin\Cache;
+    use Thin\Exception;
+
     if (!function_exists('infosIP')) {
-        function infosIP($localhost = false)
+        function infosIP($array = false, $localhost = false)
         {
             $session = session('web');
             $infosIP = $session->getInfosIp();
@@ -26,10 +42,10 @@
                     $json
                 );
                 $infos = json_decode($json, true);
-                if (Thin\Arrays::isArray($infos)) {
+                if (Arrays::isArray($infos)) {
                     if (ake('status', $infos)) {
                         if ($infos['status'] == 'fail') {
-                            return infosIP(true);
+                            return infosIP($array, true);
                         }
                     }
                     $InfosIp = o("IP");
@@ -37,7 +53,7 @@
                     $session->setInfosIp($InfosIp);
                 }
             }
-            return $infosIP;
+            return false === $array ? $infosIP : $infos;
         }
     }
 
@@ -74,12 +90,12 @@
     if (!function_exists('can')) {
         function can($type, $action)
         {
-            $action     = Thin\Inflector::lower($action);
-            $type       = Thin\Inflector::lower($type);
+            $action     = Inflector::lower($action);
+            $type       = Inflector::lower($type);
             $session    = session('admin');
             $user       = $session->getUser();
-            if (ake($type, Thin\Data::$_fields) && ake($type, Thin\Data::$_rights) && null !== $user) {
-                $rights = Thin\Data::$_rights[$type];
+            if (ake($type, Data::$_fields) && ake($type, Data::$_rights) && null !== $user) {
+                $rights = Data::$_rights[$type];
                 if (ake($action, $rights)) {
                     return $rights[$action];
                 }
@@ -91,17 +107,17 @@
     if (!function_exists('o')) {
         function o($name)
         {
-            $objects = Thin\Utils::get('thinObjects');
+            $objects = Utils::get('thinObjects');
             if (null === $objects) {
                 $objects = array();
             }
             if (ake($name, $objects)) {
                 return $objects[$name];
             }
-            $newObj = new Thin\Container;
+            $newObj = new Container;
             $newObj->setIsThinObject($name);
             $objects[$name] = $newObj;
-            Thin\Utils::set('thinObjects', $objects);
+            Utils::set('thinObjects', $objects);
             return $newObj;
         }
     }
@@ -161,7 +177,7 @@
             foreach ($parts as $part) {
                 // fail if the part is empty
                 if (empty($part)) {
-                    throw new Thin\Exception('Invalid path specified: ' . $path);
+                    throw new Exception('Invalid path specified: ' . $path);
                 }
 
                 // create the cell if it doesn't exist
@@ -175,6 +191,49 @@
 
             // set value of the target cell
             $pointer = $value;
+        }
+    }
+
+    if (!function_exists('cms_info')) {
+
+        function getBool($bool = 'true')
+        {
+            $db = new Querydata('bool');
+            $res = $db->where('value = ' . $bool)->get();
+            if (count($res)) {
+                return $db->first($res);
+            }
+            return null;
+        }
+
+        function cms_get_page($name = 'home')
+        {
+            $db = new Querydata('page');
+            $res = $db->where('name = ' . $name)->get();
+            if (count($res)) {
+                return $db->first($res);
+            }
+            return null;
+        }
+
+        function cms_info($type, $key, $page, $default = null)
+        {
+            $lng = getLanguage();
+            if ($page instanceof Container) {
+                $db = new Querydata($type);
+                $infos = $db->where('name = ' . $key)->whereAnd('page = ' . $page->getId())->get();
+                if (count($infos)) {
+                    $info = $db->first($infos);
+                    $value = $info->getValue();
+
+                    if (Arrays::isArray($value)) {
+                        if (Arrays::exists($lng, $value)) {
+                            return Cms::executePHP($value[$lng], false);
+                        }
+                    }
+                }
+            }
+            return $default;
         }
     }
 
@@ -215,7 +274,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_facebook($echo = true)
         {
             $urlPage = getUrl();
-            $url     = 'http://www.facebook.com/sharer.php?u=' . $urlPage . '&amp;t=' . urlencode(cms_translate('title'));
+            $url     = 'http://www.facebook.com/sharer.php?u=' . $urlPage . '&amp;t=' . urlencode(cms_title());
 
             if (true === $echo) {
                 echo $url;
@@ -233,7 +292,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (empty($twitterAccount)) {
                 $twitterAccount = 'thinCMS';
             }
-            $url = 'http://twitter.com/share?url=' . $urlPage . '&amp;text=' . urlencode(cms_translate('title')) . '&amp;via=' . $twitterAccount;
+            $url = 'http://twitter.com/share?url=' . $urlPage . '&amp;text=' . urlencode(cms_title()) . '&amp;via=' . $twitterAccount;
 
             if (true === $echo) {
                 echo $url;
@@ -251,7 +310,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (empty($linkedinAccount)) {
                 $linkedinAccount = 'thinCMS';
             }
-            $url = 'https://www.linkedin.com/shareArticle?url=' . $urlPage . '&amp;title=' . urlencode(cms_translate('title')) . '&amp;source=' . $linkedinAccount;
+            $url = 'https://www.linkedin.com/shareArticle?url=' . $urlPage . '&amp;title=' . urlencode(cms_title()) . '&amp;source=' . $linkedinAccount;
 
             if (true === $echo) {
                 echo $url;
@@ -288,18 +347,18 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $page   = container()->getCmsPage();
             $getter = getter($field);
             $value  = $page->$getter();
-            return Thin\Cms::lng($value);
+            return Cms::lng($value);
         }
     }
 
     if (!function_exists('cms_partial')) {
         function cms_partial($name, $params = array(), $echo = true)
         {
-            $query      = new Thin\Querydata('partial');
+            $query      = new Querydata('partial');
             $res        = $query->where("name = $key")->get();
             if (count($res)) {
                 $row    = $query->first($res);
-                $html   = Thin\Cms::executePHP($row->getValue());
+                $html   = Cms::executePHP($row->getValue());
 
                 if (count($params)) {
                     foreach ($params as $k => $v) {
@@ -340,7 +399,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_header()
         {
             $page   = container()->getCmsPage();
-            $html = Thin\Cms::executePHP(Thin\Cms::lng($page->getHeader()->getHtml()), false);
+            $html = Cms::executePHP(Cms::lng($page->getHeader()->getHtml()), false);
             echo $html;
         }
     }
@@ -349,7 +408,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_footer()
         {
             $page   = container()->getCmsPage();
-            $html = Thin\Cms::executePHP(Thin\Cms::lng($page->getFooter()->getHtml()), false);
+            $html = Cms::executePHP(Cms::lng($page->getFooter()->getHtml()), false);
             echo $html;
         }
     }
@@ -357,8 +416,8 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_render')) {
         function cms_render($tpl)
         {
-            $file = cms_theme_path() . DS . Thin\Inflector::lower($tpl) . '.php';
-            if (Thin\File::exists($file)) {
+            $file = cms_theme_path() . DS . Inflector::lower($tpl) . '.php';
+            if (File::exists($file)) {
                 require_once $file;
             }
         }
@@ -367,14 +426,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_content_display')) {
         function cms_content_display()
         {
-            echo Thin\Cms::display();
+            echo Cms::display();
         }
     }
 
     if (!function_exists('cms_theme_path')) {
         function cms_theme_path()
         {
-            $theme = Thin\Cms::getOption('theme');
+            $theme = Cms::getOption('theme');
             return THEME_PATH . DS . $theme;
         }
     }
@@ -382,7 +441,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_url_theme')) {
         function cms_url_theme($echo = true)
         {
-            $theme = Thin\Cms::getOption('theme');
+            $theme = Cms::getOption('theme');
             if (false === $echo) {
                 return URLSITE . 'themes/' . $theme;
             } else {
@@ -397,7 +456,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (null === $page) {
                 return getUrl();
             } else {
-                $query = new Thin\Querydata('page');
+                $query = new Querydata('page');
                 $res = $query->where("name = $page")->get();
                 if (count($res)) {
                     $page = $query->first($res);
@@ -412,7 +471,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_snippet')) {
         function cms_snippet($name, $params = array(), $echo = true)
         {
-            $snippet = Thin\Cms::execSnippet($name, $params);
+            $snippet = Cms::execSnippet($name, $params);
             if (true === $echo) {
                 echo $snippet;
             } else {
@@ -425,15 +484,15 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_object($collection, $objectName, $array = false)
         {
             $object = new cmsObj();
-            $q      = new Thin\Querydata('collection');
+            $q      = new Querydata('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
                 $row  = $q->first($res);
-                $q    = new Thin\Querydata('object');
+                $q    = new Querydata('object');
                 $res  = $q->where('collection = ' . $row->getId())->whereAnd("name = $objectName")->get();
                 if (count($res)) {
                     $obj        = $q->first($res);
-                    $objectLng  = Thin\Cms::lng($obj->getValue());
+                    $objectLng  = Cms::lng($obj->getValue());
                     $ini        = parse_ini_string($objectLng, true);
                     $object->populate($ini);
                 }
@@ -446,15 +505,15 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_objects($collection, $array = false)
         {
             $coll   = array();
-            $q      = new Thin\Querydata('collection');
+            $q      = new Querydata('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
                 $row        = $q->first($res);
-                $q          = new Thin\Querydata('object');
+                $q          = new Querydata('object');
                 $objects    = $q->where('collection = ' . $row->getId())->get();
                 if (count($objects)) {
                     foreach ($objects as $object) {
-                        $objectLng  = Thin\Cms::lng($object->getValue());
+                        $objectLng  = Cms::lng($object->getValue());
                         $ini        = parse_ini_string($objectLng, true);
                         if (true === $array) {
                             array_push($coll, $ini);
@@ -473,14 +532,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_option')) {
         function cms_option($option)
         {
-            return Thin\Cms::getOption($option);
+            return Cms::getOption($option);
         }
     }
 
     if (!function_exists('cms_translate')) {
         function cms_translate($key, $params = array(), $default = null)
         {
-            return Thin\Cms::translate($key, $params, $default);
+            return Cms::translate($key, $params, $default);
         }
     }
 
@@ -562,7 +621,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $url = "http://renderer.fontshop.com/fonts/font_rend.php?idt=f&id=$font&rs=$size&fg=$fg&bg=$bg&rt=$text&ls=$size&w=$width&t=pc";
             $key = sha1(serialize(func_get_args()));
             $file = CACHE_PATH . DS . $key . '.png';
-            if (!\Thin\File::exists($file)) {
+            if (!File::exists($file)) {
                 $img = fgc($url);
                 file_put_contents($file, $img);
             }
@@ -575,7 +634,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (null === $what) {
                 $what = request();
             }
-            new \Thin\Info($what);
+            new Thin\Info($what);
             if (true === $die) {
                 exit;
             }
@@ -695,8 +754,8 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('contain')) {
         function contain($needle, $string)
         {
-            $needle = \Thin\Inflector::lower(htmlspecialchars_decode($needle));
-            $string = \Thin\Inflector::lower(htmlspecialchars_decode($string));
+            $needle = Inflector::lower(htmlspecialchars_decode($needle));
+            $string = Inflector::lower(htmlspecialchars_decode($string));
             return strstr($string, $needle) ? true : false;
         }
     }
@@ -749,7 +808,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                         if (is_array($events[$name])) {
                             for ($i = 0 ; $i < count($events[$name]) ; $i++) {
                                 $func = $events[$name][$i];
-                                if ($func instanceof \Closure) {
+                                if ($func instanceof Closure) {
                                     $res .= call_user_func_array($func, $params);
                                 }
                             }
@@ -769,8 +828,8 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 $file = CACHE_PATH . DS . sha1($file) . '.html';
                 file_put_contents($file, $content);
             }
-            if (\Thin\File::exists($file)) {
-                $view = new \Thin\View($file);
+            if (File::exists($file)) {
+                $view = new View($file);
                 $view->render();
             }
         }
@@ -789,7 +848,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('createSerializedObject')) {
         function createSerializedObject($className)
         {
-            $reflection = new \ReflectionClass($className);
+            $reflection = new ReflectionClass($className);
             $properties = $reflection->getProperties();
 
             return "O:" . strlen($className) . ":\"" . $className. "\":" . count($properties) . ':{' . serializeProperties($reflection, $properties) ."}";
@@ -800,7 +859,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             return unserialize(createSerializedObject($className));
         }
 
-        function serializeProperties(\ReflectionClass $reflection, array $properties)
+        function serializeProperties(ReflectionClass $reflection, array $properties)
         {
             $serializedProperties = '';
 
@@ -812,7 +871,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             return $serializedProperties;
         }
 
-        function serializePropertyName(\ReflectionClass $class, \ReflectionProperty $property)
+        function serializePropertyName(ReflectionClass $class, ReflectionProperty $property)
         {
             $propertyName = $property->getName();
 
@@ -825,7 +884,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             return serialize($propertyName);
         }
 
-        function serializePropertyValue(\ReflectionClass $class, \ReflectionProperty $property)
+        function serializePropertyValue(ReflectionClass $class, ReflectionProperty $property)
         {
             $defaults = $class->getDefaultProperties();
 
@@ -838,7 +897,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
 
         function callNotPublicMethod($object, $methodName)
         {
-            $reflectionClass = new \ReflectionClass($object);
+            $reflectionClass = new ReflectionClass($object);
             $reflectionMethod = $reflectionClass->getMethod($methodName);
             $reflectionMethod->setAccessible(true);
 
@@ -913,7 +972,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function url()
         {
             $protocol = 'http';
-            if ($_SERVER['SERVER_PORT'] == 443 || (!empty($_SERVER['HTTPS']) && \Thin\Inflector::lower($_SERVER['HTTPS']) == 'on')) {
+            if ($_SERVER['SERVER_PORT'] == 443 || (!empty($_SERVER['HTTPS']) && Inflector::lower($_SERVER['HTTPS']) == 'on')) {
                 $protocol .= 's';
                 $protocol_port = $_SERVER['SERVER_PORT'];
             } else {
@@ -945,10 +1004,10 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('helper')) {
         function helper($helper)
         {
-            $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(\Thin\Inflector::lower($helper)) . '.php';
+            $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(Inflector::lower($helper)) . '.php';
             if (file_exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Helper\\' . ucfirst(\Thin\Inflector::lower($helper));
+                $class = 'Thin\\Helper\\' . ucfirst(Inflector::lower($helper));
                 return new $class;
             }
             return null;
@@ -958,10 +1017,10 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('service')) {
         function service($service)
         {
-            $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(\Thin\Inflector::lower($service)) . '.php';
+            $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(Inflector::lower($service)) . '.php';
             if (file_exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Service\\' . ucfirst(\Thin\Inflector::lower($service));
+                $class = 'Thin\\Service\\' . ucfirst(Inflector::lower($service));
                 return new $class;
             }
             return null;
@@ -971,10 +1030,10 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('plugin')) {
         function plugin($plugin)
         {
-            $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(\Thin\Inflector::lower($plugin)) . '.php';
+            $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(Inflector::lower($plugin)) . '.php';
             if (file_exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Plugin\\' . ucfirst(\Thin\Inflector::lower($plugin));
+                $class = 'Thin\\Plugin\\' . ucfirst(Inflector::lower($plugin));
                 return new $class;
             }
             return null;
@@ -1111,7 +1170,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
 
         function smtp($to, $from, $subject, $body, $html = true)
         {
-            $mail = new \Thin\Smtp();
+            $mail = new Thin\Smtp();
             $mail->to($to)->from($from)->subject($subject);
             if (true === $html) {
                 $result = $mail->body($body)->send();
@@ -1131,12 +1190,12 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 return container()->getConfig();
             }
             if (1 == count($args)) {
-                $getter = getter(\Thin\Arrays::first($args));
+                $getter = getter(Arrays::first($args));
                 return container()->getConfig()->$getter();
             }
             if (2 == count($args)) {
-                $key    = \Thin\Arrays::first($args);
-                $value  = \Thin\Arrays::last($args);
+                $key    = Arrays::first($args);
+                $value  = Arrays::last($args);
                 $setter = setter($key);
                 container()->getConfig()->$setter($value);
                 return $value;
@@ -1161,7 +1220,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('addEav')) {
         function addEav($entity, array $attributes)
         {
-            $eav = \Thin\Utils::newInstance('Memory', array('Thin', 'EAV'));
+            $eav = Utils::newInstance('Memory', array('Thin', 'EAV'));
             $eav = $eav->setEntity($entity);
             foreach ($attributes as $key => $value) {
                 $setter = setter($key);
@@ -1172,31 +1231,31 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     }
     if (!function_exists('form')) {
         function form($form) {
-            return \Thin\Utils::getInstance('ThinForm_' . $form);
+            return Utils::getInstance('ThinForm_' . $form);
         }
     }
 
     if (!function_exists('addError')) {
         function addError($error, $type = "warning")
         {
-            $type   = \Thin\Inflector::lower($type);
-            $errors = \Thin\Utils::get('thinErrors');
+            $type   = Inflector::lower($type);
+            $errors = Utils::get('thinErrors');
             $errors = (empty($errors)) ? array() : $errors;
             if (!ake($type, $errors)) {
                 $errors[$type] = array();
             }
             $errors[$type] = $error;
-            \Thin\Utils::set('thinErrors', $errors);
+            Utils::set('thinErrors', $errors);
         }
     }
 
     if (!function_exists('getErrors')) {
         function getErrors($type = null)
         {
-            $errors = \Thin\Utils::get('thinErrors');
+            $errors = Utils::get('thinErrors');
             $errors = (empty($errors)) ? array() : $errors;
             if (null !== $type) {
-                $type = \Thin\Inflector::lower($type);
+                $type = Inflector::lower($type);
                 if (ake($type, $errors)) {
                     return $errors[$type];
                 }
@@ -1209,14 +1268,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('error')) {
         function error($error)
         {
-            return \Thin\Exception($error);
+            return new Exception($error);
         }
     }
 
     if (!function_exists('session')) {
         function session($name)
         {
-            return \Thin\Session::instance($name);
+            return Session::instance($name);
         }
     }
 
@@ -1227,7 +1286,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (null === $role) {
                 return false;
             }
-            return $role->getLabel() == \Thin\Utils::get('appRole')->getLabel();
+            return $role->getLabel() == Utils::get('appRole')->getLabel();
         }
     }
     if (!function_exists('role')) {
@@ -1239,7 +1298,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('render')) {
         function render($file)
         {
-            return \Thin\Utils::run('view.render', array('hash' => sha1($file)));
+            return Utils::run('view.render', array('hash' => sha1($file)));
         }
     }
     if (!function_exists('arrayLookup')) {
@@ -1259,14 +1318,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('utils')) {
         function utils()
         {
-            return \Thin\Utils::getInstance('Utils');
+            return Utils::getInstance('Utils');
         }
     }
 
     if (!function_exists('u')) {
         function u()
         {
-            return \Thin\Utils::getInstance('Utils');
+            return Utils::getInstance('Utils');
         }
     }
 
@@ -1287,28 +1346,28 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('e')) {
         function e($exception)
         {
-            return \Thin\Utils::newInstance('Exception', array($exception));
+            return Utils::newInstance('Exception', array($exception));
         }
     }
 
     if (!function_exists('i')) {
         function i()
         {
-            return \Thin\Utils::getInstance('Inflector');
+            return Utils::getInstance('Inflector');
         }
     }
 
     if (!function_exists('memory')) {
         function memory($entity, $table)
         {
-            return new \Thin\Memory($entity, $table);
+            return new Thin\Memory($entity, $table);
         }
     }
 
     if (!function_exists('em')) {
         function em($entity, $table)
         {
-            $class = 'Model_' . \Thin\Inflector::lower($entity) . '_' . \Thin\Inflector::lower($table);
+            $class = 'Model_' . Inflector::lower($entity) . '_' . Inflector::lower($table);
             return new $class;
         }
     }
@@ -1317,7 +1376,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cache($key, $value, $duration = 60, array $params = array())
         {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
-            $cache = new \Thin\Cache(CACHE_PATH . DS);
+            $cache = new Cache(CACHE_PATH . DS);
             $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
             return $cache->remember($hash, $value, $duration);
         }
@@ -1327,7 +1386,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function isCached($key, $duration = 60, array $params = array())
         {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
-            $cache = new \Thin\Cache(CACHE_PATH . DS);
+            $cache = new Cache(CACHE_PATH . DS);
             $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
             return $cache->has($hash);
         }
@@ -1423,7 +1482,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (is_array($toSerialize) || is_object($toSerialize)) {
                 $continue = false;
                 foreach ($toSerialize as $key => $value) {
-                    if ($value instanceof \PDO) {
+                    if ($value instanceof PDO) {
                         $return .= serialize(array());
                     } else {
                         $return .= _serialize($value);
@@ -1456,8 +1515,8 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('model')) {
         function model($entity, $table)
         {
-            $classModel = 'ThinModel_' . ucfirst(\Thin\Inflector::lower($entity)) . '_' . ucfirst(\Thin\Inflector::lower($table));
-            return \Thin\Utils::newInstance($classModel);
+            $classModel = 'ThinModel_' . ucfirst(Inflector::lower($entity)) . '_' . ucfirst(Inflector::lower($table));
+            return Utils::newInstance($classModel);
         }
     }
 
@@ -1507,7 +1566,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     return false;
                 }
                 $isObj = is_object($class);
-                $classObj = new \ReflectionClass($isObj ? get_class($class) : $class);
+                $classObj = new ReflectionClass($isObj ? get_class($class) : $class);
                 if ($classObj->isAbstract()) {
                     return false;
                 }
@@ -1519,7 +1578,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     if (!$isObj && !$method->isStatic()) {
                         return false;
                     }
-                } catch (\ReflectionException $e) {
+                } catch (ReflectionException $e) {
                     return false;
                 }
                 return true;
@@ -1531,12 +1590,12 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('setPath')) {
         function setPath($name, $path)
         {
-            $paths = \Thin\Utils::get('ThinPaths');
+            $paths = Utils::get('ThinPaths');
             if (null === $paths) {
                 $paths = array();
             }
             $paths[$name] = $path;
-            \Thin\Utils::set('ThinPaths', $paths);
+            Utils::set('ThinPaths', $paths);
         }
     }
 
@@ -1544,10 +1603,10 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function closure($fcn = null)
         {
             if (null !== $fcn && is_string($fcn)) {
-                $fcn = '$_params = \Thin\Utils::get("closure_##hash##"); ' . $fcn;
-                return new \Closure($fcn);
+                $fcn = '$_params = Thin\\Utils::get("closure_##hash##"); ' . $fcn;
+                return new Closure($fcn);
             } else {
-                throw new \Exception("No closure defined.");
+                throw new Exception("No closure defined.");
             }
         }
     }
@@ -1555,11 +1614,11 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('path')) {
         function path($path)
         {
-            $paths = \Thin\Utils::get('ThinPaths');
+            $paths = Utils::get('ThinPaths');
             if (ake($path, $paths)) {
                 return $paths[$path];
             } else {
-                throw new \Exception("This path '$path' is not defined.");
+                throw new Exception("This path '$path' is not defined.");
             }
         }
     }
@@ -1638,12 +1697,12 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                         } else {
                             $array[current($keys)] = array();
                         }
-                    } elseif (!\Thin\Arrays::isArray($array[current($keys)])) {
-                        throw new \Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
+                    } elseif (!Arrays::isArray($array[current($keys)])) {
+                        throw new Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
                     }
                     $array[current($keys)] = arraySet($array[current($keys)], $keys[1], $value);
                 } else {
-                    throw new \Exception("Invalid key '$key'");
+                    throw new Exception("Invalid key '$key'");
                 }
             } else {
                 $array[$key] = $value;
@@ -1694,14 +1753,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     return $value;
                 }
             }
-            return \Thin\Utils::value($default);
+            return Utils::value($default);
         }
     }
 
     if (!function_exists('searchInArray')) {
         function searchInArray($key, array $array)
         {
-            $key = \Thin\Inflector::lower($key);
+            $key = Inflector::lower($key);
             if (true === arrayIkeyExists($key, $array)) {
                 $array = array_change_key_case($array);
                 return $array[$key];
@@ -1712,7 +1771,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('arrayIkeyExists')) {
         function arrayIkeyExists($key, array $array)
         {
-            $key = \Thin\Inflector::lower($key);
+            $key = Inflector::lower($key);
             return ake($key, array_change_key_case($array));
         }
     }
@@ -1844,7 +1903,6 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             return array_map(function($v) use ($key) {
                 return is_object($v) ? $v->$key : $v[$key];
-
             }, $array);
         }
     }
@@ -1930,7 +1988,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 return true;
             } else {
                 // Traversable object is functionally the same as an array
-                return (is_object($value) && $value instanceof \Traversable);
+                return (is_object($value) && $value instanceof Traversable);
             }
         }
     }
@@ -1967,7 +2025,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $outChars = '';
 
             // Decode and validate input string
-            $input = \Thin\Inflector::lower($input);
+            $input = Inflector::lower($input);
             for($i = 0 ; $i < strlen($input) ; $i++) {
                 $n = strpos($digitChars, $input[$i]);
                 if($n === false || $n > $sourceBase) {
@@ -2099,14 +2157,14 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('value')) {
         function value($value)
         {
-            return $value instanceof \Closure ? $value() : $value;
+            return $value instanceof Closure ? $value() : $value;
         }
     }
 
     if (!function_exists('instance')) {
         function instance($class, array $params = array())
         {
-            return \Thin\Utils::getInstance($class, $params);
+            return Utils::getInstance($class, $params);
         }
     }
 
@@ -2169,21 +2227,21 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('in_arrayi')) {
         function in_arrayi($needle, $haystack)
         {
-            return in_array(\Thin\Inflector::lower($needle), array_map('\Thin\Inflector::lower', $haystack));
+            return in_array(Inflector::lower($needle), array_map('strtolower', $haystack));
         }
     }
 
     if (!function_exists('entities')) {
         function entities($string)
         {
-            return \Thin\Inflector::htmlentities($string);
+            return Inflector::htmlentities($string);
         }
     }
 
     if (!function_exists('classObject')) {
         function classObject($alias)
         {
-            @eval("class $alias extends ObjectObject{ public function __construct() {\$this->_nameClass = \Thin\Inflector::lower(get_class(\$this));}}; \$cls = new $alias;");
+            @eval("class $alias extends ObjectObject{ public function __construct() {\$this->_nameClass = \Inflector::lower(get_class(\$this));}}; \$cls = new $alias;");
         }
     }
 
@@ -2192,7 +2250,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             static $classes = array();
             if (!ake($class, $classes)) {
-                $reflect = new \ReflectionClass($class);
+                $reflect = new ReflectionClass($class);
                 $classes[$class] = $reflect->getName();
             }
             return $classes[$class];
@@ -2202,7 +2260,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('getInstance')) {
         function getInstance($class)
         {
-            return \Thin\Utils::getInstance($class);
+            return Utils::getInstance($class);
         }
     }
 
@@ -2210,9 +2268,9 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function urlsite($echo = true)
         {
             if (true === $echo) {
-                echo \Thin\Utils::get('urlsite');
+                echo Utils::get('urlsite');
             } else {
-                return \Thin\Utils::get('urlsite');
+                return Utils::get('urlsite');
             }
         }
     }
@@ -2220,7 +2278,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('getLanguage')) {
         function getLanguage()
         {
-            $session = session('app_lng');
+            $session = session('web');
             return $session->getLanguage();
         }
     }
@@ -2231,8 +2289,8 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $session        = session('web');
             $language       = $session->getLanguage();
             $translation    = $str;
-            $file           = STORAGE_PATH . DS . 'translation' . DS . repl('.', DS, \Thin\Inflector::lower($segment)) . DS . \Thin\Inflector::lower($language) . '.php';
-            if (\Thin\File::exists($file)) {
+            $file           = STORAGE_PATH . DS . 'translation' . DS . repl('.', DS, Inflector::lower($segment)) . DS . Inflector::lower($language) . '.php';
+            if (File::exists($file)) {
                 $sentences  = include($file);
                 if (ake($name, $sentences)) {
                     $translation = $sentences[$name];
@@ -2268,7 +2326,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('lcfirst')) {
         function lcfirst($str)
         {
-            $str[0] = \Thin\Inflector::lower($str[0]);
+            $str[0] = Inflector::lower($str[0]);
             return (string)$str;
         }
     }
@@ -2276,28 +2334,28 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('set')) {
         function set($key, $value)
         {
-            return \Thin\Utils::set($key, $value);
+            return Utils::set($key, $value);
         }
     }
 
     if (!function_exists('get')) {
         function get($key)
         {
-            return \Thin\Utils::get($key);
+            return Utils::get($key);
         }
     }
 
     if (!function_exists('save')) {
         function save($key, $value = null)
         {
-            $saved = \Thin\Utils::get('ThinSaved');
+            $saved = Utils::get('ThinSaved');
             if (null === $saved) {
                 if (null === $value) {
                     return null;
                 }
                 $saved = array();
                 $saved[$key] = $value;
-                \Thin\Utils::set('ThinSaved', $saved);
+                Utils::set('ThinSaved', $saved);
             } else {
                 if (null === $value) {
                     if (ake($key, $saved)) {
@@ -2307,7 +2365,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     }
                 } else {
                     $saved[$key] = $value;
-                    \Thin\Utils::set('ThinSaved', $saved);
+                    Utils::set('ThinSaved', $saved);
                 }
             }
         }
@@ -2350,11 +2408,11 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $globals    = null !== container()->getThinGlobals() ? container()->getThinGlobals() : array();
             if(func_num_args() == 2) {
                 $key    = array_shift($args);
-                $value  = Thin\Arrays::first($args);
+                $value  = Arrays::first($args);
                 $globals[$key] = $value;
                 container()->setThinGlobals($globals);
             } elseif (func_num_args() == 1) {
-                $key = Thin\Arrays::first($args);
+                $key = Arrays::first($args);
                 return ake($key, $globals) ? $globals[$key] : null;
             }
         }
@@ -2370,13 +2428,13 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     $options = array();
                     return $options;
                 }
-                if(Thin\Arrays::isArray($name)) {
+                if(Arrays::isArray($name)) {
                     $options = array_merge($options, $name);
                     container()->setThinOptions($options);
                 }
                 $nargs = count($args);
                 if($nargs > 0) {
-                    $value = $nargs > 1 ? $args : Thin\Arrays::first($args);
+                    $value = $nargs > 1 ? $args : Arrays::first($args);
                     $options[$name] = value($value);
                 }
                 return ake($name, $options) ? $options[$name] : null;
@@ -2402,7 +2460,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $length = 'NA';
             $type = (string) $string;
             if (strstr($string, '(')) {
-                $length = (int) \Thin\Utils::cut('(', ')', $string);
+                $length = (int) Utils::cut('(', ')', $string);
                 list($type, $dummy) = explode('(', $string, 2);
                 $type = (string) $type;
             }
@@ -2465,10 +2523,10 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             if (null === $logFile) {
                 $logFile = LOGS_PATH . DS . date('Y-m-d') . '.log';
             } else {
-                if (false === \Thin\File::exists($logFile)) {
-                    \Thin\File::create($logFile);
+                if (false === File::exists($logFile)) {
+                    File::create($logFile);
                 }
             }
-            \Thin\File::append($logFile, date('Y-m-d H:i:s') . "\t" . \Thin\Inflector::upper($type) . "\t$message\n");
+            File::append($logFile, date('Y-m-d H:i:s') . "\t" . Inflector::upper($type) . "\t$message\n");
         }
     }

@@ -17,6 +17,31 @@
             if (null !== $defaultRoute) {
                 return;
             }
+
+            /* Pages non routées */
+            if (true === container()->getMultiSite()) {
+                $url        = substr($_SERVER['REQUEST_URI'], 1);
+                $homeUrl    = null !== Cms::getOption('home_page_url') ? Cms::getOption('home_page_url') : 'home';
+                $url        = !strlen($url) ? $homeUrl : $url;
+                $pages      = Cms::getPages();
+                $cmsRoutes  = array();
+
+                if (count($pages)) {
+                    foreach ($pages as $pageTmp) {
+                        $cmsRoutes[Cms::__($pageTmp->getUrl())] = $pageTmp;
+                    }
+                }
+
+                $found = Arrays::exists($url, $cmsRoutes);
+
+                if (false === $found) {
+                    $found = Cms::match($cmsRoutes);
+                }
+                if (true === $found && ake($url, $cmsRoutes)) {
+                    return static::isCms($cmsRoutes[$url]);
+                }
+            }
+
             if (true === container()->getMultiSite()) {
                 $file           = APPLICATION_PATH . DS . 'config' . DS . SITE_NAME . DS . 'routes.php';
             } else {
@@ -114,6 +139,16 @@
             Utils::set('appDispatch', $dispatch);
         }
 
+        private static function isCms($page)
+        {
+            $dispatch = new Dispatch;
+            $dispatch->setModule('www');
+            $dispatch->setController('static');
+            $dispatch->setAction($page->getTemplate());
+            Utils::set('appDispatch', $dispatch);
+            container()->setPage($page);
+        }
+
         public static function isError()
         {
             $dispatch = new Dispatch;
@@ -169,10 +204,10 @@
         public static function language()
         {
             $route                  = Utils::get('appDispatch');
-            $session                = session('website');
+            $session                = session('web');
             $language               = $session->getLanguage();
             if (null === $language) {
-                $language           = null === $route->getLanguage() ? container()->getConfig()->getDefaultLanguage() : $route->getLanguage();
+                $language           = null === $route->getLanguage() ? Cms::getOption('default_language') : $route->getLanguage();
                 $session->setLanguage($language);
             }
             $module                 = $route->getModule();
