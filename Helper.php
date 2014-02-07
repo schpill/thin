@@ -206,6 +206,16 @@
             return null;
         }
 
+        function getStatus($status = 'online')
+        {
+            $db = new Querydata('statuspage');
+            $res = $db->where('name = ' . $status)->get();
+            if (count($res)) {
+                return $db->first($res);
+            }
+            return null;
+        }
+
         function cms_get_page($name = 'home')
         {
             $db = new Querydata('page');
@@ -438,6 +448,13 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         }
     }
 
+    if (!function_exists('cms_url')) {
+        function cms_url()
+        {
+            return substr(URLSITE, 0, -1);
+        }
+    }
+
     if (!function_exists('cms_url_theme')) {
         function cms_url_theme($echo = true)
         {
@@ -446,6 +463,116 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 return URLSITE . 'themes/' . $theme;
             } else {
                 echo URLSITE . 'themes/' . $theme;
+            }
+        }
+    }
+
+    if (!function_exists('cms_image')) {
+        function cms_media($type, $name)
+        {
+            $db = new Querydata(Inflector::lower($type));
+            $res = $db->where('name = ' . $name)->get();
+            if (count($res)) {
+                return $db->first($res);
+            }
+            return null;
+        }
+
+        function cms_file($name)
+        {
+            $row = cms_media('file', $name);
+            if (!empty($row)) {
+                return $row->getMedia();
+            }
+            return null;
+        }
+
+        function cms_video($name)
+        {
+            $row = cms_media('video', $name);
+            if (!empty($row)) {
+                return $row->getMedia();
+            }
+            return null;
+        }
+
+        function cms_image($name, $html = false)
+        {
+            $row = cms_media('image', $name);
+            if (!empty($row)) {
+                if (false !== $html) {
+                    return '<img src="' . $row->getMedia() . '" />';
+                } else {
+                    return $row->getMedia();
+                }
+            }
+            return null;
+        }
+    }
+
+    if (!function_exists('cms_menu_auto')) {
+        function cms_menu_auto($echo = true)
+        {
+            $pages      = Thin\Cms::getParents();
+            $actualPage = container()->getPage();
+
+            $parent     = $actualPage->getParent();
+            $pageParent = new url;
+            if (!empty($parent)) {
+                $sql = new Querydata('page');
+                $pageParents = $sql->where('id = ' . $parent)->get();
+                $pageParent = $sql->first($pageParents);
+            }
+
+            $fixed      = 'true' == cms_option('menu_fixed') ? true : false;
+            $showLogo   = 'true' == cms_option('show_logo') ? true : false;
+            if (true === $fixed) $html = '<div class="navbar navbar-fixed-top navbar-inverse">';
+            else $html = '<div class="navbar navbar-inverse">';
+
+            $html .= '<div class="navbar-inner">
+                <div class="container">';
+            $html .= '<a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </a>';
+            if (false === $showLogo) {
+                $html .= '<a class="brand" href="/">' . cms_option('company_name') . '</a>';
+            } else {
+                $html .= '<a id="logoLink" class="brand" href="/"><img style="max-width: ' . cms_option('logo_max_width') . ';" src="' . cms_image('logo') . '" /></a>';
+            }
+
+            $html .= '<div class="nav-collapse collapse">';
+            $html .= '<ul class="nav" id="mainMenu">';
+            foreach ($pages as $page) {
+                $children   = Cms::getChildren($page);
+
+                $active     = Cms::__($page->getUrl()) == Cms::__($actualPage->getUrl()) || Cms::__($page->getUrl()) == Cms::__($pageParent->getUrl());
+                $dropdown   = count($children) > 0 ? ' dropdown' : '';
+                $linkClass  = count($children) > 0 ? ' class="dropdown-toggle openHover" data-toggle="dropdown"' : '';
+                $caret      = count($children) > 0 ? ' <b class="caret"></b>' : '';
+
+                if ($active) $html .= '<li class="active' . $dropdown . '"><a' . $linkClass . ' href="/' . Cms::__($page->getUrl()) . '">' . Cms::__($page->getMenu()) . $caret . '</a>';
+                else $html .= '<li class="' . $dropdown . '"><a' . $linkClass . ' href="/' . Cms::__($page->getUrl()) . '">' . Cms::__($page->getMenu()) . $caret . '</a>';
+                if (count($children)) {
+                    $html .= '<ul class="dropdown-menu">';
+                    foreach ($children as $child) {
+                        $html .= '<li><a href="/' . Cms::__($child->getUrl()) . '">' . Cms::__($child->getMenu()) . '</a></li>';
+                    }
+                    $html .= '</ul>';
+                }
+                $html .= '</li>';
+            }
+            $html .= '</ul>';
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '</div>';
+
+            if (true === $echo) {
+                echo $html;
+            } else {
+                return $html;
             }
         }
     }
@@ -465,6 +592,79 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 }
             }
             return URLSITE . $page->getUrl();
+        }
+    }
+
+    if (!function_exists('cms_youtube')) {
+        function cms_youtube($id, $echo = true)
+        {
+            $html = '<div class="flex-video widescreen"><iframe src="https://www.youtube-nocookie.com/embed/' . $id . '" frameborder="0" allowfullscreen=""></iframe></div>';
+            if (true === $echo) {
+                echo $html;
+            } else {
+                return $html;
+            }
+        }
+    }
+
+    if (!function_exists('cms_slideshow')) {
+        function cms_slideshow($name, $echo = true)
+        {
+            $html = '';
+            Data::getAll('slideshow');
+            Data::getAll('slideshowmedia');
+            $db = new Querydata('slideshow');
+            $res = $db->where('name = ' . $name)->get();
+            $slideshowHeight = cms_option('slideshow_height');
+            $slideshowBg = cms_option('slideshow_background');
+            if (count($res)) {
+                $slideshow = $db->first($res);
+                $dbMedia = new Querydata('slideshowmedia');
+                $rows = $dbMedia->where('slideshow = ' . $slideshow->getId())->order('position')->get();
+                if (count($rows)) {
+                    $html .= '<style>
+.tales {
+  width:auto !important;
+  margin:auto !important;
+  max-height: ' . $slideshowHeight . ' !important;
+}
+.carousel-inner{
+  width:auto !important;
+  max-height: ' . $slideshowHeight . ' !important;
+  background: ' . $slideshowBg . ';
+}
+}</style>
+                    <div class="row"><div id="slideshow_' . $slideshow->getId() . '" class="carousel slide">';
+                    $html .= '<ol class="carousel-indicators">';
+                    for ($i = 0 ; $i < count($rows) ; $i++) {
+                        $ac = $i < 1 ? 'active' : '';
+                        $html .= '<li data-target="#slideshow_' . $slideshow->getId() . '" data-slide-to="' . $i . '" class="' . $ac . '"></li>';
+                    }
+                    $html .= '</ol><div class="carousel-inner">';
+                    $first = true;
+                    foreach ($rows as $media) {
+                        $active = $first ? ' active' : '';
+                        $html .= '<div class="item' . $active . '">';
+                        $html .= '<a href="' . Cms::__($media->getLink()) . '">';
+                        $html .= '<img class="tales" src="' . $media->getImage() . '" alt="' . $slideshow->getName() . ' ' . $media->getPosition() . '" title ="' . $slideshow->getName() . ' ' . $media->getPosition() . '" />';
+                        $html .= '</a>';
+                        $html .= '<div class="carousel-caption">';
+                        $html .= '<p>' . Cms::__($media->getText()) . '</p>';
+                        $html .= '</div>';
+                        $html .= '</div>';
+                        $first = false;
+                    }
+                    $html .= '</div>
+                    <a class="carousel-control left" href="#slideshow_' . $slideshow->getId() . '" data-slide="prev">&lsaquo;</a>
+                    <a class="carousel-control right" href="#slideshow_' . $slideshow->getId() . '" data-slide="next">&rsaquo;</a>
+                    </div></div>';
+                }
+            }
+            if (true === $echo) {
+                echo $html;
+            } else {
+                return $html;
+            }
         }
     }
 
@@ -532,7 +732,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_option')) {
         function cms_option($option)
         {
-            return Cms::getOption($option);
+            return Cms::executePHP(Cms::getOption($option), false);
         }
     }
 

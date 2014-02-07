@@ -235,9 +235,10 @@
 
         public static function executePHP($code, $purePHP = true)
         {
-            $page       = container()->getCmsPage();
+            $page = container()->getCmsPage();
             $page = empty($page) ? new Page : $page;
-            if (empty($page->getName())) {
+            $name = $page->getName();
+            if (empty($name)) {
                 $page->setName(container()->getModule() . container()->getAction());
             }
             if (true === $purePHP) {
@@ -299,6 +300,7 @@
 
         public static function getParents()
         {
+            Data::getAll('page');
             $collection = array();
             $sql        = new Querydata('page');
             $pages      = $sql->all()->order('hierarchy')->get();
@@ -313,14 +315,18 @@
             return $collection;
         }
 
-        public static function getChildren($page)
+        public static function getChildren($pageParent)
         {
+            Data::getAll('page');
             $collection = array();
             $sql        = new Querydata('page');
-            $pages      = $sql->where('parent = ' . $page->getId())->order('hierarchy')->get();
+            $pages      = $sql->all()->order('hierarchy')->get();
             if (count($pages)) {
                 foreach($pages as $page) {
-                    $collection[] = $page;
+                    $parent = $page->getParent();
+                    if ($parent == $pageParent->getId()) {
+                        $collection[] = $page;
+                    }
                 }
             }
             return $collection;

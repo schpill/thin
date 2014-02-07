@@ -38,14 +38,43 @@
                     $found = Cms::match($cmsRoutes);
                 }
                 if (true === $found && ake($url, $cmsRoutes)) {
-                    return static::isCms($cmsRoutes[$url]);
+                    $page      = $cmsRoutes[$url];
+                    $status    = Inflector::lower($page->getStatuspage()->getName());
+                    $dateDepub = $page->getDateOut();
+                    $now       = time();
+
+                    $continue  = true;
+
+                    if (strlen($dateDepub)) {
+                        list($d, $m, $y)    = explode('-', $dateDepub, 3);
+                        $dateDepub          = "$y-$m-$d";
+                        $dateDepub          = new Date($dateDepub);
+                    }
+
+                    if ($dateDepub instanceof Date) {
+                        $ts = $dateDepub->getTimestamp();
+                        if ($ts < $now) {
+                            $page = $cmsRoutes['home'];
+                        }
+                    }
+
+                    if ('offline' == $status) {
+                        $continue = false;
+                    } else {
+                        if ('online' != $status) {
+                            $page = ake($status, $cmsRoutes) ? $cmsRoutes[$status] : $cmsRoutes['home'];
+                        }
+                    }
+                    if (true === $continue) {
+                        return static::isCms($page);
+                    }
                 }
             }
 
             if (true === container()->getMultiSite()) {
-                $file           = APPLICATION_PATH . DS . 'config' . DS . SITE_NAME . DS . 'routes.php';
+                $file = APPLICATION_PATH . DS . 'config' . DS . SITE_NAME . DS . 'routes.php';
             } else {
-                $file           = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
+                $file = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
             }
             $configRoutes   = include($file);
             $routes         = $configRoutes['collection'];
@@ -114,7 +143,9 @@
                 $requestKey = $route->$getter();
                 $_REQUEST[$requestKey] = $value;
             }
+
             $tab = explode('?', $_SERVER['REQUEST_URI']);
+
             if (count($tab) > 1) {
                 list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
                 if (strlen($query)) {
@@ -239,6 +270,8 @@
             $controller     = $route->getController();
             $action         = $route->getAction();
             $alert          = $route->getAlert();
+            $page           = container()->getPage();
+            $isCms          = !empty($page);
 
             $module         = Inflector::lower($module);
             $controller     = Inflector::lower($controller);
@@ -273,12 +306,17 @@
             container()->setController($controller);
 
             $actions = get_class_methods($controllerClass);
+            if (true === $isCms) {
+                if (!Arrays::inArray($action, $actions)) {
+                    $action = 'page';
+                }
+            }
             container()->setAction($action);
 
             if (strstr($action, '-')) {
                 $words = explode('-', $action);
                 $newAction = '';
-                for ($i = 0 ; $i < count($words) ; $i++) {
+                for ($i = 0; $i < count($words); $i++) {
                     $word = trim($words[$i]);
                     if ($i > 0) {
                         $word = ucfirst($word);
