@@ -97,14 +97,14 @@
 
         public static function token()
         {
-            return static::input('hidden', '_token', u::token());
+            return static::input('hidden', '_token', Utils::token());
         }
 
         public static function label($name, $value, $attributes = array())
         {
             static::$labels[] = $name;
             $attributes = Html::attributes($attributes);
-            return '<label for="' . $name . '"' . $attributes . '>' . $value . '</label>';
+            return '<label for="' . $name . '"' . $attributes . '>' . Html\helper::display($value) . '</label>';
         }
 
         /**
@@ -300,7 +300,7 @@
         protected static function option($value, $display, $selected)
         {
             if (is_array($selected)) {
-                $selected = (in_array($value, $selected)) ? 'selected' : null;
+                $selected = (Arrays::inArray($value, $selected)) ? 'selected' : null;
             } else {
                 $selected = ((string) $value == (string) $selected) ? 'selected' : null;
             }

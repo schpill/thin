@@ -373,18 +373,7 @@
          */
         public static function camelize($string, $spacify = true, $lazy = false)
         {
-            if($spacify) {
-                $repl = "str_replace('_', ' ', strtoupper('\\1'))";
-            } else {
-                $repl = "strtoupper('\\2')";
-            }
-            $ret = preg_replace("`(?<=[a-z0-9])(_([a-z0-9]))`e", $repl, $string);
-            $ret = str_replace(' ', '', $ret);
-            if($lazy) {
-                return lcfirst($ret);
-            } else {
-                return ucfirst($ret);
-            }
+            return implode('', explode(' ', ucwords(implode(' ', explode('_', $string)))));
         }
 
         public static function uncamelize($string, $splitter = "_")

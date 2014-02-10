@@ -510,13 +510,89 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         }
     }
 
+    if (!function_exists('cms_map')) {
+        function cms_map($echo = true)
+        {
+            $longitude  = cms_option('longitude');
+            $latitude   = cms_option('latitude');
+            $html       = '<style type="text/css">
+    #map{width:100%;height:300px;margin:auto;}
+  </style><div id="map"></div>';
+            $html       .= '<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&amp;sensor=false"></script>
+            <script type="text/javascript">
+var map;
+var initialize;
+
+initialize = function(){
+  var latLng = new google.maps.LatLng(' . $latitude . ', ' . $longitude . ');
+  var myOptions = {
+    zoom      : 16,
+    center    : latLng,
+    draggable: false,
+    mapTypeId : google.maps.MapTypeId.TERRAIN,
+    maxZoom   : 20
+  };
+  map      = new google.maps.Map(document.getElementById(\'map\'), myOptions);
+  var marker = new google.maps.Marker({
+    position : latLng,
+    icon     : \''. cms_image('map_marker_ico') . '\',
+    map      : map,
+    title    : "'. cms_option('map_marker_name') . '"
+});
+    var infowindow = new google.maps.InfoWindow({
+      content: \'<div style="color: black">'. str_replace(array("\n", "\r", "\t"), "", cms_option('map_text')) . '</div>\'
+    });
+    google.maps.event.addListener(marker, \'click\', function() {
+    infowindow.open(map, marker);
+  });
+};
+initialize();
+    </script>';
+
+            if (true === $echo) {
+                echo $html;
+            } else {
+                return $html;
+            }
+        }
+    }
+    if (!function_exists('cms_google_fonts')) {
+        function cms_google_fonts()
+        {
+            $fonts = cms_option('google_fonts');
+            if (!empty($fonts)) {
+                $tab = explode(',', $fonts);
+                $cssFonts = implode(':400,300,700,900,600|', $tab);
+                $cssFonts = repl(' ', '+', $cssFonts) . ':400,300,700,900,600&amp;subset=latin,latin-ext';
+                return '<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=' . $cssFonts . '">';
+            }
+
+            return '';
+        }
+    }
+
+    if (!function_exists('cms_form')) {
+        function cms_form($name, $echo = true)
+        {
+            $form = Cms::makeForm($name);
+            if (true === $echo) {
+                echo $form;
+            } else {
+                return $form;
+            }
+        }
+    }
+
     if (!function_exists('cms_menu_auto')) {
         function cms_menu_auto($echo = true)
         {
+            $show       = cms_option('show_menu');
+            if ('true' != $show) return;
             $pages      = Thin\Cms::getParents();
             $actualPage = container()->getPage();
 
             $parent     = $actualPage->getParent();
+            $lngs       = explode(',', cms_option('page_languages'));
             $pageParent = new url;
             if (!empty($parent)) {
                 $sql = new Querydata('page');
@@ -524,10 +600,17 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 $pageParent = $sql->first($pageParents);
             }
 
+            $html = '
+<script>
+$(document).ready(function() {
+    $(\'#mainNavbar\').scrollspy()
+});
+</script><form action="" method="post" id="lng_form"><input id="cms_lng" name="cms_lng" value="' . getLanguage() . '" /></form>';
+
             $fixed      = 'true' == cms_option('menu_fixed') ? true : false;
             $showLogo   = 'true' == cms_option('show_logo') ? true : false;
-            if (true === $fixed) $html = '<div class="navbar navbar-fixed-top navbar-inverse">';
-            else $html = '<div class="navbar navbar-inverse">';
+            if (true === $fixed) $html .= '<div id="mainNavbar" class="navbar navbar-fixed-top navbar-inverse">';
+            else $html .= '<div class="navbar navbar-inverse">';
 
             $html .= '<div class="navbar-inner">
                 <div class="container">';
@@ -564,6 +647,21 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 $html .= '</li>';
             }
             $html .= '</ul>';
+            if (1 < count($lngs)) {
+                $actualLng = getLanguage();
+                $html .= '<ul id="mainMenu" class="nav navbar-nav pull-right">';
+                foreach($lngs as $lng) {
+                    if ($lng <> $actualLng) {
+                        $displayOption = cms_option('lng_' . $lng . '_display');
+                        if (null === $displayOption) {
+                            $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;">' . Inflector::upper($lng) . '</a></li>';
+                        } elseif ('flag' == $displayOption) {
+                            $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;"><img src="' . URLSITE . 'assets/img/flags/' . $lng . '.png" /></a></li>';
+                        }
+                    }
+                }
+                $html .= '</ul>';
+            }
             $html .= '</div>';
             $html .= '</div>';
             $html .= '</div>';
@@ -623,17 +721,34 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                 $rows = $dbMedia->where('slideshow = ' . $slideshow->getId())->order('position')->get();
                 if (count($rows)) {
                     $html .= '<style>
+
+
+.slideSize {
+    font-size: 24px;
+    position: relative;
+    top: -15px;
+}
 .tales {
   width:auto !important;
   margin:auto !important;
   max-height: ' . $slideshowHeight . ' !important;
 }
-.carousel-inner{
+.carousel-inner {
   width:auto !important;
   max-height: ' . $slideshowHeight . ' !important;
   background: ' . $slideshowBg . ';
 }
-}</style>
+.carousel .item {-webkit-transition: opacity 3s; -moz-transition: opacity 3s; -ms-transition: opacity 3s; -o-transition: opacity 3s; transition: opacity 3s;}
+.carousel .active.left {left:0;opacity:0;z-index:2;}
+.carousel .next {left:0;opacity:1;z-index:1;}
+</style>
+<script>
+$(document).ready(function() {
+    $(\'.carousel\').carousel({
+        interval: 2000
+    })
+});
+</script>
                     <div class="row"><div id="slideshow_' . $slideshow->getId() . '" class="carousel slide">';
                     $html .= '<ol class="carousel-indicators">';
                     for ($i = 0 ; $i < count($rows) ; $i++) {
@@ -655,8 +770,8 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                         $first = false;
                     }
                     $html .= '</div>
-                    <a class="carousel-control left" href="#slideshow_' . $slideshow->getId() . '" data-slide="prev">&lsaquo;</a>
-                    <a class="carousel-control right" href="#slideshow_' . $slideshow->getId() . '" data-slide="next">&rsaquo;</a>
+                    <a class="left carousel-control" href="#slideshow_' . $slideshow->getId() . '" data-slide="prev"><i class="fa fa-arrow-left slideSize"></i></a>
+                        <a class="right carousel-control" href="#slideshow_' . $slideshow->getId() . '" data-slide="next"><i class="fa fa-arrow-right slideSize"></i></a>
                     </div></div>';
                 }
             }

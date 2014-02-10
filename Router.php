@@ -21,14 +21,29 @@
             /* Pages non routées */
             if (true === container()->getMultiSite()) {
                 $url        = substr($_SERVER['REQUEST_URI'], 1);
-                $homeUrl    = null !== Cms::getOption('home_page_url') ? Cms::getOption('home_page_url') : 'home';
+                $db         = new Querydata('page');
+                $res        = $db->where('is_home = ' . getBool('true')->getId())->get();
+                $home       = $db->first($res);
+                $_homeUrl   = Cms::__($home->getUrl());
+                $homeUrl    = null !== $_homeUrl ? $_homeUrl : 'home';
                 $url        = !strlen($url) ? $homeUrl : $url;
                 $pages      = Cms::getPages();
                 $cmsRoutes  = array();
 
+                $lngs       = explode(',', cms_option('page_languages'));
+
                 if (count($pages)) {
                     foreach ($pages as $pageTmp) {
-                        $cmsRoutes[Cms::__($pageTmp->getUrl())] = $pageTmp;
+                        if (1 < count($lngs)) {
+                            $urlTab = $pageTmp->getUrl();
+                            foreach($lngs as $lng) {
+                                if (ake($lng, $urlTab)) {
+                                    $cmsRoutes[$urlTab[$lng]] = $pageTmp;
+                                }
+                            }
+                        } else {
+                            $cmsRoutes[Cms::__($pageTmp->getUrl())] = $pageTmp;
+                        }
                     }
                 }
 
@@ -234,32 +249,49 @@
 
         public static function language()
         {
-            $route                  = Utils::get('appDispatch');
-            $session                = session('web');
-            $language               = $session->getLanguage();
-            if (null === $language) {
-                $language           = null === $route->getLanguage() ? Cms::getOption('default_language') : $route->getLanguage();
-                $session->setLanguage($language);
+            $isCMS      = null !== container()->getPage();
+            $session    = session('web');
+            if (true === $isCMS) {
+                if (count($_POST)) {
+                    if (ake('cms_lng', $_POST)) {
+                        $session->setLanguage($_POST['cms_lng']);
+                    } else {
+                        $language = $session->getLanguage();
+                        $language = null === $language ? Cms::getOption('default_language') : $language;
+                        $session->setLanguage($language);
+                    }
+                } else {
+                    $language = $session->getLanguage();
+                    $language = null === $language ? Cms::getOption('default_language') : $language;
+                    $session->setLanguage($language);
+                }
+            } else {
+                $route                  = Utils::get('appDispatch');
+                $language               = $session->getLanguage();
+                if (null === $language) {
+                    $language           = null === $route->getLanguage() ? Cms::getOption('default_language') : $route->getLanguage();
+                    $session->setLanguage($language);
+                }
+                $module                 = $route->getModule();
+                $controller             = $route->getController();
+                $action                 = $route->getAction();
+
+                $module                 = Inflector::lower($module);
+                $controller             = Inflector::lower($controller);
+                $action                 = Inflector::lower($action);
+
+                $config                 = array();
+                $config['language']     = $language;
+                $config['module']       = $module;
+                $config['controller']   = $controller;
+                $config['action']       = $action;
+
+                $configLanguage         = new configLanguage();
+                $configLanguage->populate($config);
+
+
+                container()->setLanguage(new Language($configLanguage));
             }
-            $module                 = $route->getModule();
-            $controller             = $route->getController();
-            $action                 = $route->getAction();
-
-            $module                 = Inflector::lower($module);
-            $controller             = Inflector::lower($controller);
-            $action                 = Inflector::lower($action);
-
-            $config                 = array();
-            $config['language']     = $language;
-            $config['module']       = $module;
-            $config['controller']   = $controller;
-            $config['action']       = $action;
-
-            $configLanguage         = new configLanguage();
-            $configLanguage->populate($config);
-
-
-            container()->setLanguage(new Language($configLanguage));
         }
 
         public static function run()
