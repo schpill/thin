@@ -100,5 +100,14 @@
         {
             return get_object_vars($this);
         }
+
+        public function route(Container $route)
+        {
+            $routes = container()->getMapRoutes();
+            $routes = empty($routes) ? array() : $routes;
+            $routes[$route->getName()] = $route;
+            container()->setMapRoutes($routes);
+            return $this;
+        }
     }
 

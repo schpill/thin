@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+    use Closure;
 
     class Router
     {
@@ -13,13 +14,21 @@
         public static function dispatch()
         {
             static::$_uri = $uri = trim($_SERVER['REQUEST_URI'], static::URI_DELIMITER);
+
+            $containerRoute = static::containerRoute();
+            if (null !== $containerRoute) {
+                return;
+            }
+
             $defaultRoute = static::defaultRoute();
             if (null !== $defaultRoute) {
                 return;
             }
 
+            $entities = container()->getEntities();
+
             /* Pages non routées */
-            if (true === container()->getMultiSite()) {
+            if (true === container()->getMultiSite() && !empty($entities)) {
                 $url        = substr($_SERVER['REQUEST_URI'], 1);
                 $db         = new Querydata('page');
                 $res        = $db->where('is_home = ' . getBool('true')->getId())->get();
@@ -91,31 +100,36 @@
             } else {
                 $file = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
             }
-            $configRoutes   = include($file);
-            $routes         = $configRoutes['collection'];
-            $routes         += null !== container()->getRoutes() ? container()->getRoutes() : array();
-            foreach ($routes as $route) {
-                if (!$route instanceof Container) {
-                    continue;
+            if (File::exists($file)) {
+                $configRoutes   = include($file);
+                $routes         = $configRoutes['collection'];
+                $routes         += null !== container()->getRoutes() ? container()->getRoutes() : array();
+                foreach ($routes as $route) {
+                    if (!$route instanceof Container) {
+                        continue;
+                    }
+                    $path = $route->getPath();
+                    if ($path == $uri) {
+                        return static::make($route);
+                    }
                 }
-                $path = $route->getPath();
-                if ($path == $uri) {
-                    return static::make($route);
+                foreach ($routes as $route) {
+                    if (!$route instanceof Container) {
+                        continue;
+                    }
+                    if (!strlen($route->getPath())) {
+                        continue;
+                    }
+                    $matched = static::match($route->getPath());
+                    if (false === $matched) {
+                        continue;
+                    } else {
+                        return static::make($route);
+                    }
                 }
-            }
-            foreach ($routes as $route) {
-                if (!$route instanceof Container) {
-                    continue;
-                }
-                if (!strlen($route->getPath())) {
-                    continue;
-                }
-                $matched = static::match($route->getPath());
-                if (false === $matched) {
-                    continue;
-                } else {
-                    return static::make($route);
-                }
+            } else {
+                static::make(container()->getNotFoundRoute());
+                return;
             }
 
             static::is404();
@@ -145,7 +159,7 @@
 
         private static function make($route)
         {
-            \u::set('appDispatch', $route);
+            Utils::set('appDispatch', $route);
             if (null !== $route->getParam1()) {
                 static::assign($route);
             }
@@ -202,6 +216,38 @@
             $dispatch->setController('static');
             $dispatch->setAction('is-error');
             Utils::set('appDispatch', $dispatch);
+        }
+
+        private static function containerRoute()
+        {
+            $routes = container()->getMapRoutes();
+            if (!empty($routes)) {
+                foreach ($routes as $name => $route) {
+                    if (404 == $name) {
+                        container()->setNotFoundRoute($route);
+                    }
+                    if (!$route instanceof Container) {
+                        continue;
+                    }
+                    $path = $route->getPath();
+                    if (strlen($path) && $path == static::$_uri) {
+                        static::make($route);
+                        return true;
+                    }
+                    if (!strlen($path) && !strlen(static::$_uri)) {
+                        static::make($route);
+                        return true;
+                    }
+                    $matched = static::match($path);
+                    if (false === $matched || !count($matched)) {
+                        continue;
+                    } else {
+                        static::make($route);
+                        return true;
+                    }
+                }
+            }
+            return null;
         }
 
         private static function defaultRoute()
@@ -276,9 +322,9 @@
                 $controller             = $route->getController();
                 $action                 = $route->getAction();
 
-                $module                 = Inflector::lower($module);
-                $controller             = Inflector::lower($controller);
-                $action                 = Inflector::lower($action);
+                $module                 = is_string($action) ? Inflector::lower($module) : $module;
+                $controller             = is_string($action) ? Inflector::lower($controller) : $controller;
+                $action                 = is_string($action) ? Inflector::lower($action) : $action;
 
                 $config                 = array();
                 $config['language']     = $language;
@@ -298,12 +344,65 @@
         {
             Request::$route = $route = Utils::get('appDispatch');
             container()->setRoute($route);
+            $render         = $route->getRender();
+            $tplDir         = $route->getTemplateDir();
             $module         = $route->getModule();
             $controller     = $route->getController();
             $action         = $route->getAction();
             $alert          = $route->getAlert();
             $page           = container()->getPage();
             $isCms          = !empty($page);
+
+            if (!empty($render)) {
+                $tplMotor = $route->getTemplateMotor();
+                $tplDir = empty($tplDir) ? APPLICATION_PATH . DS . SITE_NAME . DS . 'app' . DS . 'views' : $tplDir;
+                $tpl = $tplDir . DS . $render . '.phtml';
+                if (File::exists($tpl)) {
+                    if ('Twig' == $tplMotor) {
+                        if (!class_exists('Twig_Autoloader')) {
+                            require_once 'Twig/Autoloader.php';
+                        }
+
+                        $tab    = explode(DS, $tpl);
+                        $file   = Arrays::last($tab);
+
+                        $path   = repl(DS . $file, '', $tpl);
+
+                        $loader = new \Twig_Loader_Filesystem($path);
+                        $view   = new \Twig_Environment(
+                            $loader,
+                            array(
+                                'cache'             => CACHE_PATH,
+                                'debug'             => false,
+                                'charset'           => 'utf-8',
+                                'strict_variables'  => false
+                            )
+                        );
+                        container()->setView($view);
+                        if ($action instanceof Closure) {
+                            $action($view);
+                        }
+                        $params = null === container()->getViewParams() ? array() : container()->getViewParams();
+                        echo $view->render($file, $params);
+                        /* stats */
+                        if (null === container()->getNoShowStats()) {
+                            echo View::showStats();
+                        }
+                    } else {
+                        $view = new View($tpl);
+                        container()->setView($view);
+                        if ($action instanceof Closure) {
+                            $action($view);
+                        }
+                        $view->render();
+                        /* stats */
+                        if (null === container()->getNoShowStats()) {
+                            echo View::showStats();
+                        }
+                    }
+                    return;
+                }
+            }
 
             $module         = Inflector::lower($module);
             $controller     = Inflector::lower($controller);

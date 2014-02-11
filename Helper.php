@@ -647,16 +647,23 @@ $(document).ready(function() {
                 $html .= '</li>';
             }
             $html .= '</ul>';
-            if (1 < count($lngs)) {
+            $session = session('admin');
+            $user = $session->getUser();
+            if (1 < count($lngs) || null !== $user) {
                 $actualLng = getLanguage();
                 $html .= '<ul id="mainMenu" class="nav navbar-nav pull-right">';
-                foreach($lngs as $lng) {
-                    if ($lng <> $actualLng) {
-                        $displayOption = cms_option('lng_' . $lng . '_display');
-                        if (null === $displayOption) {
-                            $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;">' . Inflector::upper($lng) . '</a></li>';
-                        } elseif ('flag' == $displayOption) {
-                            $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;"><img src="' . URLSITE . 'assets/img/flags/' . $lng . '.png" /></a></li>';
+                if (null !== $user) {
+                    $html .= '<li><a target="_admin" rel="tooltip-bottom" title="Accès à l\'admin" href="' . URLSITE . 'backadmin/dashboard"><i class="fa fa-cogs"></i></a></li>';
+                }
+                if (1 < count($lngs)) {
+                    foreach($lngs as $lng) {
+                        if ($lng <> $actualLng) {
+                            $displayOption = cms_option('lng_' . $lng . '_display');
+                            if (null === $displayOption) {
+                                $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;">' . Inflector::upper($lng) . '</a></li>';
+                            } elseif ('flag' == $displayOption) {
+                                $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;"><img src="' . URLSITE . 'assets/img/flags/' . $lng . '.png" /></a></li>';
+                            }
                         }
                     }
                 }
@@ -1032,6 +1039,31 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('data')) {
+
+        function newData($type, $data = array())
+        {
+            return Data::newOne($type);
+        }
+
+        function data($type, array $fields, array $config = array())
+        {
+            if (!empty($fields)) {
+                $setter = 'setConfigData' . ucfirst(Inflector::lower($type));
+                container()->$setter($config);
+                $setter = 'setFieldsData' . ucfirst(Inflector::lower($type));
+                $conf = array();
+                foreach ($fields as $key => $configField) {
+                    if (empty($configField)) {
+                        $configField = array("canBeNull" => true);
+                    }
+                    $conf[$key] = $configField;
+                }
+                container()->$setter($conf);
+            }
+        }
+    }
+
     if (!function_exists('dataDecode')) {
         function dataDecode($file)
         {
@@ -1135,6 +1167,26 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('displays')) {
+        function displays($tpl)
+        {
+            $view   = container()->getView();
+            $tab    = explode(DS, $view->_viewFile);
+            $path   = repl(Arrays::last($tab), $tpl, $view->_viewFile);
+            if (File::exists($path)) {
+                $content = fgc($path);
+                $content = repl('$this->', '$view->', $content);
+                $file = CACHE_PATH . DS . sha1($content) . '.display';
+                File::put($file, $content);
+                ob_start();
+                include $file;
+                $html = ob_get_contents();
+                ob_end_clean();
+                File::delete($file);
+                echo $html;
+            }
+        }
+    }
     if (!function_exists('partial')) {
         function partial($file)
         {

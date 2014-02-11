@@ -89,6 +89,15 @@
             Utils::set('showStats', true);
         }
 
+        public function includes($tpl)
+        {
+            $tab = explode(DS, $this->_viewFile);
+            $path = repl(Arrays::last($tab), $tpl, $this->_viewFile);
+            if (File::exists($path)) {die($path);
+                include_once $path;
+            }
+        }
+
         public function partial($partial, array $params = array(), $cache = false, $echo = true, $module = null)
         {
             if (count($params)) {
@@ -227,7 +236,7 @@
             if (!File::exists($this->compiled()) || !File::exists($this->_viewFile)) {
                 return true;
             }
-            return filemtime($this->_viewFile) > filemtime($this->compiled());
+            return File::modified($this->_viewFile) > File::modified($this->compiled());
         }
 
         protected function compiled($compile = false)
@@ -332,7 +341,7 @@
                     return null;
                 }
             } elseif (substr($func, 0, 3) == 'set') {
-                $value = $argv[0];
+                $value = Arrays::first($argv);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 $this->$var = $value;
@@ -371,7 +380,7 @@
 
             if(null === $ext) {
                 $tabString = explode('.', Inflector::lower($asset));
-                $ext = end($tabString);
+                $ext = Arrays::last($tabString);
             }
             if ($ext == 'css') {
                 $assetHtml = '<link href="' . $asset . '?v=' . $versionCss . '"';
@@ -477,7 +486,7 @@
             }
 
             $tab    = explode(DS, $template);
-            $file   = end($tab);
+            $file   = Arrays::last($tab);
 
             $path   = repl(DS . $file, '', $template);
 
@@ -518,14 +527,31 @@
         public static function showStats()
         {
             Timer::stop();
-            $executionTime      = Timer::get();
-            $queries            = (null === Utils::get('NbQueries'))             ? 0                         : Utils::get('NbQueries');
-            $valQueries         = ($queries < 2)                                 ? 'requete SQL executee'    : 'requetes SQL executees';
-            $SQLDuration        = (null === Utils::get('SQLTotalDuration'))      ? 0                         : Utils::get('SQLTotalDuration');
+            $executionTime = Timer::get();
 
-            $queriesNoSQL       = (null === Utils::get('NbQueriesNOSQL'))        ? 0                         : Utils::get('NbQueriesNOSQL');
-            $valQueriesNoSQL    = ($queriesNoSQL < 2)                            ? 'requete NoSQL executee'  : 'requetes NoSQL executees';
-            $SQLDurationNoSQL   = (null === Utils::get('SQLTotalDurationNOSQL')) ? 0                         : Utils::get('SQLTotalDurationNOSQL');
+            $queries = (null === Utils::get('NbQueries'))
+            ? 0
+            : Utils::get('NbQueries');
+
+            $valQueries = ($queries < 2)
+            ? 'requete SQL executee'
+            : 'requetes SQL executees';
+
+            $SQLDuration = (null === Utils::get('SQLTotalDuration'))
+            ? 0
+            : Utils::get('SQLTotalDuration');
+
+            $queriesNoSQL = (null === Utils::get('NbQueriesNOSQL'))
+            ? 0
+            : Utils::get('NbQueriesNOSQL');
+
+            $valQueriesNoSQL = ($queriesNoSQL < 2)
+            ? 'requete NoSQL executee'
+            : 'requetes NoSQL executees';
+
+            $SQLDurationNoSQL = (null === Utils::get('SQLTotalDurationNOSQL'))
+            ? 0
+            : Utils::get('SQLTotalDurationNOSQL');
 
             $execPHPSQL         = $executionTime - $SQLDuration;
             $execPHPNoSQL       = $executionTime - $SQLDurationNoSQL;

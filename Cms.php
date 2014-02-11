@@ -373,6 +373,8 @@
                         Data::$_settings[$entity]   = $settings;
                     }
                 }
+            } else {
+                mkdir(APPLICATION_PATH . DS . 'models' . DS . 'Data' . DS . SITE_NAME, 0777);
             }
 
             $customtypes = Data::getAll('customtype');
@@ -389,7 +391,9 @@
             container()->setEntities($entities);
             $adminrights = Data::getAll('adminright');
             if(!count($adminrights)) {
-                static::fixtures();
+                if (count($entities)) {
+                    static::fixtures();
+                }
             } else {
                 $adminTables = Data::getAll('admintable');
                 if (count($adminTables)) {

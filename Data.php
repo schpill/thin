@@ -24,7 +24,7 @@
             $settings   = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : static::defaultConfig($type);
             $fields     = Arrays::exists($type, static::$_fields) ? static::$_fields[$type] : static::noConfigFields($type);
 
-            $obj = new Object;
+            $obj = new objData;
             $obj->thin_type = $type;
             if (count($fields)) {
                 foreach ($fields as $key => $infos) {
@@ -1397,7 +1397,7 @@
                 $_fields = $obj->_fields;
                 foreach ($_fields as $__field) {
                     if ($__field != 'id' && $__field != 'date_create' && $__field != 'thin_type') {
-                        $fields[$__field] = array();
+                        $fields[$__field] = array('canBeNull' => true);
                     }
                 }
             }
