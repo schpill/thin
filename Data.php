@@ -227,8 +227,12 @@
                     $val = $data[$field];
                     if (empty($val)) {
                         if (!Arrays::exists('canBeNull', $info)) {
-                            static::_hook($hook, func_get_args(), 'after');
-                            throw new Exception('The field ' . $field . ' cannot be null.');
+                            if (!Arrays::exists('default', $info)) {
+                                static::_hook($hook, func_get_args(), 'after');
+                                throw new Exception('The field ' . $field . ' cannot be null.');
+                            } else {
+                                $data[$field] = $info['default'];
+                            }
                         }
                     }
                     if (Arrays::exists('checkValue', $info)) {
@@ -349,18 +353,23 @@
             return false;
         }
 
-        private static function _sanitize($what)
+        public static function _sanitize($what)
         {
             if (is_string($what)) {
                 return html_entity_decode($what);
             }
+            if (is_object($what)) {
+                return $what;
+            }
             if (Arrays::isArray($what)) {
                 $newWhat = array();
                 foreach ($what as $key => $value) {
-                    if (!Arrays::isArray($value)) {
-                        $newWhat[$key] = html_entity_decode($value, ENT_COMPAT, 'utf-8');
-                    } else {
-                        $newWhat[$key] = array_map('html_entity_decode', $value);
+                    if (!is_object($value)) {
+                        if (!Arrays::isArray($value)) {
+                            $newWhat[$key] = html_entity_decode($value, ENT_COMPAT, 'utf-8');
+                        } else {
+                            $newWhat[$key] = array_map('Thin\Data::_sanitize', $value);
+                        }
                     }
                 }
                 return $newWhat;
@@ -454,8 +463,12 @@
                     $val = $object->$field;
                     if (empty($val)) {
                         if (!Arrays::exists('canBeNull', $info)) {
-                            static::_hook($hook, func_get_args(), 'after');
-                            throw new Exception('The field ' . $field . ' cannot be null.');
+                            if (!Arrays::exists('default', $info)) {
+                                static::_hook($hook, func_get_args(), 'after');
+                                throw new Exception('The field ' . $field . ' cannot be null.');
+                            } else {
+                                $object->$field = $info['default'];
+                            }
                         }
                     } else {
                         if (Arrays::exists('sha1', $info)) {

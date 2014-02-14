@@ -40,10 +40,15 @@
                 $classes[$className] = true;
             } else {
                 if (!array_key_exists($className, static::$_classes)) {
+                    if (strstr($className, 'Model_')) {
+                        eval("class $className extends Thin\\Orm {public function __construct(\$id = null) { list(\$this->_entity, \$this->_table) = explode('_', str_replace('model_', '', strtolower(get_class(\$this))), 2); \$this->factory(); if (null === \$id) {\$this->foreign(); return \$this;} else {return \$this->find(\$id);}}}");
+                        static::$_classes[$className] = true;
+                    }
                     if (strstr($className, 'ResultModelCollection')) {
                         if (!class_exists($className)) {
                             $addLoadMethod = 'public function first() {return $this->cursor(1);} public function last() {return $this->cursor(count($this));} public function cursor($key) {$val = $key - 1; return $this[$val];} public function load(){$coll = $this->_args[0][0];$pk = $coll->pk();$objId = $coll->$pk;return $coll->find($objId);}';
-                            eval("class $className extends \\Thin\\Object {public static function getNew() {return new self(func_get_args());}public static function getInstance() {return \\Thin\\Utils::getInstance($className, func_get_args());} public function getArg(\$key){if (isset(\$this->_args[0][\$key])) {return \$this->_args[0][\$key];} return null;}$addLoadMethod}");
+                            eval("class $className extends Thin\\Object {public static function getNew() {return new self(func_get_args());}public static function getInstance() {return \\Thin\\Utils::getInstance($className, func_get_args());} public function getArg(\$key){if (isset(\$this->_args[0][\$key])) {return \$this->_args[0][\$key];} return null;}$addLoadMethod}");
+                            static::$_classes[$className] = true;
                         }
                     }
                     foreach (static::$_paths as $ns => $path) {

@@ -42,20 +42,24 @@
             if (strstr($this->_table, '_id')) {
                 $this->_table = repl('_id', '', $this->_table);
             }
-            $username = Config::get('application.db.' . $this->_entity . '.username');
-            $models = include(APPLICATION_PATH . DS . 'config' . DS . 'models.php');
-            $configModel = $models[$this->_entity];
-            $DB = Config::get('models.' . $this->_entity . '.DB');
-            if (empty($username) or empty($DB)) {
-                throw new Exception("The config models file can't read $this->_entity entity.");
+            $configs        = container()->getConfig()->getDb();
+            $config         = isAke($configs, $this->_entity);
+            if (empty($config) ) {
+                throw new Exception("Database configuration does not exist.");
             }
-            $keyCache = sha1(session_id() . date('dmY') . $this->_table);
+            $username       = $config->getUsername();
+            if (empty($username)) {
+                throw new Exception("Username is mandatory to connect database.");
+            }
+            $models         = null !== $config->getModels() ? $config->getModels() : array();
+            $configModel    = isAke($models, $this->_entity);
+            $keyCache       = sha1(session_id() . date('dmY') . $this->_table);
             $this->_datas['keyCache'] = $keyCache;
 
-            $adapter    = Config::get('application.db.'.$this->_entity.'.adapter');
-            $password   = Config::get('application.db.'.$this->_entity.'.password');
-            $dbName     = Config::get('application.db.'.$this->_entity.'.dbname');
-            $host       = Config::get('application.db.'.$this->_entity.'.host');
+            $adapter    = $config->getAdapter();
+            $password   = $config->getPassword();
+            $dbName     = $config->getDatabase();
+            $host       = $config->getHost();
 
             $this->_datas['config'] = array();
 
@@ -72,21 +76,27 @@
             $this->_datas['classCollection'] = $this->_entity . ucfirst($this->_table) . 'ResultModelCollection';
             $this->_datas['classModel'] = 'Model_' . ucfirst($this->_entity) . '_' . ucfirst($this->_table);
 
-            if (!ake($this->_table, $configModel['tables'])) {
-                if (false === $this->checkTable()) {
-                    throw new Exception("The config models file can't read $this->_table table [$this->_entity].");
+            if (ake('tables', $configModel)) {
+                if (!ake($this->_table, $configModel['tables'])) {
+                    if (false === $this->checkTable()) {
+                        throw new Exception("The config models file can't read $this->_table table [$this->_entity].");
+                    } else {
+                        $configModel = array();
+                    }
                 } else {
-                    $configModel = array();
+                    $configModel = $configModel['tables'][$this->_table];
                 }
             } else {
-                $configModel = $configModel['tables'][$this->_table];
+                if (false === $this->checkTable()) {
+                    throw new Exception("The config models file can't read $this->_table table [$this->_entity].");
+                }
             }
             $this->_datas['configModel']    = $configModel;
             $this->_datas['salt']           = base_convert(sha1(uniqid(mt_rand(), true)), 16, 36);
             $this->_tableName               = (isset($configModel['tableName'])) ? $configModel['tableName'] : $this->_table;
 
-            $nbQueries = Utils::get('NbQueries');
-            $totalDuration = Utils::get('SQLTotalDuration');
+            $nbQueries      = Utils::get('NbQueries');
+            $totalDuration  = Utils::get('SQLTotalDuration');
             if (null === $nbQueries) {
                 $nbQueries = 0;
             }
@@ -94,8 +104,8 @@
                 $totalDuration = 0;
             }
             $this->_numberOfQueries = $nbQueries;
-            $this->_totalDuration = $totalDuration;
-            $this->_session = Session::instance(sha1($this->_entity . $this->_table));
+            $this->_totalDuration   = $totalDuration;
+            $this->_session         = session(sha1($this->_entity . $this->_table));
 
             $this->_datas['query']['distinct'] = false;
             $this->_isConnected = true;
@@ -693,14 +703,14 @@
             $q = "SELECT $distinct $fields FROM $this->_dbName.$this->_tableName $join WHERE $where $order $limit $groupBy";
 
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::isArray($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
             }
             if ($count) {
                 $classCollection = $this->_datas['classCollection'];
-                $collection = new $classCollection;
+                $collection = array();
                 foreach ($res as $row) {
                     $classModel = $this->_datas['classModel'];
                     $obj = new $classModel;
@@ -1570,7 +1580,7 @@
             if (false === $this->_buffer) {
                 return false;
             }
-            $timeToBuffer = (false !== $this->_cache) ? $this->_cache * 60 : Config::get('application.database.buffer');
+            $timeToBuffer = (false !== $this->_cache) ? $this->_cache * 60 : 3600;
             $ext = (false !== $this->_cache) ? 'cache' : 'buffer';
             $file = CACHE_PATH . DS . $key . '_sql.' . $ext;
             if (File::exists($file)) {

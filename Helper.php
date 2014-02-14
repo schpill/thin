@@ -2,6 +2,8 @@
 
     use Thin\Data;
     use Thin\Querydata;
+    use Thin\Configdata;
+    use Thin\Optiondata;
     use Thin\Container;
     use Thin\Object;
     use Thin\Inflector;
@@ -191,6 +193,58 @@
 
             // set value of the target cell
             $pointer = $value;
+        }
+    }
+
+    if (!function_exists('getOption')) {
+        function getOption($key)
+        {
+            return Cms::getOption($key);
+        }
+
+        function setOption($key, $value)
+        {
+            $option = newData('option');
+            return $option->setName($key)->setValue($value)->save();
+        }
+
+        function options()
+        {
+            return new Optiondata;
+        }
+
+        function configs()
+        {
+            return new Configdata;
+        }
+
+
+        function getConfig($key, $environment = null)
+        {
+            if (null === $environment) {
+                $environment = APPLICATION_ENV;
+            }
+            $db = new Querydata('config');
+            $res = $db->where('name = ' . $key)->whereAnd('environment = ' . $environment)->get();
+            if (!count($res)) {
+                $all = $db->where('name = ' . $key)->whereAnd('environment = all')->get();
+                if (count($all)) {
+                    return $db->first($all);
+                } else {
+                    return null;
+                }
+            } else {
+                return $db->first($res);
+            }
+        }
+
+        function setConfig($key, $value, $environment = null)
+        {
+            if (null === $environment) {
+                $environment = 'all';
+            }
+            $config = newData('config');
+            return $config->setName($key)->setEnvironment($environment)->setValue($value)->save();
         }
     }
 
@@ -1734,8 +1788,16 @@ $(document).ready(function() {
     if (!function_exists('em')) {
         function em($entity, $table)
         {
-            $class = 'Model_' . Inflector::lower($entity) . '_' . Inflector::lower($table);
-            return new $class;
+            $ems        = container()->getEms();
+            $ems        = empty($ems) ? array() : $ems;
+            $className  = $entity . '_' . $table;
+            if (!ake($className, $ems)) {
+                eval("class $className extends Thin\\Orm {public function __construct(\$id = null) { list(\$this->_entity, \$this->_table) = explode('_', strtolower(get_class(\$this)), 2); \$this->factory(); if (null === \$id) {\$this->foreign(); return \$this;} else {return \$this->find(\$id);}}}");
+                $ems[$className] = true;
+                container()->setEms($ems);
+            }
+            $em = new $className;
+            return $em;
         }
     }
 
@@ -1743,8 +1805,8 @@ $(document).ready(function() {
         function cache($key, $value, $duration = 60, array $params = array())
         {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
-            $cache = new Cache(CACHE_PATH . DS);
-            $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
+            $cache  = new Cache(CACHE_PATH . DS);
+            $hash   = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
             return $cache->remember($hash, $value, $duration);
         }
     }

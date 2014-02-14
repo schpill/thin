@@ -11,7 +11,7 @@
         private $settings;
         private $results;
         private $firstQuery = true;
-        private $cache      = true;
+        private $cache      = false;
         private $sum;
         private $avg;
         private $min;
@@ -441,6 +441,7 @@
         public function setCache($bool)
         {
             $this->cache = $bool;
+            return $this;
         }
 
         public static function __callstatic($method, $parameters)

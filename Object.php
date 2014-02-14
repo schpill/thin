@@ -135,7 +135,7 @@
                         Data::getModel($this->thin_type);
                         $fields = Arrays::exists($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : array();
                         if(!Arrays::exists($var, $fields)) {
-                            throw new Exception($var . ' is not defined in the model => ' . $this->_fields);
+                            throw new Exception($var . ' is not defined in the model => ' . $this->thin_type);
                         } else {
                             $settingsField = $fields[$var];
                             if (Arrays::exists('checkValue', $settingsField)) {
