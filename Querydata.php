@@ -87,6 +87,11 @@
             return $collection;
         }
 
+        public function _and($condition)
+        {
+            return $this->whereAnd($condition);
+        }
+
         public function whereAnd($condition)
         {
             $collection = $this->query($condition);
@@ -94,11 +99,21 @@
             return $this;
         }
 
+        public function _or($condition)
+        {
+            return $this->whereOr($condition);
+        }
+
         public function whereOr($condition)
         {
             $collection = $this->query($condition);
             $this->resultsOr($collection);
             return $this;
+        }
+
+        public function _xor($condition)
+        {
+            return $this->whereXor($condition);
         }
 
         public function whereXor($condition)
@@ -110,7 +125,7 @@
 
         public function where($condition)
         {
-            return $this->whereOr($condition);
+            return true === $this->firstQuery ? $this->whereOr($condition) : $this->whereAnd($condition);
         }
 
         public function resultsAnd($resultsAnd)

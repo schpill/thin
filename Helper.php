@@ -17,6 +17,123 @@
     use Thin\Cache;
     use Thin\Exception;
 
+    if (!function_exists('lng')) {
+        function lng($string, $params = array(), $echo = true)
+        {
+            $lng        = session('web')->getLanguage();
+            $default    = options()->getDefaultLanguage();
+            if ($lng == $default) {
+                $translation = assignParams($string, $params);
+                if (true === $echo) {
+                    echo $translation;
+                } else {
+                    return $translation;
+                }
+            } else {
+                $getter = getter($lng);
+                $tab    = languages()->$getter();
+                $what   = ake(sha1($string), $tab) ? $tab[sha1($string)] : $string;
+                $translation = assignParams($what, $params);
+                if (true === $echo) {
+                    echo $translation;
+                } else {
+                    return $translation;
+                }
+            }
+        }
+
+        function assignParams($string, $params = array())
+        {
+            if (!count($params)) {
+                return $string;
+            }
+            foreach ($params as $key => $value) {
+                $what   = "##$key##";
+                $string = str_replace($what, $value, $string);
+            }
+            return $string;
+        }
+
+        function parseLanguage($file)
+        {
+            $tab        = array();
+            $cnt        = fgc($file);
+            $sentences  = explode('@@@', $cnt);
+            $key        = null;
+            if (count($sentences)) {
+                foreach ($sentences as $sentence) {
+                    $sentence   = trim($sentence);
+                    $rows       = explode("\n", $sentence);
+                    if (count($rows)) {
+                        foreach ($rows as $row) {
+                            $row = trim($row);
+                            if (!contain('[:', $row)) {
+                                $key = $row;
+                            } else {
+                                $lng         = Utils::cut('[:', ':]', $row);
+                                $translation = str_replace("[:$lng:]", '', $row);
+                                if (!ake(strtolower($lng), $tab)) {
+                                    $tab[strtolower($lng)] = array();
+                                }
+                                $tab[strtolower($lng)][sha1($key)] = $translation;
+                            }
+                        }
+                    }
+                }
+            }
+            foreach ($tab as $lng => $sentences) {
+                $setter = setter($lng);
+                languages()->$setter($sentences);
+            }
+        }
+
+        function languages()
+        {
+            return o('languages');
+        }
+
+        function addTranslation($name, $value, $language)
+        {
+            $db = new Querydata('translation');
+            $res = $db->where('name = ' . sha1($name))->where('language = ' . $language)->get();
+            if (count($res)) {
+                $t = $db->first($res);
+            } else {
+                $t = newData('translation');
+            }
+            $t->setName(sha1($name))->setLanguage($language)->setValue($value)->save();
+        }
+
+        function t($key, $params = array(), $echo = true)
+        {
+            $lng = session('web')->getLanguage();
+            if ($lng == options()->getDefaultLanguage()) {
+                if (true === $echo) {
+                    echo $key;
+                } else {
+                    return $key;
+                }
+            }
+            $db = new Querydata('translation');
+            $res = $db->where('name = ' . sha1($key))->where('language = ' . $lng)->get();
+            if (count($res)) {
+                $row = $db->first($res);
+                $translation = assignParams($row->getValue(), $params);
+                if (true === $echo) {
+                    echo $translation;
+                } else {
+                    return $translation;
+                }
+            }
+
+            if (true === $echo) {
+                echo $key;
+            } else {
+                return $key;
+            }
+        }
+    }
+
     if (!function_exists('infosIP')) {
         function infosIP($array = false, $localhost = false)
         {
@@ -204,7 +321,13 @@
 
         function setOption($key, $value)
         {
-            $option = newData('option');
+            $db = new Querydata('option');
+            $res = $db->where('name = ' . $key)->get();
+            if (count($res)) {
+                $option = $db->first($res);
+            } else {
+                $option = newData('option');
+            }
             return $option->setName($key)->setValue($value)->save();
         }
 
@@ -225,9 +348,9 @@
                 $environment = APPLICATION_ENV;
             }
             $db = new Querydata('config');
-            $res = $db->where('name = ' . $key)->whereAnd('environment = ' . $environment)->get();
+            $res = $db->where('name = ' . $key)->where('environment = ' . $environment)->get();
             if (!count($res)) {
-                $all = $db->where('name = ' . $key)->whereAnd('environment = all')->get();
+                $all = $db->where('name = ' . $key)->where('environment = all')->get();
                 if (count($all)) {
                     return $db->first($all);
                 } else {
@@ -243,8 +366,42 @@
             if (null === $environment) {
                 $environment = 'all';
             }
-            $config = newData('config');
+            $db = new Querydata('config');
+            $res = $db->where('name = ' . $key)->where('environment = ' . $environment)->get();
+            if (count($res)) {
+                $config = $db->first($res);
+            } else {
+                $config = newData('config');
+            }
             return $config->setName($key)->setEnvironment($environment)->setValue($value)->save();
+        }
+
+        function getMeta($key)
+        {
+            $db = new Querydata('meta');
+            $res = $db->where('name = ' . $key)->get();
+            if (count($res)) {
+                $meta = $db->first($res);
+                return Cms::__($meta);
+            }
+            return null;
+        }
+
+        function setMeta($key, $value)
+        {
+            $db = new Querydata('meta');
+            $res = $db->where('name = ' . $key)->get();
+            if (count($res)) {
+                $meta = $db->first($res);
+            } else {
+                $meta = newData('meta');
+            }
+            return $meta->setName($key)->setValue($value)->save();
+        }
+
+        function metas()
+        {
+            return new Metadata;
         }
     }
 
@@ -285,7 +442,7 @@
             $lng = getLanguage();
             if ($page instanceof Container) {
                 $db = new Querydata($type);
-                $infos = $db->where('name = ' . $key)->whereAnd('page = ' . $page->getId())->get();
+                $infos = $db->where('name = ' . $key)->where('page = ' . $page->getId())->get();
                 if (count($infos)) {
                     $info = $db->first($infos);
                     $value = $info->getValue();
@@ -865,7 +1022,7 @@ $(document).ready(function() {
             if (count($res)) {
                 $row  = $q->first($res);
                 $q    = new Querydata('object');
-                $res  = $q->where('collection = ' . $row->getId())->whereAnd("name = $objectName")->get();
+                $res  = $q->where('collection = ' . $row->getId())->where("name = $objectName")->get();
                 if (count($res)) {
                     $obj        = $q->first($res);
                     $objectLng  = Cms::lng($obj->getValue());

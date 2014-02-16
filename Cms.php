@@ -184,7 +184,7 @@
             $page       = container()->getCmsPage();
             $idPage     = $page->getId();
             $query      = new Querydata('translation');
-            $res        = $query->where("page = $idPage")->whereAnd("key = $key")->get();
+            $res        = $query->where("page = $idPage")->where("key = $key")->get();
 
             if (count($res)) {
                 $row    = $query->first($res);

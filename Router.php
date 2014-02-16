@@ -314,8 +314,8 @@
             } else {
                 $route                  = Utils::get('appDispatch');
                 $language               = $session->getLanguage();
-                if (null === $language) {
-                    $language           = null === $route->getLanguage() ? Cms::getOption('default_language') : $route->getLanguage();
+                if (null === $language || $language != $route->getLanguage()) {
+                    $language           = null === $route->getLanguage() ? options()->getDefaultLanguage() : $route->getLanguage();
                     $session->setLanguage($language);
                 }
                 $module                 = $route->getModule();
@@ -385,7 +385,7 @@
                         $params = null === container()->getViewParams() ? array() : container()->getViewParams();
                         echo $view->render($file, $params);
                         /* stats */
-                        if (null === container()->getNoShowStats()) {
+                        if (null === container()->getNoShowStats() && null === $route->getNoShowStats()) {
                             echo View::showStats();
                         }
                     } else {
@@ -396,7 +396,7 @@
                         }
                         $view->render();
                         /* stats */
-                        if (null === container()->getNoShowStats()) {
+                        if (null === container()->getNoShowStats() && null === $route->getNoShowStats()) {
                             echo View::showStats();
                         }
                     }

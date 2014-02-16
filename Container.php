@@ -109,5 +109,44 @@
             container()->setMapRoutes($routes);
             return $this;
         }
+
+        public function link($routeName, $params = array())
+        {
+            $link = URLSITE;
+            $routes = container()->getMapRoutes();
+            if (Arrays::isArray($routes)) {
+                if (ake($routeName, $routes)) {
+                    $route = $routes[$routeName];
+                    $path = $route->getPath();
+                    if (count($params)) {
+                        foreach ($params as $key => $param) {
+                            $path = strReplaceFirst('(.*)', $param, $path);
+                        }
+                    }
+                    $link .= $path;
+                }
+            }
+            return $link;
+        }
+
+        public function isRoute($routeName)
+        {
+            $routes = container()->getMapRoutes();
+            if (Arrays::isArray($routes)) {
+                if (ake($routeName, $routes)) {
+                    $route = $routes[$routeName];
+                    $actualRoute = $this->getRoute();
+                    return $actualRoute === $route;
+                }
+            }
+            return false;
+        }
+
+        public static function create($name = null, $array = array())
+        {
+            $name       = (null === $name) ? sha1(time()) : $name;
+            $o          = o($name);
+            return $o->populate($array);
+        }
     }
 
