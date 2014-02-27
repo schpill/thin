@@ -171,7 +171,7 @@
                 }
             }
 
-            if (Arrays::isArray($value)) {
+            if (Arrays::is($value)) {
                 if (Arrays::exists($lng, $value)) {
                     return $value[$lng];
                 }
@@ -365,7 +365,7 @@
                     foreach ($datas as $model) {
                         $infos                      = include($model);
                         $tab                        = explode(DS, $model);
-                        $entity                     = repl('.php', '', Inflector::lower(end($tab)));
+                        $entity                     = repl('.php', '', Inflector::lower(Arrays::last($tab)));
                         $entities[]                 = $entity;
                         $fields                     = $infos['fields'];
                         $settings                   = $infos['settings'];
@@ -387,6 +387,13 @@
                     Data::$_settings[$entity]   = eval('return ' . $customtype->getParam() . ';');
                 }
             }
+            if (count(Data::$_fields)) {
+                foreach (Data::$_fields as $entity => $info) {
+                    if (!Arrays::in($entity, $entities)) {
+                        $entities[] = $entity;
+                    }
+                }
+            }
 
             container()->setEntities($entities);
             $adminrights = Data::getAll('adminright');
@@ -400,7 +407,7 @@
                     foreach ($adminTables as $path) {
                         $adminTable = Data::getIt('admintable', $path);
                         if ($adminTable instanceof Container) {
-                            if (!Arrays::inArray($adminTable->getName(), $entities)) {
+                            if (!Arrays::in($adminTable->getName(), $entities)) {
                                 $sql = new Querydata('adminright');
                                 $rights = $sql->where('admintable = ' . $adminTable->getId())->get();
                                 $adminTable->delete();
@@ -481,6 +488,22 @@
             $options            = Data::getAll('option');
             $bools              = Data::getAll('bool');
             $formTypes          = Data::getAll('adminformfieldtype');
+
+            if (!count($bools)) {
+                $bool1 = array(
+                    'name'  => 'Oui',
+                    'value' => 'true',
+                );
+                $bool2 = array(
+                    'name'  => 'Non',
+                    'value' => 'false',
+                );
+
+                Data::add('bool', $bool1);
+                Data::getAll('bool');
+                Data::add('bool', $bool2);
+                Data::getAll('bool');
+            }
 
             if (!count($formTypes)) {
                 $typesToAdd = array();
@@ -655,22 +678,6 @@
                         }
                     }
                 }
-            }
-
-            if (!count($bools)) {
-                $bool1 = array(
-                    'name'  => 'Oui',
-                    'value' => 'true',
-                );
-                $bool2 = array(
-                    'name'  => 'Non',
-                    'value' => 'false',
-                );
-
-                Data::add('bool', $bool1);
-                Data::getAll('bool');
-                Data::add('bool', $bool2);
-                Data::getAll('bool');
             }
 
             if (!count($options)) {

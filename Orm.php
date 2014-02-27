@@ -14,7 +14,7 @@
         protected $_numberOfQueries;
         protected $_totalDuration;
         protected $_bufferTables  = array();
-        protected $_buffer        = true;
+        protected $_buffer        = false;
         protected $_cache         = false;
         protected $_array         = false;
         protected $_session;
@@ -44,14 +44,14 @@
             }
             $configs        = container()->getConfig()->getDb();
             $config         = isAke($configs, $this->_entity);
-            if (empty($config) ) {
+            if (empty($config)) {
                 throw new Exception("Database configuration does not exist.");
             }
             $username       = $config->getUsername();
             if (empty($username)) {
                 throw new Exception("Username is mandatory to connect database.");
             }
-            $models         = null !== $config->getModels() ? $config->getModels() : array();
+            $models         = null !== container()->getConfig()->getModels() ? container()->getConfig()->getModels() : array();
             $configModel    = isAke($models, $this->_entity);
             $keyCache       = sha1(session_id() . date('dmY') . $this->_table);
             $this->_datas['keyCache'] = $keyCache;
@@ -60,6 +60,7 @@
             $password   = $config->getPassword();
             $dbName     = $config->getDatabase();
             $host       = $config->getHost();
+            $dsn        = $config->getDsn();
 
             $this->_datas['config'] = array();
 
@@ -68,6 +69,7 @@
                 'username'      => $username,
                 'password'      => $password,
                 'dbName'        => $dbName,
+                'dsn'           => $dsn,
                 'host'          => $host
             );
 
@@ -81,7 +83,9 @@
                     if (false === $this->checkTable()) {
                         throw new Exception("The config models file can't read $this->_table table [$this->_entity].");
                     } else {
-                        $configModel = array();
+                        $configModel = array(
+                            'relationship' => array()
+                        );
                     }
                 } else {
                     $configModel = $configModel['tables'][$this->_table];
@@ -115,18 +119,23 @@
         private function _getConnexion()
         {
             extract($this->_datas['config']['connexionInfos']);
+            if (empty($dsn)) {
+                $dsn = "$adapter:dbname=$dbName;host=$host";
+            } else {
+                $adapter = 'mysql';
+            }
             $connexions = Utils::get('ORMConnexions');
             if (null === $connexions) {
                 $connexions = array();
             }
 
-            $keyConnexion = sha1(serialize(array("$adapter:dbname=$dbName;host=$host", $username, $password)));
+            $keyConnexion = sha1(serialize(array($dsn, $username, $password)));
             if (ake($keyConnexion, $connexions)) {
                 $db = $connexions[$keyConnexion];
             } else {
                 switch ($adapter) {
                     case 'mysql':
-                        $db = Utils::newInstance('\\PDO', array("$adapter:dbname=$dbName;host=$host", $username, $password));
+                        $db = Utils::newInstance('\\PDO', array($dsn, $username, $password));
                         break;
                 }
                 $connexions[$keyConnexion] = $db;
@@ -157,7 +166,7 @@
         {
             $q = "SHOW TABLES";
             $res = $this->_query($q);
-            if (Arrays::isArray($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -166,7 +175,7 @@
                 return false;
             }
             foreach ($res as $row) {
-                $table = current($row);
+                $table = Arrays::first($row);
                 if ($table == $this->_table) {
                     return true;
                 }
@@ -268,7 +277,7 @@
                 return null;
             } else {
                 foreach ($res as $row) {
-                    $val = current($row);
+                    $val = Arrays::first($row);
                     return $val;
                 }
             }
@@ -286,12 +295,12 @@
                 $obj = $obj->map();
                 foreach ($obj->fields() as $field) {
                     if (is_array($obj->_datas['keys'])) {
-                        if (Arrays::inArray($field, $obj->_datas['keys'])) {
-                            $modelField = repl('_id', '', $field);
-                            if (ake($modelField, $obj->_datas['configModel']['relationship'])) {
-                                $m = $obj->_datas['configModel']['relationship'][$modelField];
+                        if (Arrays::in($field, $obj->_datas['keys'])) {
+                            if (ake($field, $obj->_datas['configModel']['relationship'])) {
+                                $seg = $obj->_datas['configModel']['relationship'][$field];
+                                $m = $obj->_datas['configModel']['relationship'][$field];
                                 if (null !== $m) {
-                                    $obj->_datas['foreignFields'][$modelField] = true;
+                                    $obj->_datas['foreignFields'][$field] = true;
                                 }
                             }
                         }
@@ -355,12 +364,11 @@
 
             foreach ($this->fields() as $field) {
                 if (is_array($this->_datas['keys'])) {
-                    if (Arrays::inArray($field, $this->_datas['keys'])) {
-                        $modelField = repl('_id', '', $field);
-                        if (isset($this->_datas['configModel']['relationship']) && ake($modelField, $this->_datas['configModel']['relationship'])) {
-                            $m = $this->_datas['configModel']['relationship'][$modelField];
+                    if (Arrays::in($field, $this->_datas['keys'])) {
+                        if (isset($this->_datas['configModel']['relationship']) && ake($field, $this->_datas['configModel']['relationship'])) {
+                            $m = $this->_datas['configModel']['relationship'][$field];
                             if (null !== $m) {
-                                $this->_datas['foreignFields'][$modelField] = true;
+                                $this->_datas['foreignFields'][$field] = true;
                             }
                         }
                     }
@@ -488,15 +496,17 @@
             if ($count == 0) {
                 return null;
             } elseif ($count == 1) {
-                if (is_array($res)) {
-                    return (object) current($res);
+                $obj = new Object;
+                if (Arrays::is($res)) {
+                    return $obj->populate(Arrays::first($res));
                 } else {
-                    return $res->fetchObject();
+                    return $obj->populate($res->fetchObject());
                 }
             } else {
                 $collection = new QueryCollection;
                 foreach ($res as $row) {
-                    $collection[] = (object) $row;
+                    $obj = new Object;
+                    $collection[] = $obj->populate($row);
                 }
                 return $collection;
             }
@@ -571,6 +581,19 @@
             return $this;
         }
 
+        private function privateSeg($table)
+        {
+            if (count($this->_datas['configModel']['relationship'])) {
+                foreach ($this->_datas['configModel']['relationship'] as $field => $relationship) {
+                    $rsTable = $relationship['foreignTable'];
+                    if (Inflector::lower($rsTable) == Inflector::lower($table)) {
+                        return $relationship;
+                    }
+                }
+            }
+            return array();
+        }
+
         public function join($model, $type = 'LEFT')
         {
             if (!ake('query', $this->_datas)) {
@@ -583,15 +606,16 @@
                 throw new Exception("The first argument must be an instance of model.");
             }
 
+            $seg = $this->privateSeg($model->_tableName);
             $tableModel = $model->_tableName;
             $pk = $model->pk();
 
-            $fk = ($pk == 'id') ? $model->_tableName . '_id' : $pk;
+            $fk = ake('fieldName', $seg) ? $seg['fieldName'] : $model->_tableName . '_id';
 
             $join = $type . ' JOIN ' . $model->_dbName . '.' . $tableModel . ' ON ' . $this->_dbName . '.' . $this->_tableName . '.' . $fk . ' = ' . $model->_dbName . '.' . $tableModel . '.' . $pk . ' ';
 
 
-            if (!Arrays::inArray($join, $this->_datas['query']['join'])) {
+            if (!Arrays::in($join, $this->_datas['query']['join'])) {
                 $this->_datas['query']['join'][] = $join;
             }
             return $this;
@@ -618,7 +642,7 @@
             }
             if (is_array($fields)) {
                 foreach ($fields as $field) {
-                    if (!Arrays::inArray($field, $this->_datas['fieldsSave'])) {
+                    if (!Arrays::in($field, $this->_datas['fieldsSave'])) {
                         throw new Exception("The field '$field' is unknow in $this->_table model.");
                     }
                 }
@@ -642,7 +666,7 @@
             if (count($this->_datas['models'])) {
                 foreach ($this->_datas['models'] as $ffield => $fobject) {
                     $ffield = $ffield . '_id';
-                    if (Arrays::inArray($ffield, $this->_datas['fieldsSave'])) {
+                    if (Arrays::in($ffield, $this->_datas['fieldsSave'])) {
                         $m = new self($fobject->_entity, substr($ffield, 0, -3));
                         $this->join($m);
                     }
@@ -703,7 +727,7 @@
             $q = "SELECT $distinct $fields FROM $this->_dbName.$this->_tableName $join WHERE $where $order $limit $groupBy";
 
             $res = $this->_query($q);
-            if (Arrays::isArray($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -811,7 +835,7 @@
         {
             $this->runEvent('saving');
             $key = $this->_dbName . '.' . $this->_tableName;
-            if (!Arrays::inArray($key, $this->_bufferTables)) {
+            if (!Arrays::in($key, $this->_bufferTables)) {
                 array_push($this->_bufferTables, $key);
             }
             $pkValue = $this->hasPk();
@@ -1032,21 +1056,22 @@
                 }
                 if (ake('pk', $this->_datas)) {
                     if (null === $this->_datas['pk']) {
-                        if (Arrays::inArray($this->_table . '_id', $this->_datas['fields'])) {
+                        if (Arrays::in($this->_table . '_id', $this->_datas['fields'])) {
                             $this->_datas['pk'] = $this->_table . '_id';
                             $this->_datas['pks'][] = $this->_table . '_id';
                         }
                     }
                 } else {
-                    if (Arrays::inArray($this->_table . '_id', $this->_datas['fields'])) {
+                    if (Arrays::in($this->_table . '_id', $this->_datas['fields'])) {
                         $this->_datas['pk'] = $this->_table . '_id';
                         $this->_datas['pks'][] = $this->_table . '_id';
                     }
                 }
+
                 if (ake('keys', $this->_datas)) {
                     if (!count($this->_datas['keys'])) {
                         foreach ($this->_datas['fields'] as $field) {
-                            $isId = '_id' == substr($field, -3);
+                            $isId = ake($field, $this->_datas['configModel']['relationship']);
                             if (true === $isId) {
                                 if ($field != $this->_datas['pk']) {
                                     $this->_datas['keys'][] = $field;
@@ -1056,7 +1081,7 @@
                     }
                 } else {
                     foreach ($this->_datas['fields'] as $field) {
-                        $isId = '_id' == substr($field, -3);
+                        $isId = ake($field, $this->_datas['configModel']['relationship']);
                         if (true === $isId) {
                             if ($field != $this->_datas['pk']) {
                                 $this->_datas['keys'][] = $field;
@@ -1067,10 +1092,10 @@
 
                 if (ake('relationship', $this->_datas['configModel'])) {
                     foreach ($this->_datas['configModel']['relationship'] as $field => $relationship) {
-                        if (!Arrays::inArray($field, $this->_datas['fields'])) {
-                            $this->_datas['fields'][] = $field . '_id';
-                            $this->_datas['keys'][] = $field . '_id';
-                            if ($relationship != 'oneToMany' && $relationship != 'manyToMany') {
+                        if (!Arrays::in($field, $this->_datas['fields'])) {
+                            $this->_datas['fields'][] = $field;
+                            $this->_datas['keys'][] = $field;
+                            if ($relationship['type'] != 'oneToMany' && $relationship['type'] != 'manyToMany') {
                                 if (ake($field, $this->_datas['configModel']['relationshipEntities'])) {
                                     $entity = $this->_datas['configModel']['relationshipEntities'][$field];
                                 } else {
@@ -1197,42 +1222,63 @@
             return $this->rollback();
         }
 
+        private function fkFieldName($field)
+        {foreach ($this->_datas['configModel']['relationship'] as $rsField => $rs) {
+                if ($rs['relationKey'] == $field) {
+                    return $rs['fieldName'];
+                }
+            }
+            return $field;
+        }
+
+        private function hasForeignRelation($field)
+        {
+            foreach ($this->_datas['configModel']['relationship'] as $rsField => $rs) {
+                if ($rs['relationKey'] == $field) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public function __call($method, $args)
         {
             if (empty($this->_datas['foreignFields'])) {
                 $this->_datas['foreignFields'] = array();
             }
-            if (!is_array($this->_datas['foreignFields'])) {
+            if (!Arrays::is($this->_datas['foreignFields'])) {
                 $this->_datas['foreignFields'] = array($this->_datas['foreignFields']);
             }
             if (substr($method, 0, 3) == 'get') {
                 $vars = array_values($this->fields());
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
-                if (Arrays::inArray($var, $vars) || ake($var, $this->_datas['foreignFields'])) {
-                    if (ake($var, $this->_datas['foreignFields'])) {
-                        if(('true' != $this->_datas['foreignFields'][$var])) {
+                if (Arrays::in($var, $vars) || ake($var, $this->_datas['foreignFields']) || true === $this->hasForeignRelation($var)) {
+                    if (ake($var, $this->_datas['foreignFields']) || true === $this->hasForeignRelation($var)) {
+                        if(ake($var, $this->_datas['foreignFields']) && ('true' != $this->_datas['foreignFields'][$var])) {
                             return $this->_datas['foreignFields'][$var];
                         }
-                        $field = $var . '_id';
+                        $var = true === $this->hasForeignRelation($var) ? $this->fkFieldName($var) : $var;
+                        $rs = $this->_datas['configModel']['relationship'][$var];
+                        $field = $rs['fieldName'];
                         $classModel = $this->_datas['classModel'];
                         $obj = new $classModel;
                         if (Arrays::inArray($field, $this->_datas['keys'])) {
-                            $modelField = repl('_id', '', $field);
-                            if (isset($this->_datas['configModel']['relationship']) && ake($modelField, $this->_datas['configModel']['relationship'])) {
-                                $m = $this->_datas['configModel']['relationship'][$modelField];
-                                if (ake($modelField, $this->_datas['configModel']['relationshipEntities'])) {
-                                    $entity = $this->_datas['configModel']['relationshipEntities'][$modelField];
+                            $modelField = $rs['foreignTable'];
+                            if (isset($this->_datas['configModel']['relationship']) && ake($field, $this->_datas['configModel']['relationship'])) {
+                                $m = $this->_datas['configModel']['relationship'][$field];
+                                if (ake("entity", $rs)) {
+                                    $entity = $rs['entity'];
                                 } else {
                                     $entity = $obj->_entity;
                                 }
-                                if (null !== $m) {
-                                    switch ($m) {
+                                if (null !== $m['type']) {
+                                    switch ($m['type']) {
                                         case 'manyToOne':
                                         case 'oneToOne':
                                             $nObj = new self($entity, $modelField);
-                                            if (!empty($this->_datas['configModel']['relationshipKeys'][$modelField])) {
-                                                $field = $this->_datas['configModel']['relationshipKeys'][$modelField];
+                                            if (ake("relationshipKeys", $rs)) {
+                                                $field = $rs['relationshipKeys'];
                                             }
                                             if (!is_null($this->$field)) {
                                                 if (false === $this->_cache) {
@@ -1247,9 +1293,9 @@
                                             break;
                                         case 'manyToMany':
                                         case 'oneToMany':
-                                            $nObj = new self($entity, substr($modelField, 0, -1));
-                                            $getter = $this->pk(); //$obj->_tableName . '_id';
-                                            $fk = (!empty($this->_datas['configModel']['relationshipKeys'][$modelField])) ? $this->_datas['configModel']['relationshipKeys'][$modelField] : $obj->pk();
+                                            $nObj = new self($entity, $modelField);
+                                            $getter = $this->pk();
+                                            $fk = (ake("relationshipKeys", $rs)) ? $rs['relationshipKeys'][$field] : $rs['foreignKey'];
                                             if (false === $this->_cache) {
                                                 $result = $nObj->where($nObj->_dbName . '.' . $nObj->_tableName . "." . $fk . " = " . $nObj->quote($this->$getter))->select();
                                             } else {
@@ -1276,12 +1322,15 @@
                 $value = $args[0];
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
-                if (Arrays::inArray($var, $vars) || ake($var, $this->_datas['foreignFields'])) {
-                    if (ake($var, $this->_datas['foreignFields'])) {
+                if (Arrays::in($var, $vars) || ake($var, $this->_datas['foreignFields']) || true === $this->hasForeignRelation($var)) {
+                    if (ake($var, $this->_datas['foreignFields']) || true === $this->hasForeignRelation($var)) {
+                        $var = true === $this->hasForeignRelation($var) ? $this->fkFieldName($var) : $var;
                         $this->_datas['foreignFields'][$var] = $value;
-                        $setField = $var . '_id';
-                        if (Arrays::inArray($setField, $vars) && isset($value->$setField)) {
-                            $this->$setField = $value->$setField;
+                        $rs = $this->_datas['configModel']['relationship'][$var];
+                        $setField = $rs['fieldName'];
+                        $getter = $rs['foreignKey'];
+                        if (Arrays::in($setField, $vars) && isset($value->$getter)) {
+                            $this->$setField = $value->$getter;
                             return $this;
                         } else {
                             return $this;
@@ -1300,7 +1349,7 @@
                     $var = $this->pk();
                 }
                 $vars = array_values($this->fields());
-                if (Arrays::inArray($var, $vars)) {
+                if (Arrays::in($var, $vars)) {
                     return $this->min($var);
                 }
             } elseif (substr($method, 0, 3) == 'max') {
@@ -1310,7 +1359,7 @@
                     $var = $this->pk();
                 }
                 $vars = array_values($this->fields());
-                if (Arrays::inArray($var, $vars)) {
+                if (Arrays::in($var, $vars)) {
                     return $this->max($var);
                 }
             } elseif (substr($method, 0, 3) == 'avg') {
@@ -1320,7 +1369,7 @@
                     $var = $this->pk();
                 }
                 $vars = array_values($this->fields());
-                if (Arrays::inArray($var, $vars)) {
+                if (Arrays::in($var, $vars)) {
                     return $this->avg($var);
                 }
             } elseif (substr($method, 0, 3) == 'sum') {
@@ -1348,11 +1397,14 @@
                 $value = $args[0];
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 6)));
                 $var = Inflector::lower($uncamelizeMethod);
+                $var = true === $this->hasForeignRelation($var) ? $this->fkFieldName($var) : $var;
+                $rs = $this->_datas['configModel']['relationship'][$var];
+                $this->_datas['foreignFields'][$var] = $value;
                 if(is_object($value) && null !== $this->_datas['configModel']['relationship'][$var]) {
                     switch ($this->_datas['configModel']['relationship'][$var]) {
                         case 'manyToOne':
                         case 'oneToOne':
-                            $field = $var . '_id';
+                            $field = $rs['fieldName'];
                             $q = $this->_dbName . '.' . $this->_tableName . "." . $field . " = " . $this->quote($value->$field);
                             if (false === $this->_cache) {
                                 return $this->where($q)->select();
@@ -1362,8 +1414,7 @@
                             }
                         case 'oneToMany':
                         case 'manyToMany':
-                            $var = substr($var, 0, -1);
-                            $field = $var . '_id';
+                            $field = $rs['fieldName'];
                             $pk = $this->pk();
                             $pkValue = $value->$pk;
                             $q = $this->_dbName . '.' . $this->_tableName . "." . $pk . " = " . $this->quote($pkValue);
@@ -1375,7 +1426,7 @@
                             }
                     }
                 } else {
-                    if (Arrays::inArray($var, $vars) || $var == 'id') {
+                    if (Arrays::in($var, $vars) || $var == 'id') {
                         if ($var != 'id') {
                             return $this->findBy($var, $value);
                         } else {
@@ -1425,7 +1476,11 @@
                 $vars = array_values($this->fields());
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst($method));
                 $var = Inflector::lower($uncamelizeMethod);
-                if (Arrays::inArray($var, $vars) || ake($var, $this->_datas['foreignFields'])) {
+
+                $var = true === $this->hasForeignRelation($var) ? $this->fkFieldName($var) : $var;
+                $rs = $this->_datas['configModel']['relationship'][$var];
+                $this->_datas['foreignFields'][$var] = $value;
+                if (Arrays::in($var, $vars) || ake($var, $this->_datas['foreignFields']) || true === $this->hasForeignRelation($var)) {
                     if (ake($var, $this->_datas['foreignFields'])) {
                         return $this->_datas['foreignFields'][$var];
                     }
@@ -1442,7 +1497,7 @@
 
         public function __set($name, $value)
         {
-            if (!Arrays::inArray($name, $this->_datas['fields'])) {
+            if (!Arrays::in($name, $this->_datas['fields']) && false === $this->hasForeignRelation($name)) {
                 throw new Exception("Unknown field $name in " . get_class($this) . " class.");
             } else {
                 $this->$name = $value;
@@ -1453,7 +1508,7 @@
         public function __get($name)
         {
             $var = $name . '_id';
-            if (!Arrays::inArray($name, $this->_datas['fields']) && !Arrays::inArray($var, $this->_datas['fields'])) {
+            if (!Arrays::in($name, $this->_datas['fields']) && !Arrays::in($var, $this->_datas['fields']) && false === $this->hasForeignRelation($name)) {
                 throw new Exception("Unknown field $name in " . get_class($this) . " class.");
             } else {
                 if (isset($this->$name)) {
@@ -1546,7 +1601,7 @@
             $db = $this->_getConnexion();
             $key = $this->_dbName . '.' . $this->_tableName;
             /* On evite de refaire n fois les memes requetes select dans la meme instance */
-            $cacheIt = (true === $this->_buffer && !Arrays::inArray($key, $this->_bufferTables) && (Inflector::lower(substr($q, 0, 6)) == 'select' || Inflector::lower(substr($q, 0, 4)) == 'show' || Inflector::lower(substr($q, 0, 8)) == 'describe')) ? true : false;
+            $cacheIt = (true === $this->_buffer && !Arrays::in($key, $this->_bufferTables) && (Inflector::lower(substr($q, 0, 6)) == 'select' || Inflector::lower(substr($q, 0, 4)) == 'show' || Inflector::lower(substr($q, 0, 8)) == 'describe')) ? true : false;
             if (true === $cacheIt) {
                 $key = sha1($q . $this->_dbName);
                 $buffer = $this->_buffer($key);
@@ -1616,17 +1671,16 @@
         {
             $classModel = $this->_datas['classModel'];
             $obj = new $classModel;
-            if (Arrays::inArray($key, $this->_datas['keys'])) {
-                $modelField = repl('_id', '', $key);
-                if (isset($this->_datas['configModel']['relationship']) && ake($modelField, $this->_datas['configModel']['relationship'])) {
-                    $m = $this->_datas['configModel']['relationship'][$modelField];
+            if (Arrays::in($key, $this->_datas['keys'])) {
+                if (isset($this->_datas['configModel']['relationship']) && ake($key, $this->_datas['configModel']['relationship'])) {
+                    $m = $this->_datas['configModel']['relationship'][$key];
                     if (ake($modelField, $this->_datas['configModel']['relationshipEntities'])) {
-                        $entity = $this->_datas['configModel']['relationshipEntities'][$modelField];
+                        $entity = $this->_datas['configModel']['relationshipEntities'][$key];
                     } else {
                         $entity = $obj->_entity;
                     }
                     if (null !== $m) {
-                        return new self($entity, $modelField);
+                        return new self($entity, $m['foreignTable']);
                     }
                 }
             }
@@ -1719,9 +1773,10 @@
         * @param string the table name
         * @return object
         */
-        public function optimizeTable($table)
+        public function optimize($table = null)
         {
-            $this->_query("OPTIMIZE TABLE " . $this->_tableName);
+            $table = empty($table) ? $this->_tableName : $table;
+            $this->_query("OPTIMIZE TABLE " . $table);
             return $this;
         }
 
@@ -1736,13 +1791,14 @@
         * @param string the table name
         * @return object
         */
-        public function repairTable($table)
+        public function repair($table = null)
         {
-            $this->_query("REPAIR TABLE " . $this->_tableName);
+            $table = empty($table) ? $this->_tableName : $table;
+            $this->_query("REPAIR TABLE " . $table);
             return $this;
         }
 
-        public function col($sql = '')
+        public function col($sql = null)
         {
             if (!empty($sql)) {
                 $rows = $this->query($sql);
@@ -1764,7 +1820,7 @@
             return $cols;
         }
 
-        public function cell($sql = '')
+        public function cell($sql = null)
         {
             if (!empty($sql)) {
                 $rows = $this->query($sql);
@@ -1779,7 +1835,7 @@
             return $col1;
         }
 
-        public function row($sql = '')
+        public function row($sql = null)
         {
             if (!empty($sql)) {
                 $rows = $this->query($sql);
@@ -1830,5 +1886,17 @@
         {
             $db = $this->_getConnexion();
             return $db->errorInfo();
+        }
+
+        public function toData()
+        {
+            $array = array();
+            foreach ($this->_datas['fieldsSave'] as $field) {
+                $array[$field] = $this->$field;
+            }
+            $array['thin_type'] = $this->_entity . '_' . $this->_table;
+            $data = new Object;
+            $data->populate($array);
+            return $data;
         }
     }

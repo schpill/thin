@@ -94,7 +94,7 @@
                 }
             }
             if (count($responses) == 1) {
-                $responses = current($responses);
+                $responses = Arrays::first($responses);
             }
             return $halt ? null : $responses;
         }

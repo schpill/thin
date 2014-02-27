@@ -23,6 +23,11 @@
          * @param   array   $array  array to check
          * @return  boolean
          */
+        public static function keys(array $array)
+        {
+            return array_keys($array);
+        }
+
         public static function isAssoc(array $array)
         {
             // Keys of the array
@@ -48,6 +53,12 @@
          * @param   mixed   $value  value to check
          * @return  boolean
          */
+
+        public static function is($value)
+        {
+            return static::isArray($value);
+        }
+
         public static function isArray($value)
         {
             if (is_array($value)) {
@@ -59,10 +70,14 @@
             }
         }
 
+        public static function in($needle, $array)
+        {
+            return static::inArray($needle, $array);
+        }
 
         public static function inArray($needle, $array)
         {
-            if (static::isArray($array)) {
+            if (static::is($array)) {
                 // Definitely an array
                 return in_array($needle, $array);
             }
@@ -129,7 +144,7 @@
 
                 if (isset($array[$key])) {
                     if ($keys) {
-                        if (static::isArray($array[$key])) {
+                        if (static::is($array[$key])) {
                             // Dig down into the next part of the path
                             $array = $array[$key];
                         } else {
@@ -357,10 +372,10 @@
         public static function map($callbacks, $array, $keys = null)
         {
             foreach ($array as $key => $val) {
-                if (static::isArray($val)) {
+                if (static::is($val)) {
                     $array[$key] = static::map($callbacks, $array[$key]);
-                } elseif (!static::isArray($keys) || in_array($key, $keys)) {
-                    if (static::isArray($callbacks)) {
+                } elseif (!static::is($keys) || in_array($key, $keys)) {
+                    if (static::is($callbacks)) {
                         foreach ($callbacks as $cb) {
                             $array[$key] = call_user_func($cb, $array[$key]);
                         }
@@ -397,7 +412,7 @@
         {
             if (static::isAssoc($array2)) {
                 foreach ($array2 as $key => $value) {
-                    if (static::isArray($value) && isset($array1[$key]) && is_array($array1[$key])) {
+                    if (static::is($value) && isset($array1[$key]) && static::is($array1[$key])) {
                         $array1[$key] = static::merge($array1[$key], $value);
                     } else {
                         $array1[$key] = $value;
@@ -405,7 +420,7 @@
                 }
             } else {
                 foreach ($array2 as $value) {
-                    if ( ! in_array($value, $array1, true)) {
+                    if (!static::in($value, $array1, true)) {
                         $array1[] = $value;
                     }
                 }
@@ -415,7 +430,7 @@
                 foreach (array_slice(func_get_args(), 2) as $array2) {
                     if (static::isAssoc($array2)) {
                         foreach ($array2 as $key => $value) {
-                            if (static::isArray($value) && isset($array1[$key]) && static::isArray($array1[$key])) {
+                            if (static::is($value) && isset($array1[$key]) && static::is($array1[$key])) {
                                 $array1[$key] = static::merge($array1[$key], $value);
                             } else {
                                 $array1[$key] = $value;
@@ -423,7 +438,7 @@
                         }
                     } else {
                         foreach ($array2 as $value) {
-                            if ( ! in_array($value, $array1, true)) {
+                            if ( ! static::in($value, $array1, true)) {
                                 $array1[] = $value;
                             }
                         }
@@ -467,7 +482,7 @@
          * @param   array   $array2 input arrays that will overwrite existing values
          * @return  array
          */
-        public static function overwrite($array1, $array2)
+        public static function overwrite(array $array1, array $array2)
         {
             foreach (array_intersect_key($array2, $array1) as $key => $value) {
                 $array1[$key] = $value;
@@ -548,7 +563,7 @@
 
             $flat = array();
             foreach ($array as $key => $value) {
-                if (static::isArray($value)) {
+                if (static::is($value)) {
                     $flat = array_merge($flat, static::flatten($value));
                 } else {
                     if ($isAssoc) {
@@ -571,7 +586,7 @@
          */
         public static function splitOnValue($array, $value)
         {
-            if (static::isArray($array)) {
+            if (static::is($array)) {
                 $paramPos = array_search($value, $array);
 
                 if ($paramPos) {
@@ -580,7 +595,7 @@
                 } else {
                     $arrays = null;
                 }
-                if (static::isArray($arrays)) {
+                if (static::is($arrays)) {
                     return $arrays;
                 }
             }
@@ -601,7 +616,7 @@
         {
             $hash = null;
 
-            if (static::isArray($array) && count($array) > 1) {
+            if (static::is($array) && count($array) > 1) {
                 for ($i = 0; $i <= count($array); $i+= 2) {
                     if (isset($array[$i])) {
                         $key = $array[$i];
@@ -613,7 +628,7 @@
                 }
             }
 
-            if (static::isArray($hash)) {
+            if (true === static::is($hash)) {
                 return $hash;
             }
         }
@@ -673,10 +688,10 @@
         public static function arrayFromGet($getParams)
         {
             $parts = explode('&', $getParams);
-            if (static::isArray($parts)) {
+            if (static::is($parts)) {
                 foreach ($parts as $part) {
                     $paramParts = explode('=', $part);
-                    if (static::isArray($paramParts) && count($paramParts) == 2) {
+                    if (static::is($paramParts) && count($paramParts) == 2) {
                         $param[$paramParts[0]] = $paramParts[1];
                         unset($paramParts);
                     }

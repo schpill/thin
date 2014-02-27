@@ -158,83 +158,127 @@
             return $this;
         }
 
-        public function order($orderFields, $orderDirections = 'ASC')
+        public function order($orderField, $orderDirection = 'ASC')
         {
-            if (count($this->results) && null !== $orderFields) {
-                $queryKey   = sha1(serialize($this->wheres) . serialize($orderFields) . serialize($orderDirections));
+            if (count($this->results) && null !== $orderField) {
+                $queryKey   = sha1(serialize($this->wheres) . serialize($orderField) . serialize($orderDirection));
                 $cache      = Data::cache($this->type, $queryKey);
 
-                if (!empty($cache) && true === $this->cache) {
+                if (!empty($cache)) {
                     $this->results = $cache;
                     return $this;
                 }
 
-                if (Arrays::isArray($orderFields)) {
-                    $orderFields = $orderFields;
-                } else {
-                    $orderFields = array($orderFields);
-                }
-
-                if (Arrays::isArray($orderDirections)) {
-                    $orderDirections = $orderDirections;
-                } else {
-                    $orderDirections = array($orderDirections);
-                }
-                $cnt = 0;
-                foreach ($orderFields as $orderField) {
-                    $sort = array();
-                    foreach($this->results as $id) {
-                        $objectCreated           = (is_string($id)) ? Data::getById($this->type, $id) : $id;
-                        $sort['id'][]            = $objectCreated->id;
-                        $sort['date_create'][]   = $objectCreated->date_create;
-
-                        foreach ($this->fields as $k => $infos) {
-                            $value      = isset($objectCreated->$k) ? $objectCreated->$k : null;
-                            $sort[$k][] = $value;
+                if (Arrays::is($orderField)) {
+                    if (count($orderField) == 1) {
+                        if (Arrays::is($orderDirection)) {
+                            $orderDirection = Arrays::first($orderDirection);
                         }
-                    }
-
-                    $asort = array();
-                    foreach ($sort as $k => $rows) {
-                        for ($i = 0 ; $i < count($rows) ; $i++) {
-                            if (empty($$k) || is_string($$k) || is_object($$k)) {
-                                $$k = array();
-                            }
-                            $asort[$i][$k] = $rows[$i];
-                            array_push($$k, $rows[$i]);
-                        }
-                    }
-
-                    $orderDirection = isset($orderDirections[$cnt]) ? $orderDirections[$cnt] : Arrays::first($orderDirections);
-                    /* pb des ordres multidirectionnels et multi champs */
-                    if (count($$orderField) != count($asort)) {
-                        $newTab = array();
-                        $h = $$orderField;
-                        for ($i = count($asort) + 1, $j = count($h) + 1; $i >= 0 ; $i--, $j--) {
-                            if (isset($h[$j])) {
-                                $newTab[$i] = $h[$j];
-                            }
-                        }
-                        $$orderField = array_reverse($newTab);
-                    }
-
-                    if ('ASC' == Inflector::upper($orderDirection)) {
-                        array_multisort($$orderField, SORT_ASC, $asort);
+                        $this->sort(Arrays::first($orderField), $orderDirection);
                     } else {
-                        array_multisort($$orderField, SORT_DESC, $asort);
+                        $this->sort($orderField, $orderDirection, true);
                     }
-                    $collection = array();
-                    foreach ($asort as $k => $row) {
-                        $tmpId = $row['id'];
-                        array_push($collection, $tmpId);
+                } else {
+                    if (Arrays::is($orderDirection)) {
+                        $orderDirection = Arrays::first($orderDirection);
                     }
-                    $cache = Data::cache($this->type, $queryKey, $collection);
-
-                    $this->results = $collection;
-                    $cnt++;
+                    $this->sort($orderField, $orderDirection);
                 }
             }
             return $this;
+        }
+
+        private function sort($orderField, $orderDirection, $multiSort = false)
+        {
+            $sort = array();
+            foreach($this->results as $id) {
+                $object                  = (is_string($id)) ? Data::getById($this->type, $id) : $id;
+                $sort['id'][]            = $object->id;
+                $sort['date_create'][]   = $object->date_create;
+
+                foreach ($this->fields as $k => $infos) {
+                    $value      = isset($object->$k) ? $object->$k : null;
+                    $type = Arrays::exists('type', $infos) ? $infos['type'] : null;
+                    if ('data' == $type) {
+                        list($dummy, $foreignTable, $foreignField) = $infos['contentList'];
+                        $obj = Data::getById($foreignTable, $value);
+                        $foreignFields = explode(',', $foreignField);
+                        $val = array();
+                        foreach ($foreignFields as $ff) {
+                            $val[] = isset($obj->$ff) ? $obj->$ff : null;
+                        }
+                        $value = count($val) == 1 ? Arrays::first($val) : implode(' ', $val);
+                    }
+                    $sort[$k][] = $value;
+
+                }
+            }
+            $asort = array();
+            foreach ($sort as $k => $rows) {
+                for ($i = 0 ; $i < count($rows) ; $i++) {
+                    if (empty($$k) || is_string($$k) || is_object($$k)) {
+                        $$k = array();
+                    }
+                    $asort[$i][$k] = $rows[$i];
+                    array_push($$k, $rows[$i]);
+                }
+            }
+
+            if (false === $multiSort) {
+                if ('ASC' == Inflector::upper($orderDirection)) {
+                    array_multisort($$orderField, SORT_ASC, $asort);
+                } else {
+                    array_multisort($$orderField, SORT_DESC, $asort);
+                }
+            } else {
+                if (count($orderField) == 2) {
+                    $first = Arrays::first($orderField);
+                    $second = Arrays::last($orderField);
+                    $tab = array();
+                    if (Arrays::is($orderDirection)) {
+                        $tab = $orderDirection;
+                        if (!isset($tab[1])) {
+                            $tab[1] = Arrays::first($tab);
+                        }
+                    } else {
+                        $tab[0] = $tab[1] = $orderDirection;
+                    }
+                    $orderDirection = $tab;
+                    if ('ASC' == Inflector::upper(Arrays::first($orderDirection)) && 'ASC' == Inflector::upper(end($orderDirection))) {
+                        array_multisort($$first, SORT_ASC, $$second, SORT_ASC, $asort);
+                    } elseif ('DESC' == Inflector::upper(Arrays::first($orderDirection)) && 'ASC' == Inflector::upper(end($orderDirection))) {
+                        array_multisort($$first, SORT_DESC, $$second, SORT_ASC, $asort);
+                    } elseif ('DESC' == Inflector::upper(Arrays::first($orderDirection)) && 'DESC' == Inflector::upper(end($orderDirection))) {
+                        array_multisort($$first, SORT_DESC, $$second, SORT_DESC, $asort);
+                    } elseif ('ASC' == Inflector::upper(Arrays::first($orderDirection)) && 'DESC' == Inflector::upper(end($orderDirection))) {
+                        array_multisort($$first, SORT_ASC, $$second, SORT_DESC, $asort);
+                    }
+                }
+                // $dynamicSort = array();
+                // for ($i = 0; $i < count($orderField); $i++) {
+                //     if (Arrays::is($orderDirection)) {
+                //         $orderDirection = isset($orderDirection[$i])
+                //         ? $orderDirection[$i]
+                //         : Arrays::first($orderDirection);
+                //     }
+                //     $field = $orderField[$i];
+                //     $dynamicSort[] = $$field;
+                //     if ('ASC' == Inflector::upper($orderDirection)) {
+                //         $dynamicSort[] = SORT_ASC;
+                //     } else {
+                //         $dynamicSort[] = SORT_DESC;
+                //     }
+                // }
+                // $params = array_merge($dynamicSort, array($asort));
+                // call_user_func_array('array_multisort', $params);
+            }
+
+            $collection = array();
+            foreach ($asort as $k => $row) {
+                $tmpId = $row['id'];
+                array_push($collection, $tmpId);
+            }
+            $this->results = $collection;
         }
 
         public function offset($offset)

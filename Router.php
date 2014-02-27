@@ -25,10 +25,11 @@
                 return;
             }
 
-            $entities = container()->getEntities();
+            $entities   = container()->getEntities();
+            $routes     = container()->getMapRoutes();
 
             /* Pages non routées */
-            if (true === container()->getMultiSite() && !empty($entities)) {
+            if (true === container()->getMultiSite() && !empty($entities) && empty($routes)) {
                 $url        = substr($_SERVER['REQUEST_URI'], 1);
                 $db         = new Querydata('page');
                 $res        = $db->where('is_home = ' . getBool('true')->getId())->get();

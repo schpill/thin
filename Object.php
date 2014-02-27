@@ -14,8 +14,8 @@
         {
             $args   = func_get_args();
             $nbArgs = func_num_args();
-            if (1 == $nbArgs && (Arrays::isArray(Arrays::first($args)) || is_object(Arrays::first($args)))) {
-                if (Arrays::isArray(Arrays::first($args))) {
+            if (1 == $nbArgs && (Arrays::is(Arrays::first($args)) || is_object(Arrays::first($args)))) {
+                if (Arrays::is(Arrays::first($args))) {
                     $this->populate(Arrays::first($args));
                 } elseif (is_object(Arrays::first($args))) {
                     $array = (array) Arrays::first($args);
@@ -93,6 +93,19 @@
                             }
                         }
                     }
+
+                    if (Arrays::is($this->$var) && count($argv) == 1) {
+                        $o = new self;
+                        $getter = getter(Arrays::first($argv));
+                        $o->populate($this->$var);
+                        return $o->$getter();
+                    }
+
+                    if ($this->$var instanceof \Closure) {
+                        if(is_callable($this->$var) && count($argv)) {
+                            return call_user_func_array($this->$var, $argv);
+                        }
+                    }
                     return $this->$var;
                 } else {
                     if (isset($this->thin_type)) {
@@ -113,12 +126,15 @@
                                 return (1 == count($collection)) ? Arrays::first($collection) : $collection;
                             }
                         } elseif (Arrays::exists('defaultValues', $settings)) {
-                            if (Arrays::isArray($settings['defaultValues'])) {
+                            if (Arrays::is($settings['defaultValues'])) {
                                 if(Arrays::exists($this->$var, $settings['defaultValues'])) {
                                     return $settings['defaultValues'][$this->$var];
                                 }
                             }
                         }
+                    }
+                    if (count($argv) == 1) {
+                        return Arrays::first($argv);
                     }
                     return null;
                 }
@@ -152,7 +168,7 @@
                         }
                     }
                     $this->$var = $value;
-                    if (!Arrays::inArray($var, $this->_fields)) {
+                    if (!Arrays::in($var, $this->_fields)) {
                         $this->_fields[] = $var;
                     }
                     if (isset($this->is_thin_object)) {
@@ -175,7 +191,7 @@
                 if (!isset($this->$var)) {
                     $this->$var = array();
                 }
-                if (!Arrays::isArray($this->$var)) {
+                if (!Arrays::is($this->$var)) {
                     $this->$var = array();
                 }
                 array_push($this->$var, $value);
@@ -185,7 +201,7 @@
                 $var                = Inflector::lower($uncamelizeMethod) . 's';
                 $value              = Arrays::first($argv);
                 if (isset($this->$var)) {
-                    if (Arrays::isArray($this->$var)) {
+                    if (Arrays::is($this->$var)) {
                         if (count($this->$var)) {
                             $remove = false;
                             foreach ($this->$var as $key => $tmpValue) {
@@ -287,7 +303,7 @@
                     $this->$namespace = array();
                 }
                 foreach ($datas as $k => $v) {
-                    if (is_array($k)) {
+                    if (Arrays::isArray($k)) {
                         $this->populate($k, $namespace);
                     } else {
                         $this->$namespace = array_merge($this->$namespace, array($k => $v));
@@ -295,7 +311,13 @@
                 }
             } else {
                 foreach ($datas as $k => $v) {
-                    $this->$k = $v;
+                    if (Arrays::isArray($v)) {
+                        $o = new self;
+                        $o->populate($v);
+                        $this->$k = $o;
+                    } else {
+                        $this->$k = $v;
+                    }
                     if (!Arrays::inArray($k, $this->_fields)) {
                         $this->_fields[] = $k;
                     }

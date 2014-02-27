@@ -8,7 +8,6 @@
     use PayPal\Api\Address;
     class Paypal
     {
-
         /**
          * Magic method for handling API methods.
          *
@@ -128,75 +127,88 @@
             }
         }
 
-        public static function payment(array $args)
+        public static function getUrlPaypalPayment(array $args)
         {
             extract($args);
+            $token = static::getToken($clientId, $clientSecret, $environment);
+            $intent = empty($intent) ? 'sale' : $intent;
+            $method = empty($method) ? 'paypal' : $method;
+
             $data = '{
-              "intent":"sale",
+              "intent":"' . $intent . '",
               "redirect_urls":{
-                    "return_url":"'. $returnUrl . '",
+                    "return_url":"' . $returnUrl . '",
                     "cancel_url":"' . $cancelUrl . '"
               },
               "payer":{
-                "payment_method":"paypal"
+                "payment_method":"' . $method . '"
               },
             "transactions": [
                 {
                     "amount": {
-                        "total": "300.00",
-                        "currency": "CAD",
+                        "total": "' . $total . '",
+                        "currency": "' . $currency . '",
                         "details": {
-                            "subtotal": "300.00",
-                            "tax": "0.00",
-                            "shipping": "0.00"
+                            "discount_amount": "' . $discount_amount . '",
+                            "subtotal": "' . $subtotal . '",
+                            "tax": "' . $tax . '",
+                            "shipping": "' . $shipping . '"
                         }
                     },
-                    "description": "This is payment description.",
-                    "item_list": {
-                        "items":[
-                            {
-                                "quantity":"1",
-                                "name":"One year VIP Card",
-                                "price":"300.00",
-                                "sku":"' . $id . '",
-                                "currency":"CAD"
-                            }
-                        ]
-                    }
+                    "description": "' . $description . '",
+                    "item_list": { "items":[';
+            $itemList = array();
+            foreach ($items as $item) {
+                $content = '{
+                    "quantity":"' . $item['quantity'] . '",
+                    "name":"' . $item['name'] . '",
+                    "price":"' . $item['price'] . '",
+                    "sku":"' . $item['id'] . '",
+                    "currency":"' . $item['currency'] . '"
+                }';
+                array_push($itemList, $content);
+            }
+            $data .= implode(",\n", $itemList) . '  ]      }
                 }
             ]
             }';
 
-            $url = ('development' == $environment) ? 'https://api.sandbox.paypal.com/v1/payments/payment' : 'https://api.paypal.com/v1/payments/payment';
+            $url = ('development' == $environment)
+            ? 'https://api.sandbox.paypal.com/v1/payments/payment'
+            : 'https://api.paypal.com/v1/payments/payment';
 
             $curl = curl_init($url);
             curl_setopt($curl, CURLOPT_POST, true);
             curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($curl, CURLOPT_HEADER, false);
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-            'Authorization: Bearer ' . $token,
-            'Accept: application/json',
-            'Content-Type: application/json'
-            ));
-
+            curl_setopt(
+                $curl,
+                CURLOPT_HTTPHEADER,
+                array(
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json',
+                    'Content-Type: application/json'
+                )
+            );
             curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-            #curl_setopt($curl, CURLOPT_VERBOSE, TRUE);
 
             $data = json_decode(curl_exec($curl), true);
 
             return $data['links'][1]['href'];
         }
 
-        public static function getToken($args)
+        public static function getToken($clientId, $clientSecret, $environment = 'development')
         {
-            extract($args);
+            $url        = ('development' == $environment)
+            ? 'https://api.sandbox.paypal.com/v1/oauth2/token'
+            : 'https://api.paypal.com/v1/oauth2/token';
 
-            $url        = ('development' == $environment) ? 'https://api.sandbox.paypal.com/v1/oauth2/token' : 'https://api.paypal.com/v1/oauth2/token';
             $auth       = $clientId . ':' . $clientSecret;
 
             $ch         = curl_init();
             $postData   = "grant_type=client_credentials";
+
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_PORT , 443);
             curl_setopt($ch, CURLOPT_VERBOSE, 0);
@@ -204,11 +216,14 @@
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            "Accept: application/json",
-            "Accept-Language: en_US",
-            "Content-length: " . Inflector::length($postData)
-            )
+            curl_setopt(
+                $ch,
+                CURLOPT_HTTPHEADER,
+                array(
+                    "Accept: application/json",
+                    "Accept-Language: en_US",
+                    "Content-length: " . Inflector::length($postData)
+                )
             );
             curl_setopt($ch, CURLOPT_USERPWD, $auth);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -219,5 +234,51 @@
             $data = json_decode(curl_exec($ch), true);
             curl_close($ch);
             return $data['access_token'];
+        }
+
+        public static function getPaypalPaymentInfos($paypalUrl)
+        {
+            $url        = Arrays::first($paypalUrl);
+            $execute    = Arrays::last($paypalUrl);
+            $tab        = parse_url($url);
+            parse_str($tab['query'], $infos);
+            extract($infos);
+            /* turl + oken + execute */
+            return array('url' => $url, 'token' => $token, 'execute' => $execute);
+        }
+
+        public static function after(array $args)
+        {
+            $url = URLSITE . substr($_SERVER['REQUEST_URI'], 1, strlen($_SERVER['REQUEST_URI']));
+            $tab = parse_url($url);
+            parse_str($tab['query'], $query);
+            extract($query);
+
+            if (isset($PayerID)) {
+                return static::execPayment($PayerID, $args);
+            }
+            return false;
+        }
+
+        public static function execPayment($execute, $payerId, array $args)
+        {
+            // $token = static::getToken(array('environment' => 'development', 'clientId' => 'AR1gYxBYuhVXGHInUsHgSXTZ_OBWj9AsGNPg--92OPZqLsD089GsFfeb8CHB', 'clientSecret' => 'EDh0XRCYD34dDH-n3ad6n-AzYOm3Ko_6AlcwUhMGrJG_5r9lMoKXqBR5hl-7'));
+            $token = static::getToken($args);
+            $data = '{ "payer_id" : "' . $payerId . '" }';
+
+            $curl = curl_init($args['execute']);
+            curl_setopt($curl, CURLOPT_POST, true);
+            curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+            curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($curl, CURLOPT_HEADER, false);
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json',
+                    'Content-Type: application/json'
+                )
+            );
+            $page = curl_exec($curl);
+            return strstr($page, 'approved') ? true : false;
         }
     }

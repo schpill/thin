@@ -17,6 +17,21 @@
     use Thin\Cache;
     use Thin\Exception;
 
+    if (!function_exists('mySprintf')) {
+        function mySprintf($str = null, $args = array(), $char = '%')
+        {
+            if (empty($str)) {
+                return '';
+            }
+            if (count($args) > 0) {
+                foreach ($args as $k => $v) {
+                    $str = str_replace($char . $k, $v, $str);
+                }
+            }
+            return $str;
+        }
+    }
+
     if (!function_exists('lng')) {
         function lng($string, $params = array(), $echo = true)
         {
@@ -1270,6 +1285,8 @@ $(document).ready(function() {
                     }
                     $conf[$key] = $configField;
                 }
+                Data::$_fields[$type]     = $fields;
+                Data::$_settings[$type]   = $conf;
                 container()->$setter($conf);
             }
         }
