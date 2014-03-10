@@ -51,7 +51,9 @@
             if (empty($username)) {
                 throw new Exception("Username is mandatory to connect database.");
             }
-            $models         = null !== container()->getConfig()->getModels() ? container()->getConfig()->getModels() : array();
+            $models         = null !== container()->getConfig()->getModels()
+                ? container()->getConfig()->getModels()
+                : array();
             $configModel    = isAke($models, $this->_entity);
             $keyCache       = sha1(session_id() . date('dmY') . $this->_table);
             $this->_datas['keyCache'] = $keyCache;
@@ -1696,7 +1698,7 @@
         {
             $newline = NL;
             $tables = $this->_query('SHOW TABLES');
-            if (is_array($tables)) {
+            if (Arrays::is($tables)) {
                 $count = count($tables);
             } else {
                 $count = $tables->rowCount();
@@ -1718,7 +1720,7 @@
                 if (false === $res || 1 > $count) {
                     continue;
                 }
-                $res = current($res);
+                $res = Arrays::first($res);
 
                 $create = $res[1];
                 $output .= '#' . $newline . '# TABLE STRUCTURE FOR: ' . $table . $newline . '#' . $newline . $newline;
@@ -1726,7 +1728,7 @@
                 $output .= $create . ';' . $newline . $newline;
 
                 $res = $this->_query("SELECT * FROM $table");
-                if (is_array($res)) {
+                if (Arrays::is($res)) {
                     $count = count($res);
                 } else {
                     $count = $res->rowCount();

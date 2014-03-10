@@ -256,6 +256,46 @@
             $this->_alert = $alert;
         }
 
+        public function asset($file, $echo = true)
+        {
+            $url = URLSITE . 'assets/themes/' . SITE_NAME . '/' . $file;
+            if (true === $echo) {
+                echo $url;
+            } else {
+                return $url;
+            }
+        }
+        public static function cleanCode($content)
+        {
+            $content = repl('<php>', '<?php ', self::lng($content));
+            $content = repl('<php>=', '<?php echo ', $content);
+            $content = repl('</php>', '?>', $content);
+            $content = repl('{{=', '<?php echo ', $content);
+            $content = repl('{{', '<?php ', $content);
+            $content = repl('}}', '?>', $content);
+            $content = repl('<?=', '<?php echo ', $content);
+            $content = repl('<? ', '<?php ', $content);
+            $content = repl('<?[', '<?php [', $content);
+            $content = repl('[if]', 'if ', $content);
+            $content = repl('[elseif]', 'elseif ', $content);
+            $content = repl('[else if]', 'else if ', $content);
+            $content = repl('[else]', 'else:', $content);
+            $content = repl('[/if]', 'endif;', $content);
+            $content = repl('[for]', 'for ', $content);
+            $content = repl('[foreach]', 'foreach ', $content);
+            $content = repl('[while]', 'while ', $content);
+            $content = repl('[switch]', 'switch ', $content);
+            $content = repl('[/endfor]', 'endfor;', $content);
+            $content = repl('[/endforeach]', 'endforeach;', $content);
+            $content = repl('[/endwhile]', 'endwhile;', $content);
+            $content = repl('[/endswitch]', 'endswitch;', $content);
+            $content = repl('<lang>', '<?php echo __("', $content);
+            $content = repl('</lang>', '"); ?>', $content);
+            $content = repl('$this->partial(', 'displays(', $content);
+            $content = repl('includes(', 'echo $this->partial(', $content);
+            return $content;
+        }
+
         protected function makeCompile($file)
         {
             $content = fgc($file);
@@ -282,6 +322,7 @@
             $content = repl('[/endforeach]', 'endforeach;', $content);
             $content = repl('[/endwhile]', 'endwhile;', $content);
             $content = repl('[/endswitch]', 'endswitch;', $content);
+            $content = repl('$this->partial(', 'displays(', $content);
             $content = repl('includes(', 'echo $this->partial(', $content);
             if (count($this->_grammar)) {
                 foreach ($this->_grammar as $grammar => $replace) {
@@ -289,26 +330,20 @@
                 }
             }
 
-            /* translate */
-            $tab = explode('<lang key=', $content);
+            return self::lng($content);
+        }
+
+        public static function lng($content)
+        {
+            $tab = explode('<lang args', $content);
             if (count($tab)) {
                 array_shift($tab);
                 foreach ($tab as $row) {
-                    $key        = Utils::cut('"', '"', trim($row));
-                    $default    = Utils::cut('">', '</lang>', trim($row));
-                    $content    = repl('<lang key="' . $key . '">' . $default . '</lang>', '<?php echo container()->getLanguage()->translate(\'' . stripslashes($key) . '\', \'' . base64_encode($default) . '\'); ?>', $content);
+                    $args        = Utils::cut('="', '"', trim($row));
+                    $default    = Utils::cut('="' . $args . '">', '</lang>', trim($row));
+                    $content    = repl('<lang args="' . $args . '">' . $default . '</lang>', '<?php echo trad("' . repl('"', '\\"', $args) . '", "' . repl('"', '\\"', $default) . '"); ?>', $content);
                 }
             }
-
-            if (null !== $this->_alert) {
-                $js = '<script type="text/javascript">
-                window.onload = function() {
-                    alert("' . repl('"', '\\"', $this->_alert) . '");
-                }
-                </script>';
-                $content .= "\n" . $js;
-            }
-
             return $content;
         }
 

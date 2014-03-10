@@ -39,7 +39,7 @@
         private $encoding       = '7bit';
         private $wordwrap       = 70;
 
-        public function __construct(array $connection = array())
+        public function __construct(array $connection)
         {
             $required = array(
                 'host',
@@ -76,7 +76,7 @@
                 // set normal
                 $this->from = array(
                     'email' => $email,
-                    'name'  => $name,
+                    'name'  => $name
                 );
             } else {
                 // set convention
@@ -540,7 +540,7 @@
         {
             // format "name <email>"
             if ($recipient['name']) {
-                return $recipient['name'].' <' . $recipient['email'] . '>';
+                return $recipient['name'] . ' <' . $recipient['email'] . '>';
             } else {
                 return $recipient['email'];
             }

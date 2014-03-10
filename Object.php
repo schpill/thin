@@ -115,15 +115,14 @@
                         $relationships = Arrays::exists('relationships', $settings) ? $settings['relationships'] : array();
                         if (Arrays::exists($var, $relationships) && 's' == $var[strlen($var) - 1]) {
                             if (Arrays::exists($var, $relationships)) {
-                                $res = Data::query(substr($var, 0, -1), "$type = " . $this->id);
+                                $res = dm(substr($var, 0, -1))->where("$type = " . $this->id)->get();
                                 $collection = array();
                                 if (count($res)) {
-                                    foreach ($res as $row) {
-                                        $obj = Data::getObject($row);
-                                        $collection[] = $obj;
+                                    foreach ($res as $obj) {
+                                        array_push($collection, $obj);
                                     }
                                 }
-                                return (1 == count($collection)) ? Arrays::first($collection) : $collection;
+                                return $collection;
                             }
                         } elseif (Arrays::exists('defaultValues', $settings)) {
                             if (Arrays::is($settings['defaultValues'])) {

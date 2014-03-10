@@ -149,7 +149,6 @@
                         "total": "' . $total . '",
                         "currency": "' . $currency . '",
                         "details": {
-                            "discount_amount": "' . $discount_amount . '",
                             "subtotal": "' . $subtotal . '",
                             "tax": "' . $tax . '",
                             "shipping": "' . $shipping . '"
@@ -195,7 +194,12 @@
 
             $data = json_decode(curl_exec($curl), true);
 
-            return $data['links'][1]['href'];
+            return static::getPaypalPaymentInfos(
+                array(
+                    $data['links'][1]['href'],
+                    $data['links'][2]['href']
+                )
+            );
         }
 
         public static function getToken($clientId, $clientSecret, $environment = 'development')
@@ -252,33 +256,34 @@
             $url = URLSITE . substr($_SERVER['REQUEST_URI'], 1, strlen($_SERVER['REQUEST_URI']));
             $tab = parse_url($url);
             parse_str($tab['query'], $query);
-            extract($query);
+            $args += $query;
 
             if (isset($PayerID)) {
-                return static::execPayment($PayerID, $args);
+                return static::execPayment($args);
             }
             return false;
         }
 
-        public static function execPayment($execute, $payerId, array $args)
+        public static function execPayment(array $args)
         {
+            extract($args);
             // $token = static::getToken(array('environment' => 'development', 'clientId' => 'AR1gYxBYuhVXGHInUsHgSXTZ_OBWj9AsGNPg--92OPZqLsD089GsFfeb8CHB', 'clientSecret' => 'EDh0XRCYD34dDH-n3ad6n-AzYOm3Ko_6AlcwUhMGrJG_5r9lMoKXqBR5hl-7'));
-            $token = static::getToken($args);
-            $data = '{ "payer_id" : "' . $payerId . '" }';
+            // $token = static::getToken($args);
+            $data = '{ "payer_id" : "' . $PayerID . '" }';
 
-            $curl = curl_init($args['execute']);
+            $curl = curl_init($execute);
             curl_setopt($curl, CURLOPT_POST, true);
             curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
             curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($curl, CURLOPT_HEADER, false);
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-                    'Authorization: Bearer ' . $token,
+                    'Authorization: Bearer ' . static::getToken($clientId, $clientSecret, $environment),
                     'Accept: application/json',
                     'Content-Type: application/json'
                 )
             );
             $page = curl_exec($curl);
-            return strstr($page, 'approved') ? true : false;
+            return contain('approved', $page) || contain('pending', $page) ? true : false;
         }
     }

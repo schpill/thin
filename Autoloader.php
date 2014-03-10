@@ -25,15 +25,38 @@
         public static function autoload($className)
         {
             $aliases = array(
-                'u' => 'Thin\\Utils',
-                'i' => 'Thin\\Inflector',
                 'c' => 'Thin\\Container',
                 'o' => 'Thin\\Object',
+                'u' => 'Thin\\Utils',
+                'i' => 'Thin\\Inflector',
             );
             if (array_key_exists($className, $aliases)) {
                 class_alias($aliases[$className], $className);
                 $className = $aliases[$className];
             }
+
+            $ns = ucfirst(strtolower(SITE_NAME));
+            if (strstr($className, $ns . '\\')) {
+                $file = realpath(
+                    APPLICATION_PATH
+                ) . DS . SITE_NAME . DS . 'app' . DS . 'lib' . DS .
+                str_replace(
+                    '\\',
+                    DS,
+                    str_replace(
+                        $ns . '\\',
+                        '',
+                        $className
+                    )
+                ) . '.php';
+
+                if(is_readable($file) && !array_key_exists($className, static::$_classes)) {
+                    require_once($file);
+                    static::$_classes[$className] = true;
+                }
+            }
+
+
             $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $className) . '.php';
             if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
                 require_once $check;
@@ -52,7 +75,7 @@
                         }
                     }
                     foreach (static::$_paths as $ns => $path) {
-                        $file = $path . repl('\\', DS, repl($ns, '', $className)) . '.php';
+                        $file = $path . str_replace('\\', DS, str_replace($ns, '', $className)) . '.php';
                         if(is_readable($file)) {
                             require_once $file;
                             static::$_classes[$className] = true;

@@ -11,6 +11,25 @@
          */
         public static $delimiter = '.';
 
+        public static function setObject(array $array, $type = null)
+        {
+            if (true === static::isAssoc($array)) {
+                $object = new Object;
+                if (!empty($type)) {
+                    $object->thin_type = $type;
+                }
+                foreach ($array as $key => $value) {
+                    if (static::is($value)) {
+                        $object->$key = static::getObject($value);
+                    } else {
+                        $object->$key = $value;
+                    }
+                }
+                return $object;
+            }
+            return null;
+        }
+
         /**
          * Tests if an array is associative or not.
          *
@@ -692,7 +711,7 @@
                 foreach ($parts as $part) {
                     $paramParts = explode('=', $part);
                     if (static::is($paramParts) && count($paramParts) == 2) {
-                        $param[$paramParts[0]] = $paramParts[1];
+                        $param[current($paramParts)] = end($paramParts);
                         unset($paramParts);
                     }
                 }

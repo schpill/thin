@@ -32,6 +32,12 @@
         }
     }
 
+    if (!function_exists('dm')) {
+        function dm($entity = null, $results = array())
+        {
+            return new Querydata($entity, $results);
+        }
+    }
     if (!function_exists('lng')) {
         function lng($string, $params = array(), $echo = true)
         {
@@ -87,10 +93,10 @@
                             } else {
                                 $lng         = Utils::cut('[:', ':]', $row);
                                 $translation = str_replace("[:$lng:]", '', $row);
-                                if (!ake(strtolower($lng), $tab)) {
-                                    $tab[strtolower($lng)] = array();
+                                if (!ake(Inflector::lower($lng), $tab)) {
+                                    $tab[Inflector::lower($lng)] = array();
                                 }
-                                $tab[strtolower($lng)][sha1($key)] = $translation;
+                                $tab[Inflector::lower($lng)][sha1($key)] = $translation;
                             }
                         }
                     }
@@ -109,7 +115,7 @@
 
         function addTranslation($name, $value, $language)
         {
-            $db = new Querydata('translation');
+            $db = dm('translation');
             $res = $db->where('name = ' . sha1($name))->where('language = ' . $language)->get();
             if (count($res)) {
                 $t = $db->first($res);
@@ -129,7 +135,7 @@
                     return $key;
                 }
             }
-            $db = new Querydata('translation');
+            $db = dm('translation');
             $res = $db->where('name = ' . sha1($key))->where('language = ' . $lng)->get();
             if (count($res)) {
                 $row = $db->first($res);
@@ -336,7 +342,7 @@
 
         function setOption($key, $value)
         {
-            $db = new Querydata('option');
+            $db = dm('option');
             $res = $db->where('name = ' . $key)->get();
             if (count($res)) {
                 $option = $db->first($res);
@@ -362,7 +368,7 @@
             if (null === $environment) {
                 $environment = APPLICATION_ENV;
             }
-            $db = new Querydata('config');
+            $db = dm('config');
             $res = $db->where('name = ' . $key)->where('environment = ' . $environment)->get();
             if (!count($res)) {
                 $all = $db->where('name = ' . $key)->where('environment = all')->get();
@@ -381,7 +387,7 @@
             if (null === $environment) {
                 $environment = 'all';
             }
-            $db = new Querydata('config');
+            $db = dm('config');
             $res = $db->where('name = ' . $key)->where('environment = ' . $environment)->get();
             if (count($res)) {
                 $config = $db->first($res);
@@ -393,7 +399,7 @@
 
         function getMeta($key)
         {
-            $db = new Querydata('meta');
+            $db = dm('meta');
             $res = $db->where('name = ' . $key)->get();
             if (count($res)) {
                 $meta = $db->first($res);
@@ -404,7 +410,7 @@
 
         function setMeta($key, $value)
         {
-            $db = new Querydata('meta');
+            $db = dm('meta');
             $res = $db->where('name = ' . $key)->get();
             if (count($res)) {
                 $meta = $db->first($res);
@@ -424,7 +430,7 @@
 
         function getBool($bool = 'true')
         {
-            $db = new Querydata('bool');
+            $db = dm('bool');
             $res = $db->where('value = ' . $bool)->get();
             if (count($res)) {
                 return $db->first($res);
@@ -434,7 +440,7 @@
 
         function getStatus($status = 'online')
         {
-            $db = new Querydata('statuspage');
+            $db = dm('statuspage');
             $res = $db->where('name = ' . $status)->get();
             if (count($res)) {
                 return $db->first($res);
@@ -444,7 +450,7 @@
 
         function cms_get_page($name = 'home')
         {
-            $db = new Querydata('page');
+            $db = dm('page');
             $res = $db->where('name = ' . $name)->get();
             if (count($res)) {
                 return $db->first($res);
@@ -456,7 +462,7 @@
         {
             $lng = getLanguage();
             if ($page instanceof Container) {
-                $db = new Querydata($type);
+                $db = dm($type);
                 $infos = $db->where('name = ' . $key)->where('page = ' . $page->getId())->get();
                 if (count($infos)) {
                     $info = $db->first($infos);
@@ -587,10 +593,53 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         }
     }
 
+    if (!function_exists('trad')) {
+        function trad($args, $default)
+        {
+            $args = eval('return array(' . $args . ');');
+            $key = Arrays::exists('key', $args) ? $args['key'] : null;
+
+            if (1 < count($args)) {
+                foreach ($args as $k => $v) {
+                    if ($k != 'key') {
+                        $default = str_replace('##' . $k . '##', $v, $default);
+                    }
+                }
+            }
+
+            $lng = container()->getLanguage()->getLanguage();
+
+            if ($lng == options()->getDefaultLanguage() || empty($key)) {
+                return $default;
+            }
+
+            $db = dm('translation');
+            $res = $db->where('key = ' . $key)->get();
+            if (count($res)) {
+                $value = $db->first($res);
+
+                if (Arrays::is($value)) {
+                    if (Arrays::exists($lng, $value)) {
+                        $trad = $value[$lng];
+                        if (1 < count($args)) {
+                            foreach ($args as $k => $v) {
+                                if ($k != 'key') {
+                                    $trad = str_replace('##' . $k . '##', $v, $trad);
+                                }
+                            }
+                        }
+                        return $trad;
+                    }
+                }
+            }
+            return $default;
+        }
+    }
+
     if (!function_exists('cms_partial')) {
         function cms_partial($name, $params = array(), $echo = true)
         {
-            $query      = new Querydata('partial');
+            $query      = dm('partial');
             $res        = $query->where("name = $key")->get();
             if (count($res)) {
                 $row    = $query->first($res);
@@ -696,7 +745,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     if (!function_exists('cms_image')) {
         function cms_media($type, $name)
         {
-            $db = new Querydata(Inflector::lower($type));
+            $db = dm(Inflector::lower($type));
             $res = $db->where('name = ' . $name)->get();
             if (count($res)) {
                 return $db->first($res);
@@ -821,7 +870,7 @@ initialize();
             $lngs       = explode(',', cms_option('page_languages'));
             $pageParent = new url;
             if (!empty($parent)) {
-                $sql = new Querydata('page');
+                $sql = dm('page');
                 $pageParents = $sql->where('id = ' . $parent)->get();
                 $pageParent = $sql->first($pageParents);
             }
@@ -914,7 +963,7 @@ $(document).ready(function() {
             if (null === $page) {
                 return getUrl();
             } else {
-                $query = new Querydata('page');
+                $query = dm('page');
                 $res = $query->where("name = $page")->get();
                 if (count($res)) {
                     $page = $query->first($res);
@@ -944,13 +993,13 @@ $(document).ready(function() {
             $html = '';
             Data::getAll('slideshow');
             Data::getAll('slideshowmedia');
-            $db = new Querydata('slideshow');
+            $db = dm('slideshow');
             $res = $db->where('name = ' . $name)->get();
             $slideshowHeight = cms_option('slideshow_height');
             $slideshowBg = cms_option('slideshow_background');
             if (count($res)) {
                 $slideshow = $db->first($res);
-                $dbMedia = new Querydata('slideshowmedia');
+                $dbMedia = dm('slideshowmedia');
                 $rows = $dbMedia->where('slideshow = ' . $slideshow->getId())->order('position')->get();
                 if (count($rows)) {
                     $html .= '<style>
@@ -1032,11 +1081,11 @@ $(document).ready(function() {
         function cms_object($collection, $objectName, $array = false)
         {
             $object = new cmsObj();
-            $q      = new Querydata('collection');
+            $q      = dm('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
                 $row  = $q->first($res);
-                $q    = new Querydata('object');
+                $q    = dm('object');
                 $res  = $q->where('collection = ' . $row->getId())->where("name = $objectName")->get();
                 if (count($res)) {
                     $obj        = $q->first($res);
@@ -1053,11 +1102,11 @@ $(document).ready(function() {
         function cms_objects($collection, $array = false)
         {
             $coll   = array();
-            $q      = new Querydata('collection');
+            $q      = dm('collection');
             $res    = $q->where('name = ' . $collection)->get();
             if (count($res)) {
                 $row        = $q->first($res);
-                $q          = new Querydata('object');
+                $q          = dm('object');
                 $objects    = $q->where('collection = ' . $row->getId())->get();
                 if (count($objects)) {
                     foreach ($objects as $object) {
@@ -1295,9 +1344,9 @@ $(document).ready(function() {
     if (!function_exists('dataDecode')) {
         function dataDecode($file)
         {
-            if (file_exists($file)) {
+            if (File::exists($file)) {
                 if (is_readable($file)) {
-                    return unserialize(file_get_contents($file));
+                    return Data::unserialize(Data::load($file));
                 }
             }
             return new Obj;
@@ -1403,7 +1452,7 @@ $(document).ready(function() {
             $path   = repl(Arrays::last($tab), $tpl, $view->_viewFile);
             if (File::exists($path)) {
                 $content = fgc($path);
-                $content = repl('$this->', '$view->', $content);
+                $content = repl('$this->', '$view->', View::cleanCode($content));
                 $file = CACHE_PATH . DS . sha1($content) . '.display';
                 File::put($file, $content);
                 ob_start();

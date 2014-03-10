@@ -6,10 +6,12 @@
         set_exception_handler(function($exception) {
             showException($exception);
         });
+
         set_error_handler(function($type, $message, $file, $line) {
             $exception = new \ErrorException($message, $type, 0, $file, $line);
             showException($exception);
         });
+
         register_shutdown_function(function() {
             $error = error_get_last();
             if (null !== $error) {
@@ -20,6 +22,7 @@
 
     require_once 'Helper.php';
     require_once 'Autoloader.php';
+    require_once 'Swift/swift_required.php';
 
     define('MB_STRING', (int) function_exists('mb_get_info'));
     \Thin\Autoloader::registerNamespace('ThinEntity',    APPLICATION_PATH . DS . 'entities');
@@ -64,12 +67,12 @@
 
     if (null !== request()->getFromHtaccess()) {
         if ('true' == request()->getFromHtaccess() && !getenv('FROM_ROOT')) {
-            $dir = $_SERVER['SCRIPT_NAME'];
-            $htaccessDir = repl(DS . 'web' . DS . 'index.php', '', $dir);
-            $uri = $_SERVER['REQUEST_URI'];
-            $uri = repl($htaccessDir . DS, '', $uri);
-            $_SERVER['REQUEST_URI'] = DS . $uri;
-            $urlSite .= repl(DS, '', $htaccessDir) . DS;
+            $dir                        = $_SERVER['SCRIPT_NAME'];
+            $htaccessDir                = repl(DS . 'web' . DS . 'index.php', '', $dir);
+            $uri                        = $_SERVER['REQUEST_URI'];
+            $uri                        = repl($htaccessDir . DS, '', $uri);
+            $_SERVER['REQUEST_URI']     = DS . $uri;
+            $urlSite                    .= repl(DS, '', $htaccessDir) . DS;
             container()->setNonRoot(true);
         }
     }

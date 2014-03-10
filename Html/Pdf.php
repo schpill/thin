@@ -53,7 +53,6 @@
         const MODE_SAVE = 3;
 
         /**
-
          * @param array $options
          */
         public function __construct(array $options = array())
@@ -122,7 +121,6 @@
         /**
          * creates file to which will be writen html content
          *
-
          * @return string
          */
         protected function _createFile()
@@ -143,7 +141,6 @@
         /**
          * returns file path where html content is saved
          *
-
          * @return string
          */
         public function getFilePath()
@@ -154,7 +151,6 @@
         /**
          * executes command
          *
-
          * @param string $cmd   command to execute
          * @param string $input other input (not arguments)
          * @return array
@@ -202,7 +198,6 @@
         /**
          * returns help info
          *
-
          * @return string
          */
         public function getHelp()
@@ -214,7 +209,6 @@
         /**
          * Sets the PDF margins
          *
-
          * @param $margins array<position => value> The margins.
          *   * Possible <position> :
          *     * top    : sets the margin on the top of the PDF
@@ -233,7 +227,6 @@
         /**
          * Sets the PDF margins
          *
-
          * @return array See $this->setMargins()
          * @see $this->setMargins()
          */
@@ -245,7 +238,6 @@
         /**
          * set WKHtmlToPdf to wait when `windiw.status` on selected page changes to setted status, and after that render PDF
          *
-
          * @param string $windowStatus  -we add a `--window-status {$windowStatus}` for execution to `$this->_bin`
          * @return Wkthmltopdf
          */
@@ -258,7 +250,6 @@
         /**
          * Sets the PDF margins
          *
-
          * @return string See $this->setWindowStatus()
          * @see $this->setWindowStatus()
          */
@@ -270,7 +261,6 @@
         /**
          * set HTML content to render
          *
-
          * @param string $html
          * @return Wkthmltopdf
          */
@@ -283,7 +273,6 @@
         /**
          * returns HTML content
          *
-
          * @return string
          */
         public function getHtml()
@@ -294,7 +283,6 @@
         /**
          * set URL to render
          *
-
          * @param string $html
          * @return Wkthmltopdf
          */
@@ -307,7 +295,6 @@
         /**
          * returns URL
          *
-
          * @return string
          */
         public function getUrl()
@@ -318,7 +305,6 @@
         /**
          * Absolute path where to store files
          *
-
          * @throws Exception
          * @param string $path
          * @return Wkthmltopdf
@@ -336,7 +322,6 @@
         /**
          * returns path where to store saved files
          *
-
          * @return string
          */
         public function getPath()
@@ -347,7 +332,6 @@
         /**
          * set page orientation
          *
-
          * @param string $orientation
          * @return Wkthmltopdf
          */
@@ -360,7 +344,6 @@
         /**
          * returns page orientation
          *
-
          * @return string
          */
         public function getOrientation()
@@ -369,7 +352,6 @@
         }
 
         /**
-
          * @param string $size
          * @return Wkthmltopdf
          */
@@ -382,7 +364,6 @@
         /**
          * returns page size
          *
-
          * @return int
          */
         public function getPageSize()
@@ -392,7 +373,6 @@
 
         /**
          * enable / disable generation Table Of Contents
-
          * @param boolean $toc
          * @return Wkhtmltopdf
          */
@@ -405,7 +385,6 @@
         /**
          * returns value is enabled Table Of Contents generation or not
          *
-
          * @return boolean
          */
         public function getTOC()
@@ -416,7 +395,6 @@
         /**
          * returns bin path
          *
-
          * @return string
          */
         public function getBinPath()
@@ -427,7 +405,6 @@
         /**
          * returns bin path
          *
-
          * @return string
          */
         public function setBinPath($path)
@@ -441,7 +418,6 @@
 
         /**
          * set number of copies
-
          * @param int $copies
          * @return Wkthmltopdf
          */
@@ -454,7 +430,6 @@
         /**
          * returns  number of copies to make
          *
-
          * @return int
          */
         public function getCopies()
@@ -464,7 +439,6 @@
 
         /**
          * whether to print in grayscale or not
-
          * @param boolean $mode
          * @return Wkthmltopdf
          */
@@ -477,7 +451,6 @@
         /**
          * returns is page will be printed in grayscale format
          *
-
          * @return boolean
          */
         public function getGrayscale()
@@ -511,7 +484,6 @@
 
         /**
          * PDF title
-
          * @param string $title
          * @return Wkthmltopdf
          */
@@ -524,7 +496,6 @@
         /**
          * returns PDF document title
          *
-
          * @throws Exception
          * @return string
          */
@@ -541,7 +512,6 @@
          *
          * @param string $footer
          * @return Wkthmltopdf
-
          */
         public function setFooterHtml($footer)
         {
@@ -553,7 +523,6 @@
          * get footer html
          *
          * @return string
-
          */
         public function getFooterHtml()
         {
@@ -565,7 +534,6 @@
          *
          * @param string $username
          * @return Wkthmltopdf
-
          */
         public function setUsername($username)
         {
@@ -577,7 +545,6 @@
          * get http username
          *
          * @return string
-
          */
         public function getUsername()
         {
@@ -589,7 +556,6 @@
          *
          * @param string $password
          * @return Wkthmltopdf
-
          */
         public function setPassword($password)
         {
@@ -627,14 +593,22 @@
             $command .= ($this->getWindowStatus()) ? " --window-status ".$this->getWindowStatus()."" : "";
             $command .= ($this->getTOC()) ? " --toc" : "";
             $command .= ($this->getGrayscale()) ? " --grayscale" : "";
-            $command .= (mb_strlen($this->getPassword()) > 0) ? " --password " . $this->getPassword() . "" : "";
-            $command .= (mb_strlen($this->getUsername()) > 0) ? " --username " . $this->getUsername() . "" : "";
-            $command .= (mb_strlen($this->getFooterHtml()) > 0) ? " --margin-bottom 20 --footer-html \"" . $this->getFooterHtml() . "\"" : "";
+            $command .= (mb_strlen($this->getPassword()) > 0)
+            ? " --password " . $this->getPassword() . ""
+            : "";
+            $command .= (mb_strlen($this->getUsername()) > 0)
+            ? " --username " . $this->getUsername() . ""
+            : "";
+            $command .= (mb_strlen($this->getFooterHtml()) > 0)
+            ? " --margin-bottom 20 --footer-html \"" . $this->getFooterHtml() . "\""
+            : "";
+            $command .= ($this->getTitle())
+            ? ' --title "' . $this->getTitle() . '"'
+            : '';
 
-            $command .= ($this->getTitle()) ? ' --title "' . $this->getTitle() . '"' : '';
             $command .= ' "%input%"';
             $command .= " -";
-            if ( $this->getRunInVirtualX() ) {
+            if ($this->getRunInVirtualX()) {
                 $command = 'xvfb-run ' . $command;
             }
             return $command;

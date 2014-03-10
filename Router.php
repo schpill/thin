@@ -5,7 +5,7 @@
     class Router
     {
         private static $_uri;
-        private static $_values = array();
+        public static $_values = array();
         /**
          * URI delimiter
          */
@@ -25,11 +25,10 @@
                 return;
             }
 
-            $entities   = container()->getEntities();
-            $routes     = container()->getMapRoutes();
+            $entities = container()->getEntities();
 
             /* Pages non routées */
-            if (true === container()->getMultiSite() && !empty($entities) && empty($routes)) {
+            if (true === container()->getMultiSite() && !empty($entities) && null === container()->getMapRoutes()) {
                 $url        = substr($_SERVER['REQUEST_URI'], 1);
                 $db         = new Querydata('page');
                 $res        = $db->where('is_home = ' . getBool('true')->getId())->get();
@@ -132,15 +131,19 @@
                 static::make(container()->getNotFoundRoute());
                 return;
             }
-
-            static::is404();
-
+            if (null === container()->getMapRoutes()) {
+                static::is404();
+            } else {
+                static::make(container()->getNotFoundRoute());
+                return;
+            }
         }
 
-        private static function match($pathComp)
+        public static function match($pathComp, $route = null)
         {
             $path = trim(urldecode(static::$_uri), static::URI_DELIMITER);
-            $regex = '#^' . $pathComp . '#i';
+            $path = empty($path) ? trim(urldecode($_SERVER['REQUEST_URI']), static::URI_DELIMITER) : $path;
+            $regex = '#^' . $pathComp . '$#u';
             $res = preg_match($regex, $path, $values);
 
             if ($res === 0) {
@@ -152,25 +155,38 @@
                     unset($values[$i]);
                 }
             }
+            if (!empty($route) && count($values)) {
+                foreach ($values as $key => $value) {
+                    $getter = 'settings' . $key;
+                    $settings = $route->$getter;
+                    if (is_callable($settings)) {
+                        $check = $settings($value);
+                        if (false === $check) {
+                            return false;
+                        }
+                    }
+                }
+                static::$_values = $values;
+                return true;
+            }
 
             static::$_values = $values;
-
             return $values;
         }
 
-        private static function make($route)
+        public static function make($route)
         {
             Utils::set('appDispatch', $route);
-            if (null !== $route->getParam1()) {
-                static::assign($route);
+            if (null !== $route->param1) {
+                Router::assign($route);
             }
         }
 
-        private static function assign($route)
+        public static function assign($route)
         {
             foreach (static::$_values as $key => $value) {
-                $getter = 'getParam' . $key;
-                $requestKey = $route->$getter();
+                $getter = 'param' . $key;
+                $requestKey = $route->$getter;
                 $_REQUEST[$requestKey] = $value;
             }
 
@@ -182,7 +198,7 @@
                     $str = parse_str($query, $output);
                     if (count($output)) {
                         foreach ($output as $k => $v) {
-                            $_GET[$k] = $v;
+                            $_REQUEST[$k] = $v;
                         }
                     }
                 }
@@ -460,14 +476,14 @@
 
             $actionName = $action . 'Action';
 
-            if (Arrays::inArray('init', $actions)) {
+            if (Arrays::in('init', $actions)) {
                 $controller->init();
             }
-            if (Arrays::inArray('preDispatch', $actions)) {
+            if (Arrays::in('preDispatch', $actions)) {
                 $controller->preDispatch();
             }
 
-            if (!Arrays::inArray($actionName, $actions)) {
+            if (!Arrays::in($actionName, $actions)) {
                 throw new Exception("The action '$actionName' does not exist.");
             }
 

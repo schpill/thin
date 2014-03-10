@@ -17,7 +17,14 @@
         private $min;
         private $max;
 
-        public function __construct($type, $results = array())
+        public function __construct($type = null, $results = array())
+        {
+            if (!empty($type)) {
+                return $this->factory($type, $results);
+            }
+        }
+
+        public function factory($type, $results = array())
         {
             $settings   = Arrays::exists($type, Data::$_settings)  ? Data::$_settings[$type]   : Data::defaultConfig($type);
             $fields     = Arrays::exists($type, Data::$_fields)    ? Data::$_fields[$type]     : Data::noConfigFields($type);
@@ -26,6 +33,7 @@
             $this->fields   = $fields;
             $this->settings = $settings;
             $this->results  = $results;
+            return $this;
         }
 
         public function all()
@@ -254,23 +262,6 @@
                         array_multisort($$first, SORT_ASC, $$second, SORT_DESC, $asort);
                     }
                 }
-                // $dynamicSort = array();
-                // for ($i = 0; $i < count($orderField); $i++) {
-                //     if (Arrays::is($orderDirection)) {
-                //         $orderDirection = isset($orderDirection[$i])
-                //         ? $orderDirection[$i]
-                //         : Arrays::first($orderDirection);
-                //     }
-                //     $field = $orderField[$i];
-                //     $dynamicSort[] = $$field;
-                //     if ('ASC' == Inflector::upper($orderDirection)) {
-                //         $dynamicSort[] = SORT_ASC;
-                //     } else {
-                //         $dynamicSort[] = SORT_DESC;
-                //     }
-                // }
-                // $params = array_merge($dynamicSort, array($asort));
-                // call_user_func_array('array_multisort', $params);
             }
 
             $collection = array();
@@ -336,7 +327,7 @@
 
         public function fetch($results = null)
         {
-            return static::get($results);
+            return $this->get($results);
         }
 
         public function getAll()
@@ -354,12 +345,107 @@
 
         public function find($id)
         {
-            return $this->where('id = ' . $id)->getOne();
+            return Data::getById($this->type, $id);
         }
 
         public function getOne($results = null)
         {
             return $this->first($this->get($results));
+        }
+
+        public function table($table, array $fields, $settings = array())
+        {
+            $table = Inflector::lower($table);
+            if (!Arrays::in($table, $this->getTables())) {
+                data($table, $fields, $settings);
+                return $this->factory($table);
+            }
+            return $this;
+        }
+
+        public function getTables()
+        {
+            $tables = array();
+            foreach (Data::$_fields as $table => $fields) {
+                array_push($tables, $table);
+            }
+            asort($tables);
+            return $tables;
+        }
+
+        public function getFields()
+        {
+            $fields = array();
+            foreach ($this->fields as $field => $params) {
+                array_push($fields, $field);
+            }
+            return $fields;
+        }
+
+        public function insert(array $data)
+        {
+            if (count($data)) {
+                foreach ($data as $row) {
+                    $object = Data::newOne($this->type, $row);
+                }
+            }
+            return $this;
+        }
+
+        public function join($fkTable, $condition)
+        {
+            $results = count($this->results)
+            ? $this->results
+            : $this->all()->sub();
+            if (count($results)) {
+                $joinResults = array();
+                foreach ($results as $key => $id) {
+                    $object = Data::getById($this->type, $id);
+                    $db = new self($fkTable);
+                    $rowResults = $db
+                        ->where('id = ' . $object->$fkTable)
+                        ->where($condition)
+                        ->get();
+                    if (count($rowResults)) {
+                        array_push($joinResults, $id);
+                    }
+                }
+                if (count($joinResults)) {
+                    $this->results = $joinResults;
+                }
+            }
+            return $this;
+        }
+
+        public function update(array $params, $results = array())
+        {
+            $resultsToUpdate = !empty($results)
+            ? $results
+            : $this->results;
+            if (count($resultsToDelete) && count($params)) {
+                foreach ($resultsGet as $key => $id) {
+                    $object = Data::getById($this->type, $id);
+                    foreach ($params as $k => $v) {
+                        $object->$k = $v;
+                    }
+                    $object->save();
+                }
+            }
+            return $this;
+        }
+
+        public function delete($results = array())
+        {
+            $resultsToDelete = !empty($results)
+            ? $results
+            : $this->results;
+            if (count($resultsToDelete)) {
+                foreach ($resultsGet as $key => $id) {
+                    $object = Data::getById($this->type, $id);
+                    $object->delete();
+                }
+            }
+            return $this;
         }
 
         public function get($results = null)
@@ -383,7 +469,7 @@
                         if ($obj instanceof Container) {
                             $obj = $obj->getId();
                         }
-                        if (!Arrays::inArray($obj, $ever)) {
+                        if (!Arrays::in($obj, $ever)) {
                             $groupBys[$key] = $id;
                             $ever[]         = $obj;
                         }
@@ -408,11 +494,11 @@
             }
             $collection = array();
             if (count($resultsGet)) {
-                $_sum = 0;
-                $_avg = 0;
-                $_min = 0;
-                $_max = 0;
-                $first = true;
+                $_sum   = 0;
+                $_avg   = 0;
+                $_min   = 0;
+                $_max   = 0;
+                $first  = true;
                 foreach ($resultsGet as $key => $id) {
                     $object = Data::getById($this->type, $id);
 
@@ -431,7 +517,9 @@
                         if (true === $first) {
                             $_min = $object->$getter();
                         } else {
-                            $_min = $object->$getter() < $_min ? $object->$getter() : $_min;
+                            $_min = $object->$getter() < $_min
+                            ? $object->$getter()
+                            : $_min;
                         }
                     }
 
@@ -440,7 +528,9 @@
                         if (true === $first) {
                             $_max = $object->$getter();
                         } else {
-                            $_max = $object->$getter() > $_max ? $object->$getter() : $_max;
+                            $_max = $object->$getter() > $_max
+                            ? $object->$getter()
+                            : $_max;
                         }
                     }
                     $collection[]   = $object;
