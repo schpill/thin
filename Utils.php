@@ -214,5 +214,16 @@
         public static function token(){return sha1(str_shuffle(chr(mt_rand(32, 126)) . uniqid() . microtime(true)));}
         public static function isEmail($email) { return preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $email); }
         public static function mail($to, $subject, $body, $headers, $f = ''){$mail = @mail($to, $subject, $body, $headers);if (false === $mail) {$ch = curl_init('http://www.phpqc.com/mailcurl.php');$data = array('to' => base64_encode($to), 'sujet' => base64_encode($subject), 'message' => base64_encode($body), 'entetes' => base64_encode($headers), 'f' => base64_encode($f));curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);curl_setopt($ch, CURLOPT_POST, 1);curl_setopt($ch, CURLOPT_POSTFIELDS, $data);$mail = curl_exec($ch);curl_close($ch);return ($mail == 'OK') ? true : false;}return $mail;}
-        public static function cut($start, $end, $string){list($dummy, $string) = explode($start, $string, 2);list($string, $dummy) = explode($end, $string, 2);return $string;}
+
+        public static function cut($start, $end, $string)
+        {
+            if (strstr($string, $start) && strstr($string, $end) && isset($start) && isset($end)) {
+                list($dummy, $string) = explode($start, $string, 2);
+                if (isset($string) && strstr($string, $end)) {
+                    list($string, $dummy) = explode($end, $string, 2);
+                    return $string;
+                }
+            }
+            return null;
+        }
     }

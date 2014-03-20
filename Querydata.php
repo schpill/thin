@@ -33,6 +33,7 @@
             $this->fields   = $fields;
             $this->settings = $settings;
             $this->results  = $results;
+            Data::db($type);
             return $this;
         }
 
@@ -166,9 +167,40 @@
             return $this;
         }
 
+        public function db($table = null)
+        {
+            $table = !empty($table) ? $table : $this->type;
+            if (!Arrays::exists($table, Data::$_db)) {
+                Data::db($table);
+            }
+            $fields = Arrays::exists($table, Data::$_fields)
+            ? Data::$_fields[$table]
+            : Data::noConfigFields($table);
+
+            $datas = Data::getAll($table);
+            $q = "SELECT * FROM " . $table . " WHERE id IS NOT NULL";
+            $res = Data::$_db[$table]->query($q);
+            $next = true;
+            while ($row = $res->fetchArray() && true === $next) {
+                $next = false;
+            }
+            if (true === $next) {
+                foreach ($datas as $tmpObject) {
+                    $object = Data::getObject($tmpObject, $table);
+                    $q = "INSERT INTO $table (id, date_create) VALUES ('" . \SQLite3::escapeString($object->id) . "', '" . \SQLite3::escapeString($object->date_create) . "')";
+                    Data::$_db[$table]->exec($q);
+                    foreach ($fields as $field => $info) {
+                        $q = "UPDATE $table SET $field = '". \SQLite3::escapeString($object->$field) ."' WHERE id = '" . \SQLite3::escapeString($object->id) . "'";
+                        Data::$_db[$table]->exec($q);
+                    }
+                }
+            }
+        }
+
         public function order($orderField, $orderDirection = 'ASC')
         {
             if (count($this->results) && null !== $orderField) {
+                $this->db();
                 $queryKey   = sha1(serialize($this->wheres) . serialize($orderField) . serialize($orderDirection));
                 $cache      = Data::cache($this->type, $queryKey);
 
@@ -198,78 +230,162 @@
 
         private function sort($orderField, $orderDirection, $multiSort = false)
         {
-            $sort = array();
-            foreach($this->results as $id) {
-                $object                  = (is_string($id)) ? Data::getById($this->type, $id) : $id;
-                $sort['id'][]            = $object->id;
-                $sort['date_create'][]   = $object->date_create;
-
-                foreach ($this->fields as $k => $infos) {
-                    $value      = isset($object->$k) ? $object->$k : null;
-                    $type = Arrays::exists('type', $infos) ? $infos['type'] : null;
-                    if ('data' == $type) {
-                        list($dummy, $foreignTable, $foreignField) = $infos['contentList'];
-                        $obj = Data::getById($foreignTable, $value);
-                        $foreignFields = explode(',', $foreignField);
-                        $val = array();
-                        foreach ($foreignFields as $ff) {
-                            $val[] = isset($obj->$ff) ? $obj->$ff : null;
-                        }
-                        $value = count($val) == 1 ? Arrays::first($val) : implode(' ', $val);
-                    }
-                    $sort[$k][] = $value;
-
+            $db = new \SQLite3(':memory:');
+            $fields = Arrays::exists($this->type, Data::$_fields)
+            ? Data::$_fields[$this->type]
+            : Data::noConfigFields($this->type);
+            $q = "DROP TABLE IF EXISTS $this->type; CREATE TABLE $this->type (id VARCHAR PRIMARY KEY, date_create";
+            if (count($fields)) {
+                foreach ($fields as $field => $infos) {
+                    $q .= ", $field";
                 }
             }
-            $asort = array();
-            foreach ($sort as $k => $rows) {
-                for ($i = 0 ; $i < count($rows) ; $i++) {
-                    if (empty($$k) || is_string($$k) || is_object($$k)) {
-                        $$k = array();
-                    }
-                    $asort[$i][$k] = $rows[$i];
-                    array_push($$k, $rows[$i]);
+            $q .= ");";
+            $db->exec($q);
+            $datas = Data::getAll($this->type);
+            foreach ($datas as $tmpObject) {
+                $object = Data::getObject($tmpObject, $this->type);
+                $q = "INSERT INTO $this->type (id, date_create) VALUES ('" . \SQLite3::escapeString($object->id) . "', '" . \SQLite3::escapeString($object->date_create) . "')";
+                $db->exec($q);
+                foreach ($fields as $field => $info) {
+                    $value = is_object($object->$field) ? 'object' : $object->$field;
+                    $q = "UPDATE $this->type SET $field = '". \SQLite3::escapeString($value) ."' WHERE id = '" . \SQLite3::escapeString($object->id) . "'";
+                    $db->exec($q);
                 }
             }
-
+            $this->fields['date_create'] = array();
+            $q = "SELECT id FROM $this->type WHERE id IN ('" . implode("', '", $this->results) . "') ORDER BY ";
             if (false === $multiSort) {
-                if ('ASC' == Inflector::upper($orderDirection)) {
-                    array_multisort($$orderField, SORT_ASC, $asort);
+                $type = Arrays::exists('type', $this->fields[$orderField]) ? $this->fields[$orderField]['type'] : null;
+                if ('data' == $type) {
+                    $q = repl('SELECT id', 'SELECT ' . $this->type . '.id', $q);
+                    list($dummy, $foreignTable, $foreignField) = $this->fields[$orderField]['contentList'];
+
+                    $fields = Arrays::exists($foreignTable, Data::$_fields)
+                    ? Data::$_fields[$foreignTable]
+                    : Data::noConfigFields($foreignTable);
+                    $query = "DROP TABLE IF EXISTS $foreignTable; CREATE TABLE $foreignTable (id VARCHAR PRIMARY KEY, date_create";
+                    if (count($fields)) {
+                        foreach ($fields as $field => $infos) {
+                            $query .= ", $field";
+                        }
+                    }
+                    $query .= ");";
+                    $db->exec($query);
+                    $datas = Data::getAll($foreignTable);
+                    foreach ($datas as $tmpObject) {
+                        $object = Data::getObject($tmpObject, $foreignTable);
+                        $query = "INSERT INTO $foreignTable (id, date_create) VALUES ('" . \SQLite3::escapeString($object->id) . "', '" . \SQLite3::escapeString($object->date_create) . "')";
+                        $db->exec($query);
+                        foreach ($fields as $field => $info) {
+                            $value = is_object($object->$field) ? 'object' : $object->$field;
+                            $query = "UPDATE $foreignTable SET $field = '". \SQLite3::escapeString($value) ."' WHERE id = '" . \SQLite3::escapeString($object->id) . "'";
+                            $db->exec($query);
+                        }
+                    }
+
+                    $replace = " LEFT JOIN $foreignTable ON $this->type.$orderField = $foreignTable.id  WHERE $this->type.";
+                    $q = repl(" WHERE ", $replace, $q);
+                    $foreignFields = explode(',', $foreignField);
+                    for ($i = 0; $i < count($foreignFields); $i++) {
+                        $order = $foreignFields[$i];
+                        $q .= "$foreignTable.$order $orderDirection, ";
+                    }
+                    $q = substr($q, 0, -2);
                 } else {
-                    array_multisort($$orderField, SORT_DESC, $asort);
+                    $q .= "$orderField $orderDirection";
                 }
             } else {
-                if (count($orderField) == 2) {
-                    $first = Arrays::first($orderField);
-                    $second = Arrays::last($orderField);
-                    $tab = array();
+                for ($i = 0; $i < count($orderField); $i++) {
+                    $order = $orderField[$i];
                     if (Arrays::is($orderDirection)) {
-                        $tab = $orderDirection;
-                        if (!isset($tab[1])) {
-                            $tab[1] = Arrays::first($tab);
-                        }
+                        $direction = isset($orderDirection[$i]) ? $orderDirection[$i] : 'ASC';
                     } else {
-                        $tab[0] = $tab[1] = $orderDirection;
+                        $direction = $orderDirection;
                     }
-                    $orderDirection = $tab;
-                    if ('ASC' == Inflector::upper(Arrays::first($orderDirection)) && 'ASC' == Inflector::upper(end($orderDirection))) {
-                        array_multisort($$first, SORT_ASC, $$second, SORT_ASC, $asort);
-                    } elseif ('DESC' == Inflector::upper(Arrays::first($orderDirection)) && 'ASC' == Inflector::upper(end($orderDirection))) {
-                        array_multisort($$first, SORT_DESC, $$second, SORT_ASC, $asort);
-                    } elseif ('DESC' == Inflector::upper(Arrays::first($orderDirection)) && 'DESC' == Inflector::upper(end($orderDirection))) {
-                        array_multisort($$first, SORT_DESC, $$second, SORT_DESC, $asort);
-                    } elseif ('ASC' == Inflector::upper(Arrays::first($orderDirection)) && 'DESC' == Inflector::upper(end($orderDirection))) {
-                        array_multisort($$first, SORT_ASC, $$second, SORT_DESC, $asort);
-                    }
+                    $q .= "$order $direction, ";
                 }
+                $q = substr($q, 0, -2);
             }
-
+            $res = $db->query($q);
             $collection = array();
-            foreach ($asort as $k => $row) {
-                $tmpId = $row['id'];
-                array_push($collection, $tmpId);
+            while ($row = $res->fetchArray()) {
+                array_push($collection, $row['id']);
             }
             $this->results = $collection;
+            // return $this;
+            // $sort = array();
+            // foreach($this->results as $id) {
+            //     $object                  = (is_string($id)) ? Data::getById($this->type, $id) : $id;
+            //     $sort['id'][]            = $object->id;
+            //     $sort['date_create'][]   = $object->date_create;
+
+            //     foreach ($this->fields as $k => $infos) {
+            //         $value      = isset($object->$k) ? $object->$k : null;
+            //         $type = Arrays::exists('type', $infos) ? $infos['type'] : null;
+            //         if ('data' == $type) {
+            //             list($dummy, $foreignTable, $foreignField) = $infos['contentList'];
+            //             $obj = Data::getById($foreignTable, $value);
+            //             $foreignFields = explode(',', $foreignField);
+            //             $val = array();
+            //             foreach ($foreignFields as $ff) {
+            //                 $val[] = isset($obj->$ff) ? $obj->$ff : null;
+            //             }
+            //             $value = count($val) == 1 ? Arrays::first($val) : implode(' ', $val);
+            //         }
+            //         $sort[$k][] = $value;
+
+            //     }
+            // }
+            // $asort = array();
+            // foreach ($sort as $k => $rows) {
+            //     for ($i = 0 ; $i < count($rows) ; $i++) {
+            //         if (empty($$k) || is_string($$k) || is_object($$k)) {
+            //             $$k = array();
+            //         }
+            //         $asort[$i][$k] = $rows[$i];
+            //         array_push($$k, $rows[$i]);
+            //     }
+            // }
+
+            // if (false === $multiSort) {
+            //     if ('ASC' == Inflector::upper($orderDirection)) {
+            //         array_multisort($$orderField, SORT_ASC, $asort);
+            //     } else {
+            //         array_multisort($$orderField, SORT_DESC, $asort);
+            //     }
+            // } else {
+            //     if (count($orderField) == 2) {
+            //         $first = Arrays::first($orderField);
+            //         $second = Arrays::last($orderField);
+            //         $tab = array();
+            //         if (Arrays::is($orderDirection)) {
+            //             $tab = $orderDirection;
+            //             if (!isset($tab[1])) {
+            //                 $tab[1] = Arrays::first($tab);
+            //             }
+            //         } else {
+            //             $tab[0] = $tab[1] = $orderDirection;
+            //         }
+            //         $orderDirection = $tab;
+            //         if ('ASC' == Inflector::upper(Arrays::first($orderDirection)) && 'ASC' == Inflector::upper(end($orderDirection))) {
+            //             array_multisort($$first, SORT_ASC, $$second, SORT_ASC, $asort);
+            //         } elseif ('DESC' == Inflector::upper(Arrays::first($orderDirection)) && 'ASC' == Inflector::upper(end($orderDirection))) {
+            //             array_multisort($$first, SORT_DESC, $$second, SORT_ASC, $asort);
+            //         } elseif ('DESC' == Inflector::upper(Arrays::first($orderDirection)) && 'DESC' == Inflector::upper(end($orderDirection))) {
+            //             array_multisort($$first, SORT_DESC, $$second, SORT_DESC, $asort);
+            //         } elseif ('ASC' == Inflector::upper(Arrays::first($orderDirection)) && 'DESC' == Inflector::upper(end($orderDirection))) {
+            //             array_multisort($$first, SORT_ASC, $$second, SORT_DESC, $asort);
+            //         }
+            //     }
+            // }
+
+            // $collection = array();
+            // foreach ($asort as $k => $row) {
+            //     $tmpId = $row['id'];
+            //     array_push($collection, $tmpId);
+            // }
+            // $this->results = $collection;
         }
 
         public function offset($offset)
@@ -394,25 +510,70 @@
 
         public function join($fkTable, $condition)
         {
+            $joinResults = array();
+            $db = new \SQLite3(':memory:');
             $results = count($this->results)
             ? $this->results
             : $this->all()->sub();
-            if (count($results)) {
-                $joinResults = array();
-                foreach ($results as $key => $id) {
-                    $object = Data::getById($this->type, $id);
-                    $db = new self($fkTable);
-                    $rowResults = $db
-                        ->where('id = ' . $object->$fkTable)
-                        ->where($condition)
-                        ->get();
-                    if (count($rowResults)) {
-                        array_push($joinResults, $id);
-                    }
+
+            $fields = Arrays::exists($fkTable, Data::$_fields)
+            ? Data::$_fields[$fkTable]
+            : Data::noConfigFields($fkTable);
+            $q = "DROP TABLE IF EXISTS $fkTable; CREATE TABLE $fkTable (id VARCHAR PRIMARY KEY, date_create";
+            if (count($fields)) {
+                foreach ($fields as $field => $infos) {
+                    $q .= ", $field";
                 }
-                if (count($joinResults)) {
-                    $this->results = $joinResults;
+            }
+            $q .= ");";
+            $db->exec($q);
+            $datas = Data::getAll($fkTable);
+            foreach ($datas as $tmpObject) {
+                $object = Data::getObject($tmpObject, $fkTable);
+                $q = "INSERT INTO $fkTable (id, date_create) VALUES ('" . \SQLite3::escapeString($object->id) . "', '" . \SQLite3::escapeString($object->date_create) . "')";
+                $db->exec($q);
+                foreach ($fields as $field => $info) {
+                    $q = "UPDATE $fkTable SET $field = '". \SQLite3::escapeString($object->$field) ."' WHERE id = '" . \SQLite3::escapeString($object->id) . "'";
+                    $db->exec($q);
                 }
+            }
+
+            $fields = Arrays::exists($this->type, Data::$_fields)
+            ? Data::$_fields[$this->type]
+            : Data::noConfigFields($this->type);
+            $q = "DROP TABLE IF EXISTS $this->type; CREATE TABLE $this->type (id VARCHAR PRIMARY KEY, date_create";
+            if (count($fields)) {
+                foreach ($fields as $field => $infos) {
+                    $q .= ", $field";
+                }
+            }
+            $q .= ");";
+            $db->exec($q);
+            $datas = Data::getAll($this->type);
+            foreach ($datas as $tmpObject) {
+                $object = Data::getObject($tmpObject, $this->type);
+                $q = "INSERT INTO $this->type (id, date_create) VALUES ('" . \SQLite3::escapeString($object->id) . "', '" . \SQLite3::escapeString($object->date_create) . "')";
+                $db->exec($q);
+                foreach ($fields as $field => $info) {
+                    $q = "UPDATE $this->type SET $field = '". \SQLite3::escapeString($object->$field) ."' WHERE id = '" . \SQLite3::escapeString($object->id) . "'";
+                    $db->exec($q);
+                }
+            }
+
+            list($field, $op, $value) = explode(' ', $condition, 3);
+            $where = "$fkTable.$field $op '" . \SQLite3::escapeString($value) . "'";
+
+            $q = "SELECT $this->type.id
+            FROM $this->type
+            LEFT JOIN $fkTable ON $this->type.$fkTable = $fkTable.id
+            WHERE $where
+            ";
+            $res = $db->query($q);
+            while ($row = $res->fetchArray()) {
+                array_push($joinResults, $row['id']);
+            }
+            if (count($joinResults)) {
+                $this->results = $joinResults;
             }
             return $this;
         }
@@ -489,7 +650,7 @@
                         }
                         $this->limit = $max;
                     }
-                    $this->results = array_slice($resultsGet, $this->offset, $this->limit);
+                    $resultsGet = array_slice($resultsGet, $this->offset, $this->limit);
                 }
             }
             $collection = array();

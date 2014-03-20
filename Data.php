@@ -4,6 +4,7 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+    use SQLite3;
     class Data
     {
         public static $_fields               = array();
@@ -17,6 +18,8 @@
         public static $_cache                = false;
         public static $_numberOfQueries      = 0;
         public static $_totalDuration        = 0;
+        public static $_db                   = array();
+        public static $sql;
 
 
         public static function newOne($type, $data = array())
@@ -37,6 +40,23 @@
                 }
             }
             return $obj;
+        }
+
+        public static function db($type)
+        {
+            $fields = Arrays::exists($type, static::$_fields)
+            ? static::$_fields[$type]
+            : static::noConfigFields($type);
+            $db = empty(static::$sql) ? new SQLite3(':memory:') : static::$sql;
+            $q = "DROP TABLE IF EXISTS $type; CREATE TABLE $type (id VARCHAR PRIMARY KEY, date_create";
+            if (count($fields)) {
+                foreach ($fields as $field => $infos) {
+                    $q .= ", $field";
+                }
+            }
+            $q .= ");";
+            $db->exec($q);
+            static::$_db[$type] = $db;
         }
 
         public static function getAll($type)
@@ -247,7 +267,7 @@
 
             if (count($fields)) {
                 foreach ($fields as $field => $info) {
-                    $val = $data[$field];
+                    $val = Arrays::exists($field, $data) ? $data[$field] : null;
                     if (empty($val)) {
                         if (!Arrays::exists('canBeNull', $info)) {
                             if (!Arrays::exists('default', $info)) {
@@ -746,6 +766,11 @@
             : null;
             static::_hook($hook, func_get_args(), 'before');
 
+            if (!Arrays::exists($type, static::$_db)) {
+                static::db($type);
+            }
+
+
             static::_incQueries(static::_getTime());
             $dirName    = static::checkDir($type);
             $indexDir   = STORAGE_PATH . DS . 'data' . DS . $dirName . DS . 'indexes';
@@ -776,6 +801,34 @@
             if (!strlen($conditions)) {
                 $results        = $datas;
             } else {
+                $q = "SELECT * FROM $type WHERE id IS NOT NULL";
+                $res = static::$_db[$type]->query($q);
+                $next = true;
+                while ($row = $res->fetchArray() && true === $next) {
+                    $next = false;
+                }
+                if (true === $next) {
+                    foreach ($datas as $tmpObject) {
+                        $object = static::getObject($tmpObject, $type);
+                        $q = "INSERT INTO $type (id, date_create) VALUES ('" . SQLite3::escapeString($object->id) . "', '" . SQLite3::escapeString($object->date_create) . "')";
+                        static::$_db[$type]->exec($q);
+                        foreach ($fields as $field => $info) {
+                            $value = is_object($object->$field) ? 'object' : $object->$field;
+                            $q = "UPDATE $type SET $field = '". SQLite3::escapeString($value) ."' WHERE id = '" . SQLite3::escapeString($object->id) . "'";
+                            static::$_db[$type]->exec($q);
+                        }
+                    }
+                }
+                list($field, $op, $value) = explode(' ', $conditions, 3);
+                $where = "$field $op '" . SQLite3::escapeString($value) . "'";
+                $q = "SELECT id FROM $type WHERE $where COLLATE NOCASE";
+                $res = static::$_db[$type]->query($q);
+                while ($row = $res->fetchArray()) {
+                    $object = static::getById($type, $row['id']);
+                    array_push($results, $object);
+                }
+                return $results;
+
                 foreach ($datas as $tmpObject) {
                     $object = static::getObject($tmpObject, $type);
 
@@ -1523,5 +1576,78 @@
         public static function unserialize($what)
         {
             return 2 < strlen($what) ? unserialize($what) : new Object;
+        }
+
+        public static function prepareDbLite($type)
+        {
+            $db = static::lite($type);
+            $fields = Data::$_fields[$type];
+            $table = $type . 's';
+            $q = "SELECT * FROM sqlite_master WHERE type = 'table' AND name = '$table'";
+            $res = $db->query($q);
+            if(false === $res->fetchArray()) {
+                $q = "CREATE TABLE $table (id VARCHAR PRIMARY KEY, date_create";
+                if (count($fields)) {
+                    foreach ($fields as $field => $infos) {
+                        $q .= ", $field";
+                    }
+                }
+                $q .= ");";
+                $db->exec($q);
+            }
+        }
+
+        public function getKeyLite($type, $keyLength = 9)
+        {
+            $table  = $type . 's';
+            $db     = static::lite($type);
+            $key    = Inflector::quickRandom($keyLength);
+            $q      = "SELECT id FROM $table WHERE id = '" . $key . "'";
+            $res    = $db->query($q);
+            if(false === $res->fetchArray()) {
+                return $key;
+            } else {
+                return static::getKeyLite($type, $keyLength);
+            }
+        }
+
+        public static function lite($type)
+        {
+            return lite($type . 's');
+        }
+
+        public static function row($type, array $data, $extends = array())
+        {
+            if (Arrays::isAssoc($data)) {
+                $obj = o(sha1(serialize($data)));
+                if (count($extends)) {
+                    foreach ($extends as $name => $instance) {
+                        $closure = function ($object) use ($name, $instance) {
+                            $idx = $object->is_thin_object;
+                            $objects = Utils::get('thinObjects');
+                            return $instance->$name($objects[$idx]);
+                        };
+                        $obj->_closures[$name] = $closure;
+                    }
+                }
+                $settings = Arrays::exists($type, static::$_settings) ? static::$_settings[$type] : array();
+                if (count($settings)) {
+                    $db = Arrays::exists('db', $settings) ? $settings['db'] : null;
+                    if (!empty($db)) {
+                        $methods = array('save', 'delete');
+                        foreach ($methods as $method) {
+                            if (!Arrays::exists($method, $obj->_closures)) {
+                                $closure = function () use ($type, $method, $obj, $db) {
+                                    $name = $method . Inflector::camelize($db);
+                                    return $obj->$name($type);
+                                };
+                                $obj->_closures[$method] = $closure;
+                            }
+                        }
+                    }
+                }
+                return $obj->populate($data);
+            }
+            return null;
         }
     }

@@ -8,7 +8,7 @@
     {
         public static function dispatch()
         {
-            $query      = new Querydata('page');
+            $query      = dm('page');
             $url        = substr($_SERVER['REQUEST_URI'], 1);
             $homeUrl    = null !== static::getOption('home_page_url') ? static::getOption('home_page_url') : 'home';
             $url        = !strlen($url) ? $homeUrl : $url;
@@ -136,7 +136,7 @@
 
         public static function getOption($key)
         {
-            $query      = new Querydata('option');
+            $query      = dm('option');
             $res        = $query->where("name = $key")->get();
             if (count($res)) {
                 $row    = $query->first($res);
@@ -183,7 +183,7 @@
         {
             $page       = container()->getCmsPage();
             $idPage     = $page->getId();
-            $query      = new Querydata('translation');
+            $query      = dm('translation');
             $res        = $query->where("page = $idPage")->where("key = $key")->get();
 
             if (count($res)) {
@@ -216,7 +216,7 @@
         public static function execSnippet($name, $params = array())
         {
             $page       = container()->getCmsPage();
-            $query      = new Querydata('snippet');
+            $query      = dm('snippet');
             $res        = $query->where("name = $name")->get();
             if (count($res)) {
                 $row    = $query->first($res);
@@ -237,7 +237,7 @@
         {
             $data = new postrequest();
             $data->populate($_POST);
-            $db = new Querydata('adminformaction');
+            $db = dm('adminformaction');
             $res = $db->where('adminform = ' . $idForm)->get();
             if (count($res)) {
                 $actionForm = $db->first($res);
@@ -304,7 +304,7 @@
         public static function getPages()
         {
             $collection = array();
-            $sql        = new Querydata('page');
+            $sql        = dm('page');
             $pages      = $sql->all()->order('hierarchy')->get();
             if (count($pages)) {
                 foreach($pages as $page) {
@@ -318,7 +318,7 @@
         {
             Data::getAll('page');
             $collection = array();
-            $sql        = new Querydata('page');
+            $sql        = dm('page');
             $pages      = $sql->all()->order('hierarchy')->get();
             if (count($pages)) {
                 foreach($pages as $page) {
@@ -350,6 +350,7 @@
 
         public static function loadDatas()
         {
+            set_time_limit(0);
             $session = session('admin');
             $dirData = STORAGE_PATH . DS . 'data';
             if (!is_dir(STORAGE_PATH)) {
@@ -408,7 +409,7 @@
                         $adminTable = Data::getIt('admintable', $path);
                         if ($adminTable instanceof Container) {
                             if (!Arrays::in($adminTable->getName(), $entities)) {
-                                $sql = new Querydata('adminright');
+                                $sql = dm('adminright');
                                 $rights = $sql->where('admintable = ' . $adminTable->getId())->get();
                                 $adminTable->delete();
                                 if (count($rights)) {
@@ -458,7 +459,7 @@
                         Data::$_rights[$right->getAdmintable()->getName()][$right->getAdminaction()->getName()] = true;
                     }
                 } else {
-                    $sql    = new Querydata('adminright');
+                    $sql    = dm('adminright');
                     $rights = $sql->where('adminuser = ' . $user->getId())->get();
                     if (count($rights)) {
                         foreach ($rights as $right) {
@@ -656,7 +657,7 @@
             }
 
             if (!count($adminRights)) {
-                $sql        = new Querydata('adminuser');
+                $sql        = dm('adminuser');
                 $res        = $sql->where('email = admin@admin.com')->get();
                 $user       = $sql->first($res);
 
@@ -817,7 +818,7 @@
                 Data::add('statuspage', $status3);
                 Data::getAll('statuspage');
 
-                $sql        = new Querydata('statuspage');
+                $sql        = dm('statuspage');
                 $res        = $sql->where('name = online')->get();
                 $status     = $sql->first($res);
 
@@ -839,8 +840,8 @@
         public static function makeForm($name)
         {
             $html = '';
-            $db = new Querydata('adminform');
-            $db2 = new Querydata('adminformfield');
+            $db = dm('adminform');
+            $db2 = dm('adminformfield');
             $res = $db->where('name = ' . $name)->get();
             if (count($res)) {
                 $form = $db->first($res);

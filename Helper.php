@@ -1,6 +1,7 @@
 <?php
 
     use Thin\Data;
+    use Thin\Activerecord;
     use Thin\Querydata;
     use Thin\Configdata;
     use Thin\Optiondata;
@@ -259,6 +260,27 @@
             $objects[$name] = $newObj;
             Utils::set('thinObjects', $objects);
             return $newObj;
+        }
+    }
+
+    if (!function_exists('ar')) {
+        function ar($entity, $table, $params = array(), $fields = array())
+        {
+            $model = array();
+            $settings = array();
+            $settings['entity'] = $entity;
+            $settings['table'] = $table;
+            $settings['relationships'] = rs($entity, $table);
+            if (count($params) && Arrays::isAssoc($params)) {
+                foreach ($params as $key => $value) {
+                    $settings[$key] = $value;
+                }
+            }
+            $model['settings'] = $settings;
+            if (count($fields) && Arrays::isAssoc($fields)) {
+                $model['fields'] = $fields;
+            }
+            return new Activerecord($model);
         }
     }
 
@@ -1237,6 +1259,19 @@ $(document).ready(function() {
             }
         }
 
+        function lite($name)
+        {
+            $dbs = container()->getLites();
+            $dbs = !Arrays::is($dbs) ? array() : $dbs;
+            if (!Arrays::exists($name, $dbs)) {
+                $dbFile = STORAGE_PATH . DS . Inflector::lower($name) . '.db';
+                $db = new SQLite3($dbFile);
+                $dbs[$name] = $db;
+                container()->setLites($dbs);
+            }
+            return $dbs[$name];
+        }
+
         function displayWebAddress($http)
         {
             $http = repl('http://', '', $http);
@@ -1335,8 +1370,8 @@ $(document).ready(function() {
                     $conf[$key] = $configField;
                 }
                 Data::$_fields[$type]     = $fields;
-                Data::$_settings[$type]   = $conf;
-                container()->$setter($conf);
+                Data::$_settings[$type]   = $config;
+                container()->$setter($fields);
             }
         }
     }

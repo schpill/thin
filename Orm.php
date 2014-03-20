@@ -222,7 +222,7 @@
                 return null;
             } else {
                 foreach ($res as $row) {
-                    $val = current($row);
+                    $val = Arrays::first($row);
                     return $val;
                 }
             }
@@ -241,7 +241,7 @@
                 return null;
             } else {
                 foreach ($res as $row) {
-                    $val = current($row);
+                    $val = Arrays::first($row);
                     return $val;
                 }
             }
@@ -260,7 +260,7 @@
                 return null;
             } else {
                 foreach ($res as $row) {
-                    $val = current($row);
+                    $val = Arrays::first($row);
                     return $val;
                 }
             }

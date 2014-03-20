@@ -169,11 +169,11 @@
          */
         protected function command($method, $parameters)
         {
-            $command  = '*' . (count($parameters) + 1) . CRLF;
-            $command .= '$' . strlen($method) . CRLF;
-            $command .= Inflector::upper($method) . CRLF;
+            $command  = '*' . (count($parameters) + 1) . NL;
+            $command .= '$' . strlen($method) . NL;
+            $command .= Inflector::upper($method) . NL;
             foreach ($parameters as $parameter) {
-                $command .= '$' . strlen($parameter) . CRLF . $parameter . CRLF;
+                $command .= '$' . strlen($parameter) . NL . $parameter . NL;
             }
             return $command;
         }

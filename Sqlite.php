@@ -1,42 +1,58 @@
 <?php
     namespace Thin;
+    use PDO;
+    use SqliteRow;
     class Sqlite
     {
-        public static $error;
+        private $db;
+        public $table;
 
-        public static function connect($db)
+        public function __construct($database, $table = nill)
+        {
+            $this->db = $this->connect($database);
+            $this->table = $table;
+        }
+
+        public function connect($db)
         {
             $dbFile = STORAGE_PATH . DS . 'db' . DS . $db . '.db';
-            return new \PDO('sqlite:' . $dbFile);
+            return new PDO('sqlite:' . $dbFile);
         }
 
-        public static function getPrimaryKey($db, $table)
+        public function getPrimaryKey($table = null)
         {
-            $stmt = $db->prepare("SELECT * FROM sqlite_master WHERE type='table' AND name=:name");
-            $stmt->execute(array(':name' => $table));
-            $result = $stmt->fetch();
-            $sql = $result['sql'];
+            $this->table = !empty($table) ? $table : $this->table;
+            if(!empty($this->table)) {
+                $stmt = $db->prepare("SELECT * FROM sqlite_master WHERE type='table' AND name=:name");
+                $stmt->execute(array(':name' => $this->table));
+                $result = $stmt->fetch();
+                $sql = $result['sql'];
 
-            $matches = array();
-            preg_match('/(\w+?)\s+\w+?\s+PRIMARY KEY/', $sql, $matches);
+                $matches = array();
+                preg_match('/(\w+?)\s+\w+?\s+PRIMARY KEY/', $sql, $matches);
 
-            if(!isset($matches[1])) {
-                return null;
+                if(isset($matches[1])) {
+                    return $matches[1];
+                }
             }
-            return $matches[1];
+            return null;
         }
 
-        public static function getColumns($db, $table)
+        public function getColumns($table = null)
         {
-            $stmt = $db->query("PRAGMA table_info($table)");
-            $columns = array();
-            while($row = $stmt->fetch()) {
-                array_push($columns, $row['name']);
+            $this->table = !empty($table) ? $table : $this->table;
+            if(!empty($this->table)) {
+                $stmt = $this->db->query("PRAGMA table_info($this->table)");
+                $columns = array();
+                while($row = $stmt->fetch()) {
+                    array_push($columns, $row['name']);
+                }
+                return $columns;
             }
-            return $columns;
+            return null;
         }
 
-        public static function select($db, $sql)
+        public static function select($sql)
         {
             $res = $db->query($sql);
             $collection = array();

@@ -5,7 +5,9 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
-    class Object extends \ArrayObject implements \ArrayAccess
+    use SQLite3;
+
+    class Object extends \ArrayObject implements \ArrayAccess, \Countable, \IteratorAggregate
     {
         public $_fields         = array();
         public $_closures       = array();
@@ -34,7 +36,16 @@
 
         public function save()
         {
-            if (isset($this->thin_type)) {
+            if(isset($this->db_instance)) {
+                return $this->db_instance->save($this);
+            }
+            if(isset($this->thin_litedb)) {
+                return $this->thin_litedb->save($this);
+            }
+            if (isset($this->thin_kv)) {
+                $db = new Keyvalue($this->thin_kv);
+                return $db->save($this->toArray());
+            } elseif (isset($this->thin_type)) {
                 $type = $this->thin_type;
                 Data::getModel($type);
                 $data = array();
@@ -50,12 +61,20 @@
                     }
                     return Data::getById($type, $newId);
                 }
+            } elseif(Arrays::exists('save', $this->_closures)) {
+                $this->_closures['save']($this);
             }
             return $this;
         }
 
         public function delete()
         {
+            if(isset($this->db_instance)) {
+                return $this->db_instance->delete($this);
+            }
+            if(isset($this->thin_litedb)) {
+                return $this->thin_litedb->delete($this);
+            }
             if (isset($this->thin_type)) {
                 $type = $this->thin_type;
                 Data::getModel($type);
@@ -66,6 +85,8 @@
                 }
                 $object = new self;
                 $object->setThinType($type);
+            } elseif(Arrays::exists('delete', $this->_closures)) {
+                $this->_closures['delete']($this);
             } else {
                 $object = new self;
             }
@@ -108,6 +129,9 @@
                     }
                     return $this->$var;
                 } else {
+                    if (isset($this->db_instance)) {
+                        return $this->db_instance->getValue($this, $var);
+                    }
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
                         Data::getModel($type);
@@ -140,7 +164,11 @@
             } elseif (substr($func, 0, 3) == 'has') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
-                return isset($this->$var) && !empty($this->$var);
+                if (isset($this->$var)) {
+                    return !empty($this->$var);
+                } elseif(isset($this->db_instance)) {
+                    return $this->db_instance->hasValue($this, $var);
+                }
             } elseif (substr($func, 0, 3) == 'set') {
                 $value = Arrays::first($argv);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
@@ -173,6 +201,7 @@
                     if (isset($this->is_thin_object)) {
                         $name           = $this->is_thin_object;
                         $objects        = Utils::get('thinObjects');
+                        $this->values = null;
                         $objects[$name] = $this;
                         Utils::set('thinObjects', $objects);
                     }
@@ -181,6 +210,8 @@
                             Utils::set('ThinAppContainer', $this);
                         }
                     }
+                } elseif(isset($this->db_instance)) {
+                    return $this->db_instance->setValue($this, $var, $value);
                 }
                 return $this;
             } elseif (substr($func, 0, 3) == 'add') {
@@ -219,7 +250,7 @@
                 return $this;
             }
 
-            if (Arrays::inArray($func, $this->_fields)) {
+            if (Arrays::in($func, $this->_fields)) {
                 if ($this->$func instanceof \Closure) {
                     return call_user_func_array($this->$func, $argv);
                 }
@@ -230,10 +261,26 @@
                 }
             }
 
-            if (!is_callable($func) || substr($func, 0, 6) !== 'array_' || substr($func, 0, 3) !== 'set' || substr($func, 0, 3) !== 'get' || substr($func, 0, 3) !== 'has' || substr($func, 0, 3) !== 'add' || substr($func, 0, 6) !== 'remove') {
+            if (!is_callable($func)
+                || substr($func, 0, 6) !== 'array_'
+                || substr($func, 0, 3) !== 'set'
+                || substr($func, 0, 3) !== 'get'
+                || substr($func, 0, 3) !== 'has'
+                || substr($func, 0, 3) !== 'add'
+                || substr($func, 0, 6) !== 'remove'
+            ) {
+                if(isset($this->thin_litedb)) {
+                    $closure = isAke($this->thin_litedb->closures, $func);
+                    if (!empty($closure) && $closure instanceof \Closure) {
+                        return $closure($this);
+                    }
+                }
+                if(isset($this->db_instance)) {
+                    return $this->db_instance->$func($this, $var, $value);
+                    call_user_func_array(array($this->db_instance, $func), array_merge(array($this), $argv));
+                }
                 throw new \BadMethodCallException(__class__ . ' => ' . $func);
             }
-
             return call_user_func_array($func, array_merge(array($this->getArrayCopy()), $argv));
         }
 
@@ -280,6 +327,7 @@
             }
             $this->$key = $value;
             $this[$key] = $value;
+            $this->values[$key] = $value;
             if (!Arrays::inArray($key, $this->_fields)) {
                 $this->_fields[] = $key;
             }
@@ -390,11 +438,15 @@
         public function toArray()
         {
             $collection = array();
-            foreach ($this->_fields as $field) {
-                $collection[$field] = $this->$field;
+            if (count($this->values)) {
+                foreach ($this->values as $field => $value) {
+                    $collection[$field] = $value;
+                }
             }
-            foreach ($this->values as $field => $value) {
-                $collection[$field] = $value;
+            if (count($this->_fields)) {
+                foreach ($this->_fields as $field) {
+                    $collection[$field] = $this->$field;
+                }
             }
             return $collection;
         }
@@ -447,5 +499,70 @@
                 }
             }
             return $this->_fields;
+        }
+
+        public function deleteLite($type)
+        {
+            $table          = $type . 's';
+            $fields         = Arrays::exists($type, Data::$_fields) ? Data::$_fields[$type] : array();
+            $settings       = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+            if (count($fields) && count($settings)) {
+                $dbType     = Arrays::exists('db', $settings) ? $settings['db'] : null;
+                $checkId    = Arrays::exists('checkId', $settings) ? $settings['checkId'] : 'id';
+                if (!empty($dbType)) {
+                    $db     = Data::$dbType($type);
+                    $delete = "DELETE FROM $table WHERE $checkId = '" . SQLite3::escapeString($this->$checkId) . "'";
+                    $db->exec($delete);
+                }
+            }
+        }
+
+        public function saveLite($type)
+        {
+            $table          = $type . 's';
+            $fields         = Arrays::exists($type, Data::$_fields) ? Data::$_fields[$type] : array();
+            $settings       = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+            if (count($fields) && count($settings)) {
+                $dbType     = Arrays::exists('db', $settings) ? $settings['db'] : null;
+                $checkId    = Arrays::exists('checkId', $settings) ? $settings['checkId'] : 'id';
+                if (!empty($dbType)) {
+                    $data   = $this->toArray();
+                    $fields['id'] = array();
+                    $fields['date_create'] = array();
+
+                    $id = Arrays::exists('id', $data) ? $data['id'] : Data::getKeyLite($type);
+                    $date_create = Arrays::exists('date_create', $data) ? $data['date_create'] : time();
+
+                    $this->id = $data['id'] = $id;
+                    $this->date_create = $data['date_create'] = $date_create;
+
+                    $fields = array_keys($fields);
+                    $db     = Data::$dbType($type);
+                    $q      = "SELECT $checkId FROM $table WHERE $checkId = '" . $data[$checkId] . "'";
+                    $res    = $db->query($q);
+                    if(false === $res->fetchArray()) {
+                        $values = array();
+                        foreach ($fields as $field) {
+                            $values[] = "'" . SQLite3::escapeString($data[$field]) . "'";
+                        }
+                        $values = implode(', ', $values);
+                        $insert = "INSERT INTO $table
+                        (" . implode(', ', $fields) . ")
+                        VALUES ($values)";
+                        $db->exec($insert);
+                    } else {
+                        $update = "UPDATE $table SET ";
+                        foreach ($fields as $field) {
+                            if ($field != $checkId) {
+                                $update .= "$field = '" . SQLite3::escapeString($data[$field]) . "', ";
+                            }
+                        }
+                        $update = substr($update, 0, -2);
+                        $update .= " WHERE $checkId = '" . $data[$checkId] . "'";
+                        $db->exec($update);
+                    }
+                }
+            }
+            return $this;
         }
     }
