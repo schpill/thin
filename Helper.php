@@ -2036,6 +2036,21 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('kv')) {
+        function kv()
+        {
+            $args = func_get_args();
+            $s = session('kv');
+            if (count($args) == 1) {
+                $get = getter(Arrays::first($args));
+                return $s->$get();
+            } elseif (count($args) == 2) {
+                $set = setter(Arrays::first($args));
+                return $s->$set(Arrays::last($args));
+            }
+            return null;
+        }
+    }
     if (!function_exists('memory')) {
         function memory($entity, $table)
         {

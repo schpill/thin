@@ -2,7 +2,8 @@
     namespace Thin;
     class Cookies
     {
-    	const ONE_DAY_AS_SECONDS = 86400;
+        const ONE_DAY_AS_SECONDS = 86400;
+    	const FOREVER = 2628000;
     	/**
     	 * @param string $name
     	 * @param string $value

@@ -32,13 +32,13 @@
             }
 
             if (empty($path)) {
-                throw new Exception('You must provide a path.');
+                $path = STORAGE_PATH;
             }
             $this->_path    = $path;
 
             $this->_file    = $path . DS . $entity . '_' . $table . '.memory';
 
-            if (!file_exists($this->_file) {
+            if (!File::exists($this->_file) {
                 touch($this->_file, 0777);
                 $this->_new = true;
             } else {

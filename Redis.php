@@ -50,7 +50,7 @@
          * @param  int     $database
          * @return void
          */
-        public function __construct($host, $port, $database = 0)
+        public function __construct($host, $port = 6379, $database = 0)
         {
             $this->host = $host;
             $this->port = $port;

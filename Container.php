@@ -9,6 +9,11 @@
     {
         protected $values = array();
 
+        public static function instance()
+        {
+            return container();
+        }
+
         public function __construct (array $values = array())
         {
             $this->values = $values;
@@ -147,6 +152,21 @@
             $name       = (null === $name) ? sha1(time()) : $name;
             $o          = o($name);
             return $o->populate($array);
+        }
+
+        public function event($id, \Closure $closure)
+        {
+            $this->values[sha1($id)] = $closure;
+            return $this;
+        }
+
+        public function run($id, $args = array())
+        {
+            $id = sha1($id);
+            if (Arrays::exists($id, $this->values)) {
+                return call_user_func_array($this->values[$id] , $args);
+            }
+            return null;
         }
     }
 

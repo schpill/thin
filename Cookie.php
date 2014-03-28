@@ -85,12 +85,12 @@
                 $expiration = time() + ($expiration * 60);
             }
 
-            $value = static::hash($value).'+'.$value;
+            $value = static::hash($value) . '+' . $value;
 
             // If the secure option is set to true, yet the request is not over HTTPS
             // we'll throw an exception to let the developer know that they are
             // attempting to send a secure cookie over the insecure HTTP.
-            if ($secure && ! Request::ssl()) {
+            if ($secure && !Request::ssl()) {
                 throw new Exception("Attempting to set secure cookie over HTTP.");
             }
 
@@ -139,7 +139,7 @@
          */
         public static function hash($value)
         {
-            return hash_hmac('sha1', $value, Config::get('application.key'));
+            return hash_hmac('sha1', $value, sha1('key'));
         }
 
         /**

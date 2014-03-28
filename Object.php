@@ -261,6 +261,11 @@
                 }
             }
 
+            $id = sha1($func);
+            if (Arrays::exists($id, $this->values)) {
+                return call_user_func_array($this->values[$id] , $argv);
+            }
+
             if (!is_callable($func)
                 || substr($func, 0, 6) !== 'array_'
                 || substr($func, 0, 3) !== 'set'
@@ -292,7 +297,7 @@
 
         public function __get($key)
         {
-            $array = $this->values;
+            $array = isset($this->values) ? $this->values : array();
             if (count($array)) {
                 foreach ($array as $k => $v) {
                     if (!Arrays::inArray($k, $this->_fields)) {
@@ -325,6 +330,7 @@
             if (empty($key)) {
                 return;
             }
+            $this->values = isset($this->values) ? $this->values : array();
             $this->$key = $value;
             $this[$key] = $value;
             $this->values[$key] = $value;
