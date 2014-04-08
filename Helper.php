@@ -33,6 +33,41 @@
         }
     }
 
+    if (!function_exists('redis')) {
+        function redis()
+        {
+            $redis = container()->getRedis();
+            if (null === $redis) {
+                // require_once "predis/autoload.php";
+                // PredisAutoloader::register();
+                $args = func_get_args();
+                if (count($args)) {
+                    extract(Arrays::first($args));
+                }
+                $host   = isset($host)      ? $host     : '127.0.0.1';
+                $scheme = isset($scheme)    ? $scheme   : 'tcp';
+                $port   = isset($port)      ? $port     : 6379;
+
+                try {
+                    $redis = new Predis\Client(
+                        array(
+                            "scheme"    => $scheme,
+                            "host"      => $host,
+                            "port"      => $port
+                        )
+                    );
+                    container()->setRedis($redis);
+                }
+                catch (Exception $e) {
+                    echo "Couldn't connected to Redis";
+                    echo $e->getMessage();
+                    return null;
+                }
+            }
+            return $redis;
+        }
+    }
+
     if (!function_exists('dm')) {
         function dm($entity = null, $results = array())
         {

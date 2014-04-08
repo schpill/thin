@@ -110,6 +110,12 @@
                 }
                 return $this->save();
             }
+            $id = sha1($func);
+            if (isset($this->$id)) {
+                if ($this->$id instanceof \Closure) {
+                    return call_user_func_array($this->$id , $argv);
+                }
+            }
             if (!is_callable($func) || substr($func, 0, 3) !== 'set' || substr($func, 0, 3) !== 'get') {
                 throw new \BadMethodCallException(__class__ . ' => ' . $func);
             }
@@ -168,5 +174,10 @@
                     $logger->notice("The key $key does not exist in this session.");
                 }
             }
+        }
+
+        public function event($id, \Closure $closure)
+        {
+            return $this->put(sha1($id), $closure);
         }
     }

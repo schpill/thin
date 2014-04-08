@@ -24,6 +24,15 @@
 
         public static function autoload($className)
         {
+            if (strstr($className, 'Predis')) {
+                $className2 = str_replace('Predis\\', '', $className);
+                $className2 = str_replace('Predis', '', $className2);
+                $check = LIBRARIES_PATH . DS . 'predis' . DS . 'lib' . DS . 'Predis' . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $className2) . '.php';
+                if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                    require_once($check);
+                    static::$_classes[$className] = true;
+                }
+            }
             $aliases = array(
                 'c' => 'Thin\\Container',
                 'o' => 'Thin\\Object',

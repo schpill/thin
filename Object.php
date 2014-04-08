@@ -441,6 +441,19 @@
             return $this;
         }
 
+        public function assoc()
+        {
+            $collection = array();
+            if (count($this->_fields)) {
+                foreach ($this->_fields as $field) {
+                    if ($field != 'values' && $field != '_nameClass') {
+                        $collection[$field] = $this->$field;
+                    }
+                }
+            }
+            return $collection;
+        }
+
         public function toArray()
         {
             $collection = array();
