@@ -7,8 +7,8 @@
     namespace Thin;
     class Registry
     {
-        static $instance;
-        static $objects = array();
+        public static $instance;
+        public static $objects = array();
 
         // singleton
         public static function forge()

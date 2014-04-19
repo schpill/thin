@@ -47,6 +47,7 @@
          * @var array
          */
         private $_filterLoadedDir = array();
+        public static $urlsite      = null;
 
         public function __construct($viewFile = null)
         {
@@ -597,5 +598,58 @@
             $PCSQL              = 100 - $PCPhpSQL;
             $PCNoSQL            = 100 - $PCPhpNoSQL;
             return "\n<!--\n\n\tPage generee en $executionTime s. par Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries en $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL en $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tExecution PHP $execPHP s. ($PCPhp %)\n\n\tMemoire utilisee : " . convertSize(memory_get_peak_usage()) . "\n\n-->";
+        }
+
+        public function urlsite($echo = true)
+        {
+            if (null === static::$urlsite) {
+                $protocol = 'http';
+                if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
+                    $protocol = 'https';
+                }
+
+                container()->setProtocol($protocol);
+
+                $urlSite = "$protocol://" . $_SERVER["SERVER_NAME"] . "/";
+
+                if (strstr($urlSite, '//')) {
+                    $urlSite = repl('//', '/', $urlSite);
+                    $urlSite = repl($protocol . ':/', $protocol . '://', $urlSite);
+                }
+
+                if (Inflector::upper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    $tab = explode('\\', $urlSite);
+                    $r = '';
+                    foreach ($tab as $c => $v) {
+                        $r .= $v;
+                    }
+                    $r = repl('//', '/', $r);
+                    $r = repl($protocol . ':/', $protocol . '://', $r);
+                    $urlSite = $r;
+                }
+
+                static::$urlsite = $urlSite;
+            }
+
+            if (false === $echo) {
+                return static::$urlsite;
+            } else {
+                echo static::$urlsite;
+                return;
+            }
+        }
+
+        public function url($echo = true)
+        {
+            $start = substr($this->urlsite(false), 0, -1);
+            $follow = 1 < strlen($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+            $url = $start . $follow;
+
+            if (false === $echo) {
+                return $url;
+            } else {
+                echo $url;
+                return;
+            }
         }
     }

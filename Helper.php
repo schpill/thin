@@ -17,6 +17,8 @@
     use Thin\Session;
     use Thin\Cache;
     use Thin\Exception;
+    use Thin\Registry;
+    use Thin\Functions;
 
     if (!function_exists('mySprintf')) {
         function mySprintf($str = null, $args = array(), $char = '%')
@@ -30,6 +32,30 @@
                 }
             }
             return $str;
+        }
+    }
+
+    if (!function_exists('core')) {
+        function core()
+        {
+            $a = func_get_args();
+            $i = Functions::instance();
+            if (!empty($a)) {
+                if (2 == count($a)) {
+                    $n = Arrays::first($a);
+                    $f = Arrays::last($a);
+                    $i->$n = $f;
+                } elseif (1 == count($a)) {
+                    $n = Arrays::first($a);
+                    return $i->$n;
+                }
+            }
+            return $i;
+        }
+
+        function nsCore($ns = 'default')
+        {
+            return Functions::instance($ns);
         }
     }
 
@@ -1497,9 +1523,9 @@ $(document).ready(function() {
             $res = '';
             $events = container()->getEvents();
             if (null !== $events) {
-                if (is_array($events)) {
-                    if (ake($name, $events)) {
-                        if (is_array($events[$name])) {
+                if (Arrays::is($events)) {
+                    if (Arrays::exists($name, $events)) {
+                        if (Arrays::is($events[$name])) {
                             for ($i = 0 ; $i < count($events[$name]) ; $i++) {
                                 $func = $events[$name][$i];
                                 if ($func instanceof Closure) {
@@ -1511,6 +1537,48 @@ $(document).ready(function() {
                 }
             }
             return $res;
+        }
+
+        if (!function_exists('registry')) {
+            function registry()
+            {
+                static $tab = array();
+                $args = func_get_args();
+                $nb = count($args);
+
+                if ($nb == 1) {
+                    return arrayGet($tab, Arrays::first($args));
+                } elseif ($nb == 2) {
+                    $tab = arraySet($tab, Arrays::first($args), Arrays::last($args));
+                    return Arrays::last($args);
+                }
+                return null;
+            }
+
+            function event($name, Closure $closure)
+            {
+                registry('events.' . $name, $closure);
+            }
+
+            function fire($name, $args = array())
+            {
+                $closure = registry('events.' . $name);
+                if (!empty($closure)) {
+                    if ($closure instanceof Closure) {
+                        return call_user_func_array($closure, $args);
+                    }
+                }
+                return null;
+            }
+
+            function hasEvent($name)
+            {
+                $closure = registry('events.' . $name);
+                if (!empty($closure)) {
+                    return $closure instanceof Closure;
+                }
+                return false;
+            }
         }
     }
 
@@ -2405,7 +2473,7 @@ $(document).ready(function() {
             }
 
             foreach (explode($separator, $key) as $segment) {
-                if (!is_array($array) || !ake($segment, $array)) {
+                if (!Arrays::is($array) || !Arrays::exists($segment, $array)) {
                     return value($default);
                 }
                 $array = $array[$segment];
@@ -2428,13 +2496,13 @@ $(document).ready(function() {
             if (strpos($key, $separator) !== false) {
                 $keys = explode($separator, $key, 2);
                 if (strlen(current($keys)) && strlen($keys[1])) {
-                    if (!ake(current($keys), $array)) {
+                    if (!Arrays::exists(current($keys), $array)) {
                         if (current($keys) === '0' && !empty($array)) {
                             $array = array(current($keys) => $array);
                         } else {
                             $array[current($keys)] = array();
                         }
-                    } elseif (!Arrays::isArray($array[current($keys)])) {
+                    } elseif (!Arrays::is($array[current($keys)])) {
                         throw new Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
                     }
                     $array[current($keys)] = arraySet($array[current($keys)], $keys[1], $value);

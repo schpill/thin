@@ -262,8 +262,14 @@
             }
 
             $id = sha1($func);
-            if (Arrays::exists($id, $this->values)) {
-                return call_user_func_array($this->values[$id] , $argv);
+            if (Arrays::is($this->values)) {
+                if (Arrays::exists($id, $this->values)) {
+                    return call_user_func_array($this->values[$id] , $argv);
+                }
+            }
+
+            if (true === hasEvent($func)) {
+                return fire($func, $argv);
             }
 
             if (!is_callable($func)
@@ -582,6 +588,12 @@
                     }
                 }
             }
+            return $this;
+        }
+
+        public function func($id, \Closure $c)
+        {
+            event($id, $c);
             return $this;
         }
     }

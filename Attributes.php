@@ -107,12 +107,16 @@
                 return $class->delete($obj);
             };
 
-            $date = function ($f)  use ($obj) {
+            $date = function ($f) use ($obj) {
                 return date('Y-m-d H:i:s', $obj->$f);
             };
 
-            $display = function ($f)  use ($obj) {
-                return Html\Helper::display($obj->$f);
+            $display = function ($f, $echo = true) use ($obj) {
+                if (false === $echo) {
+                    return Html\Helper::display($obj->$f);
+                } else {
+                    echo Html\Helper::display($obj->$f);
+                }
             };
 
             $obj->event('store', $store)

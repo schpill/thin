@@ -194,7 +194,7 @@
         {
             $q = "SELECT MIN($this->_dbName.$this->_tableName.$field) FROM $this->_dbName.$this->_tableName";
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -203,7 +203,7 @@
                 return null;
             } else {
                 foreach ($res as $row) {
-                    $val = current($row);
+                    $val = Arrays::first($row);
                     return $val;
                 }
             }
@@ -213,7 +213,7 @@
         {
             $q = "SELECT MAX($this->_dbName.$this->_tableName.$field) FROM $this->_dbName.$this->_tableName";
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -232,7 +232,7 @@
         {
             $q = "SELECT AVG($this->_dbName.$this->_tableName.$field) FROM $this->_dbName.$this->_tableName";
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -251,7 +251,7 @@
         {
             $q = "SELECT SUM($this->_dbName.$this->_tableName.$field) FROM $this->_dbName.$this->_tableName";
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -270,7 +270,7 @@
         {
             $q = "SELECT COUNT($this->_dbName.$this->_tableName.$field) FROM $this->_dbName.$this->_tableName";
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();
@@ -296,9 +296,9 @@
                 $obj = new self($this->_entity, $this->_table);
                 $obj = $obj->map();
                 foreach ($obj->fields() as $field) {
-                    if (is_array($obj->_datas['keys'])) {
+                    if (Arrays::is($obj->_datas['keys'])) {
                         if (Arrays::in($field, $obj->_datas['keys'])) {
-                            if (ake($field, $obj->_datas['configModel']['relationship'])) {
+                            if (Arrays::exists($field, $obj->_datas['configModel']['relationship'])) {
                                 $seg = $obj->_datas['configModel']['relationship'][$field];
                                 $m = $obj->_datas['configModel']['relationship'][$field];
                                 if (null !== $m) {
@@ -365,7 +365,7 @@
             }
 
             foreach ($this->fields() as $field) {
-                if (is_array($this->_datas['keys'])) {
+                if (Arrays::is($this->_datas['keys'])) {
                     if (Arrays::in($field, $this->_datas['keys'])) {
                         if (isset($this->_datas['configModel']['relationship']) && ake($field, $this->_datas['configModel']['relationship'])) {
                             $m = $this->_datas['configModel']['relationship'][$field];
@@ -483,7 +483,7 @@
             $qFirst = $qTab[0];
             $rowAffected = ($qFirst == 'insert' || $qFirst == 'update' || $qFirst == 'delete');
             $res = $this->_query($q);
-            if (is_array($res)) {
+            if (Arrays::is($res)) {
                 $count = count($res);
             } else {
                 $count = $res->rowCount();

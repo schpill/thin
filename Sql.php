@@ -1,10 +1,11 @@
 <?php
     namespace Thin;
-    use SQLite3;
+    use Pdo;
     use Closure;
 
-    class Store
+    class Sql
     {
+        public $entity;
         public $type;
         public $fields;
         public $settings;
@@ -17,9 +18,10 @@
         public $cache           = false;
         public $ttl             = 3600;
 
-        public function __construct($type)
+        public function __construct($entity, $type)
         {
             $this->type = $type;
+            $this->entity = $entity;
 
             $this->fields = Arrays::exists($type, Data::$_fields)
             ? Data::$_fields[$type]
@@ -29,21 +31,130 @@
             ? Data::$_settings[$type]
             : Data::defaultConfig($type);
 
-            $this->session = session(Inflector::camelize('store_' . $type));
+            $this->session = session(Inflector::camelize('storeSQL_' . $type));
             $data = $this->session->getData();
             if (empty($data)) {
                 $data = array();
                 $this->session->setData($data);
             }
 
-            $dbFile     = STORAGE_PATH . DS . Inflector::camelize('store_' . $type) . '.store';
-            $this->db   = new SQLite3($dbFile);
-
-            $q      = "SELECT * FROM sqlite_master WHERE type = 'table' AND name = 'datas'";
-            $res    = $this->db->query($q);
-            if(false === $res->fetchArray()) {
-                $this->db->exec('CREATE TABLE datas (id VARCHAR PRIMARY KEY, datecreate, datemodify, value)');
+            $this->db   = $this->connect();
+            if (false === $this->checkTable()) {
+                $q = 'CREATE TABLE IF NOT EXISTS `datas_' . $this->type . '` (
+                  `id` varchar(9) NOT NULL,
+                  `datecreate` int(11) unsigned NOT NULL,
+                  `datemodify` int(11) unsigned NOT NULL,
+                  `value` longtext NOT NULL
+                ) ENGINE=MyISAM DEFAULT CHARSET=utf8;';
+                $this->_query($q);
             }
+        }
+
+        private function connect()
+        {
+            $configs        = container()->getConfig()->getDb();
+            $config         = isAke($configs, $this->entity);
+            if (empty($config)) {
+                throw new Exception("Database configuration does not exist.");
+            }
+            $username       = $config->getUsername();
+            if (empty($username)) {
+                throw new Exception("Username is mandatory to connect database.");
+            }
+
+            $adapter    = $config->getAdapter();
+            $password   = $config->getPassword();
+            $dbName     = $config->getDatabase();
+            $host       = $config->getHost();
+            $dsn        = $config->getDsn();
+            if (empty($dsn)) {
+                $dsn = "$adapter:dbname=$dbName;host=$host";
+            } else {
+                $adapter = 'mysql';
+            }
+
+            $connexions = Utils::get('SQLConnexions');
+            if (null === $connexions) {
+                $connexions = array();
+            }
+
+            $keyConnexion = sha1(serialize(array($dsn, $username, $password)));
+            if (Arrays::exists($keyConnexion, $connexions)) {
+                $db = $connexions[$keyConnexion];
+            } else {
+                switch ($adapter) {
+                    case 'mysql':
+                        $db = Utils::newInstance('\\PDO', array($dsn, $username, $password));
+                        break;
+                }
+                $connexions[$keyConnexion] = $db;
+                Utils::set('SQLConnexions', $connexions);
+            }
+
+            return $db;
+        }
+
+        public function close()
+        {
+            $configs        = container()->getConfig()->getDb();
+            $config         = isAke($configs, $this->entity);
+            if (empty($config)) {
+                throw new Exception("Database configuration does not exist.");
+            }
+            $username       = $config->getUsername();
+            if (empty($username)) {
+                throw new Exception("Username is mandatory to connect database.");
+            }
+
+            $adapter    = $config->getAdapter();
+            $password   = $config->getPassword();
+            $dbName     = $config->getDatabase();
+            $host       = $config->getHost();
+            $dsn        = $config->getDsn();
+            if (!empty($dsn)) {
+                $adapter = 'mysql';
+            }
+
+            $connexions = Utils::get('SQLConnexions');
+            if (null === $connexions) {
+                $connexions = array();
+            }
+
+            $keyConnexion = sha1(serialize(array("$adapter:dbname=$dbName;host=$host", $username, $password)));
+            if (Arrays::exists($keyConnexion, $connexions)) {
+                $connexions[$keyConnexion] = null;
+                Utils::set('SQLConnexions', $connexions);
+            }
+            $this->_isConnected = false;
+            return $this;
+        }
+
+        private function checkTable()
+        {
+            $q = "SHOW TABLES";
+            $res = $this->_query($q);
+            if (Arrays::is($res)) {
+                $count = count($res);
+            } else {
+                $count = $res->rowCount();
+            }
+            if ($count < 1) {
+                return false;
+            }
+            foreach ($res as $row) {
+                $table = Arrays::first($row);
+                if ($table == 'datas_' . $this->type) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private function _query($q)
+        {
+            $result = $this->db->prepare($q);
+            $result->execute();
+            return $result;
         }
 
         public function transaction($bool)
@@ -84,7 +195,7 @@
                 return $class->save($obj);
             };
 
-            $remove = function () use ($class, $obj) {
+            $trash = function () use ($class, $obj) {
                 return $class->delete($obj);
             };
 
@@ -120,7 +231,7 @@
             };
 
             $obj->event('store', $store)
-            ->event('remove', $remove)
+            ->event('trash', $trash)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('tab', $tab)
@@ -142,6 +253,7 @@
                 $value = Arrays::exists($field, $data) ? $data[$field] : null;
                 $obj->$field = $value;
             }
+
             if (Arrays::isAssoc($data)) {
                 foreach ($data as $k => $v) {
                     if (!isset($obj->$k)) {
@@ -231,21 +343,20 @@
                     }
                 }
                 if (true === $new) {
-                    $q = "INSERT INTO datas (id, datecreate, datemodify, value) VALUES (
-                        '" . SQLite3::escapeString($id) . "',
-                        '" . SQLite3::escapeString($datecreate) . "',
-                        '" . SQLite3::escapeString($datemodify) . "',
-                        '" . SQLite3::escapeString(serialize($store)) . "'
+                    $q = "INSERT INTO datas_" . $this->type . " (id, datecreate, datemodify, value) VALUES (
+                        " . $this->quote($id) . ",
+                        " . $this->quote($datecreate) . ",
+                        " . $this->quote($datemodify) . ",
+                        " . $this->quote(serialize($store)) . "
                     )";
                 } else {
-                    $q = "UPDATE datas SET
-                        datemodify = '" . SQLite3::escapeString($datemodify) . "',
-                        value = '" . SQLite3::escapeString(serialize($store)) . "'
-                        WHERE id = '" . SQLite3::escapeString($id) . "'
-                    ";
+                    $q = "UPDATE datas_" . $this->type . " SET
+                        datemodify = " . $this->quote($datemodify) . ",
+                        value = " . $this->quote(serialize($store)) . "
+                        WHERE id = " . $this->quote($id);
                 }
                 if (false === $this->transac) {
-                    $this->db->exec($q);
+                    $this->_query($q);
                 } else {
                     array_push($this->transactions, $q);
                 }
@@ -262,14 +373,14 @@
 
         public function delete($obj)
         {
-            $q = "DELETE FROM datas WHERE id = '" . SQLite3::escapeString($obj->getId()) . "'";
+            $q = "DELETE FROM datas_" . $this->type . " WHERE id = " . $this->quote($obj->getId());
             $data = $this->session->getData();
             if (Arrays::exists($obj->getId(), $data)) {
                 unset($data[$obj->getId()]);
                 $this->session->setData($data);
             }
             if (false === $this->transac) {
-                $this->db->exec($q);
+                $this->_query($q);
             } else {
                 array_push($this->transactions, $q);
             }
@@ -279,7 +390,7 @@
         {
             if (count($this->transactions)) {
                 foreach ($this->transactions as $q) {
-                    $this->db->exec($q);
+                    $this->_query($q);
                 }
             }
             return $this;
@@ -348,17 +459,23 @@
             $data = $s->getData();
             $row = Arrays::exists($id, $data) ? $data[$id] : null;
             if (empty($row)) {
-                $q = "SELECT datecreate, datemodify, value FROM datas WHERE id = '" . SQLite3::escapeString($id) . "'";
-                $res = $this->db->query($q);
-                $continue = false;
-                while ($tmp = $res->fetchArray(SQLITE3_ASSOC)) {
-                    $tab = unserialize($tmp['value']);
-                    $tab['id'] = $id;
-                    $tab['date_create'] = $tmp['datecreate'];
-                    $tab['date_modify'] = $tmp['datemodify'];
-                    $continue = true;
+                $q = "SELECT datecreate, datemodify, value FROM datas_" . $this->type . " WHERE id = " . $this->quote($id);
+                $res = $this->_query($q);
+
+                if (Arrays::is($res)) {
+                    $count = count($res);
+                } else {
+                    $count = $res->rowCount();
                 }
-                if (true === $continue) {
+
+                if (0 < $count) {
+                    foreach ($res as $tmp) {
+                        $tab = unserialize($tmp['value']);
+                        $tab['id'] = $id;
+                        $tab['date_create'] = $tmp['datecreate'];
+                        $tab['date_modify'] = $tmp['datemodify'];
+                    }
+
                     $row = $this->make($tab);
                     $data[$id] = $row;
                     $s->setData($data);
@@ -369,9 +486,12 @@
 
         public function exists($key)
         {
-            $q = "SELECT * FROM datas WHERE id = '" . SQLite3::escapeString($key) . "'";
-            $res = $this->db->query($q);
-            return false === $res->fetchArray() ? false : true;
+            $q = "SELECT COUNT(id) AS nb FROM datas_" . $this->type . " WHERE id = " . $this->quote($key);
+            $res = $this->_query($q);
+            foreach ($res as $tmp) {
+                $count = $tmp['nb'];
+            }
+            return $count < 1 ? false : true;
         }
 
         public function makeKey($keyLength = 9)
@@ -387,9 +507,15 @@
 
         public function all($return = false)
         {
-            $q = "SELECT id FROM datas";
-            $res = $this->db->query($q);
-            while ($tmp = $res->fetchArray(SQLITE3_ASSOC)) {
+            $q = "SELECT id FROM datas_" . $this->type;
+            $res = $this->_query($q);
+
+            if (Arrays::is($res)) {
+                $count = count($res);
+            } else {
+                $count = $res->rowCount();
+            }
+            foreach ($res as $tmp) {
                 $id = $tmp['id'];
                 $this->row($id);
             }
@@ -783,5 +909,17 @@
         public function __toString()
         {
             return $this->type;
+        }
+
+        protected function quote($value, $parameterType = PDO::PARAM_STR)
+        {
+            if(null === $value) {
+                return "NULL";
+            }
+
+            if (is_string($value)) {
+                return $this->db->quote($value, $parameterType);
+            }
+            return $value;
         }
     }
