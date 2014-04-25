@@ -18,7 +18,7 @@
         public $cache           = false;
         public $ttl             = 3600;
 
-        public function __construct($entity, $type)
+        public function __construct($type, $entity = 'db')
         {
             $this->type = $type;
             $this->entity = $entity;
@@ -200,7 +200,9 @@
             };
 
             $date = function ($f)  use ($obj) {
-                return date('Y-m-d H:i:s', $obj->$f);
+                return isset($obj->$f) && is_numeric($obj->$f)
+                ? date('Y-m-d H:i:s', $obj->$f)
+                : null;
             };
 
             $hydrate = function ($data)  use ($obj) {
@@ -213,21 +215,27 @@
             };
 
             $display = function ($field)  use ($obj) {
-                return \Thin\Html\Helper::display($obj->$field);
+                return isset($obj->$field)
+                ? Html\Helper::display($obj->$field)
+                : null;
             };
 
             $tab = function ()  use ($obj) {
                 $return = array();
                 $fields = $obj->_fields;
                 foreach ($fields as $field) {
-                    $val = isset($obj->$field) ? $obj->$field : null;
+                    $val = isset($obj->$field)
+                    ? $obj->$field
+                    : null;
                     $return[$field] = $val;
                 }
                 return $return;
             };
 
             $asset = function ($field) use ($obj) {
-                return '/storage/img/' . $obj->$field;
+                return isset($obj->$field) ?
+                '/storage/img/' . $obj->$field
+                : null;
             };
 
             $obj->event('store', $store)
@@ -347,12 +355,12 @@
                         " . $this->quote($id) . ",
                         " . $this->quote($datecreate) . ",
                         " . $this->quote($datemodify) . ",
-                        " . $this->quote(serialize($store)) . "
+                        " . $this->quote($this->encode($store)) . "
                     )";
                 } else {
                     $q = "UPDATE datas_" . $this->type . " SET
                         datemodify = " . $this->quote($datemodify) . ",
-                        value = " . $this->quote(serialize($store)) . "
+                        value = " . $this->quote($this->encode($store)) . "
                         WHERE id = " . $this->quote($id);
                 }
                 if (false === $this->transac) {
@@ -470,7 +478,7 @@
 
                 if (0 < $count) {
                     foreach ($res as $tmp) {
-                        $tab = unserialize($tmp['value']);
+                        $tab = $this->decode($tmp['value']);
                         $tab['id'] = $id;
                         $tab['date_create'] = $tmp['datecreate'];
                         $tab['date_modify'] = $tmp['datemodify'];
@@ -837,10 +845,11 @@
             $asort = array();
             foreach ($sort as $key => $rows) {
                 for ($i = 0 ; $i < count($rows) ; $i++) {
-                    if (empty($$key) || is_string($$key)) {
+                    if (empty($$key) || is_string($$key) || !Arrays::is($$key)) {
                         $$key = array();
                     }
                     $asort[$i][$key] = $rows[$i];
+
                     array_push($$key, $rows[$i]);
                 }
             }
@@ -921,5 +930,15 @@
                 return $this->db->quote($value, $parameterType);
             }
             return $value;
+        }
+
+        private function encode($str)
+        {
+            return json_encode($str);
+        }
+
+        private function decode($str)
+        {
+            return json_decode($str, true);
         }
     }

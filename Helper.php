@@ -19,6 +19,7 @@
     use Thin\Exception;
     use Thin\Registry;
     use Thin\Functions;
+    use Thin\Forever;
 
     if (!function_exists('mySprintf')) {
         function mySprintf($str = null, $args = array(), $char = '%')
@@ -2255,6 +2256,20 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('cookies')) {
+        function cookies()
+        {
+            $object = new thinCookie();
+            $object->populate($_COOKIE);
+            return $object;
+        }
+
+        function forever($ns = 'user')
+        {
+            return Forever::instance($ns);
+        }
+    }
+
     if (!function_exists('gets')) {
         function gets()
         {
@@ -2495,17 +2510,17 @@ $(document).ready(function() {
         {
             if (strpos($key, $separator) !== false) {
                 $keys = explode($separator, $key, 2);
-                if (strlen(current($keys)) && strlen($keys[1])) {
-                    if (!Arrays::exists(current($keys), $array)) {
-                        if (current($keys) === '0' && !empty($array)) {
-                            $array = array(current($keys) => $array);
+                if (strlen(Arrays::first($keys)) && strlen($keys[1])) {
+                    if (!Arrays::exists(Arrays::first($keys), $array)) {
+                        if (Arrays::first($keys) === '0' && !empty($array)) {
+                            $array = array(Arrays::first($keys) => $array);
                         } else {
-                            $array[current($keys)] = array();
+                            $array[Arrays::first($keys)] = array();
                         }
-                    } elseif (!Arrays::is($array[current($keys)])) {
+                    } elseif (!Arrays::is($array[Arrays::first($keys)])) {
                         throw new Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
                     }
-                    $array[current($keys)] = arraySet($array[current($keys)], $keys[1], $value);
+                    $array[Arrays::first($keys)] = arraySet($array[Arrays::first($keys)], $keys[1], $value);
                 } else {
                     throw new Exception("Invalid key '$key'");
                 }
@@ -2531,7 +2546,7 @@ $(document).ready(function() {
             $keys = explode($separator, $key);
             while (count($keys) > 1) {
                 $key = array_shift($keys);
-                if (!isset($array[$key]) || ! isArray($array[$key]))  {
+                if (!isset($array[$key]) || !Arrays::is($array[$key]))  {
                     return;
                 }
 
@@ -2593,7 +2608,7 @@ $(document).ready(function() {
     if (!function_exists('arrayRenameKey')) {
         function arrayRenameKey(array $array, $key, $newKey)
         {
-            if(!ake($key, $array) || ake($newKey, $array)) {
+            if(!Arrays::exists($key, $array) || Arrays::exists($newKey, $array)) {
                 return false;
             }
             $uid                = uniqid('');
@@ -2615,7 +2630,7 @@ $(document).ready(function() {
                     return true;
                 }
 
-                if (isArray($value)) {
+                if (Arrays::is($value)) {
                     if (true === multiArrayKeyExists($needle, $value)) {
                         return true;
                     } else {
@@ -2631,10 +2646,10 @@ $(document).ready(function() {
         function arrayMap($callback, array $array, $keys = null)
         {
             foreach ($array as $key => $val) {
-                if (isArray($val)) {
+                if (Arrays::is($val)) {
                     $array[$key] = arrayMap($callback, $array[$key]);
-                } elseif (! isArray($keys) || in_array($key, $keys)) {
-                    if (isArray($callback)) {
+                } elseif (!Arrays::is($keys) || Arrays::in($key, $keys)) {
+                    if (Arrays::is($callback)) {
                         foreach ($callback as $cb) {
                             $array[$key] = call_user_func($cb, $array[$key]);
                         }
@@ -2665,7 +2680,7 @@ $(document).ready(function() {
             $result = array();
             foreach($array as $key => $value) {
                 $key = stripslashes($key);
-                if (isArray($value)) {
+                if (Arrays::is($value)) {
                     $result[$key] = arrayStripslashes($value);
                 } else {
                     $result[$key] = stripslashes($value);
@@ -2741,7 +2756,7 @@ $(document).ready(function() {
                 $objOrArray = get_object_vars($objOrArray);
             }
             foreach ($objOrArray as $key => $value) {
-                if ($recursive && (is_object($value) || is_array($value))) {
+                if ($recursive && (is_object($value) || Arrays::is($value))) {
                     $value = objectToArray($value);
                 }
                 $array[$key] = $value;
@@ -2756,7 +2771,7 @@ $(document).ready(function() {
             // Find the offset of the element to insert after.
             $keys = array_keys($array);
             $offsetByKey = array_flip($keys);
-            if (!ake($after, $offsetByKey)) {
+            if (!Arrays::exists($after, $offsetByKey)) {
                 throw new Exception("the key '$after' does not exist in this array.");
             }
             $offset = $offsetByKey[$after];
@@ -2776,7 +2791,7 @@ $(document).ready(function() {
         {
             $flat = array();
             foreach ($array as $key => $value) {
-                if (isArray($value)) {
+                if (Arrays::is($value)) {
                     $flat += arrayFlatten($value);
                 } else {
                     $flat[$key] = $value;
@@ -2831,7 +2846,7 @@ $(document).ready(function() {
 
             // Decode and validate input string
             $input = Inflector::lower($input);
-            for($i = 0 ; $i < strlen($input) ; $i++) {
+            for($i = 0; $i < strlen($input); $i++) {
                 $n = strpos($digitChars, $input[$i]);
                 if($n === false || $n > $sourceBase) {
                     return false;
@@ -2992,7 +3007,7 @@ $(document).ready(function() {
         {
             $attrStr = '';
 
-            if (!is_array($attr)) {
+            if (!Arrays::is($attr)) {
                 $attr = (array) $attr;
             }
 
@@ -3021,7 +3036,7 @@ $(document).ready(function() {
             $hasContent = (bool) ($content !== false && $content !== null);
             $html = '<' . $tag;
 
-            $html .= (!empty($attr)) ? ' ' . (is_array($attr) ? arrayToAttr($attr) : $attr) : '';
+            $html .= (!empty($attr)) ? ' ' . (Arrays::is($attr) ? arrayToAttr($attr) : $attr) : '';
             $html .= $hasContent ? '>' : ' />';
             $html .= $hasContent ? $content . '</' . $tag . '>' : '';
 
@@ -3032,7 +3047,7 @@ $(document).ready(function() {
     if (!function_exists('in_arrayi')) {
         function in_arrayi($needle, $haystack)
         {
-            return in_array(Inflector::lower($needle), array_map('strtolower', $haystack));
+            return Arrays::in(Inflector::lower($needle), array_map('strtolower', $haystack));
         }
     }
 
@@ -3054,7 +3069,7 @@ $(document).ready(function() {
         function getRealClass($class)
         {
             static $classes = array();
-            if (!ake($class, $classes)) {
+            if (!Arrays::exists($class, $classes)) {
                 $reflect = new ReflectionClass($class);
                 $classes[$class] = $reflect->getName();
             }
@@ -3097,7 +3112,7 @@ $(document).ready(function() {
             $file           = STORAGE_PATH . DS . 'translation' . DS . repl('.', DS, Inflector::lower($segment)) . DS . Inflector::lower($language) . '.php';
             if (File::exists($file)) {
                 $sentences  = include($file);
-                if (ake($name, $sentences)) {
+                if (Arrays::exists($name, $sentences)) {
                     $translation = $sentences[$name];
                 }
             }
@@ -3218,7 +3233,7 @@ $(document).ready(function() {
                 container()->setThinGlobals($globals);
             } elseif (func_num_args() == 1) {
                 $key = Arrays::first($args);
-                return ake($key, $globals) ? $globals[$key] : null;
+                return Arrays::exists($key, $globals) ? $globals[$key] : null;
             }
         }
 
@@ -3242,7 +3257,7 @@ $(document).ready(function() {
                     $value = $nargs > 1 ? $args : Arrays::first($args);
                     $options[$name] = value($value);
                 }
-                return ake($name, $options) ? $options[$name] : null;
+                return Arrays::exists($name, $options) ? $options[$name] : null;
             } else {
                 container()->setThinOptions(array());
             }
@@ -3299,7 +3314,7 @@ $(document).ready(function() {
                     $out = '[empty value]';
                     break;
 
-                case is_array($var):
+                case Arrays::is($var):
                     $out = var_export($var, true);
                     break;
 

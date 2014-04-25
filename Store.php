@@ -84,7 +84,7 @@
                 return $class->save($obj);
             };
 
-            $remove = function () use ($class, $obj) {
+            $trash = function () use ($class, $obj) {
                 return $class->delete($obj);
             };
 
@@ -120,7 +120,7 @@
             };
 
             $obj->event('store', $store)
-            ->event('remove', $remove)
+            ->event('trash', $trash)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('tab', $tab)
@@ -297,7 +297,11 @@
             if (count($res) && true === $one) {
                 return $this->row(Arrays::first($res));
             }
-            return $res;
+            $collection = array();
+            foreach ($res as $id) {
+                array_push($collection, $this->row($id));
+            }
+            return $collection;
         }
 
         public function fetch($results = array())
@@ -763,6 +767,11 @@
             $this->results = $collection;
 
             return $this;
+        }
+
+        public function __destruct()
+        {
+            $this->session->setData(array());
         }
 
         public function __call($method, $parameters)
