@@ -63,18 +63,28 @@
             File::delete($this->db);
             $json = json_encode($data);
             File::put($this->db, $json);
-            $this->cached('all_' . $this->type, $data);
+            $this->cached('all_db_' . $this->type, $this->id($data));
             return $this->unlock();
         }
 
         public function all()
         {
-            $data = $this->cached('all_' . $this->type);
+            $data = $this->cached('all_db_' . $this->type);
             if (empty($cached)) {
                 $data = fgc($this->db);
-                $data = strlen($data) ? json_decode($data, true) : array();
+                $data = strlen($data) ? $this->id(json_decode($data, true)) : array();
             }
             return $data;
+        }
+
+        private function id($tab)
+        {
+            $collection = array();
+            foreach ($tab as $id => $row) {
+                $row['id'] = $id;
+                $collection[] = $row;
+            }
+            return $collection;
         }
 
         public function get()
