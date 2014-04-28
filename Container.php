@@ -8,6 +8,7 @@
     class Container extends Object
     {
         protected $values = array();
+        protected $_token;
 
         public static function instance()
         {
@@ -17,6 +18,7 @@
         public function __construct (array $values = array())
         {
             $this->values = $values;
+            $this->_token = Utils::token();
         }
 
         public function offsetSet($id, $value)
@@ -156,13 +158,13 @@
 
         public function event($id, \Closure $closure)
         {
-            $this->values[sha1($id)] = $closure;
+            $this->values[sha1($id . $this->_token)] = $closure;
             return $this;
         }
 
         public function run($id, $args = array())
         {
-            $id = sha1($id);
+            $id = sha1($id . $this->_token);
             if (Arrays::exists($id, $this->values)) {
                 return call_user_func_array($this->values[$id] , $args);
             }

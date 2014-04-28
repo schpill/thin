@@ -114,11 +114,11 @@
             $class->wheres  = null;
             // $class::$configs = null;
 
-            $record = function () use ($class, $obj) {
+            $save = function () use ($class, $obj) {
                 return $class->save($obj->assoc());
             };
 
-            $purge = function () use ($class, $obj) {
+            $delete = function () use ($class, $obj) {
                 return $class->delete($obj->getId());
             };
 
@@ -152,8 +152,8 @@
                 return '/storage/img/' . $obj->$field;
             };
 
-            $obj->event('record', $record)
-            ->event('purge', $purge)
+            $obj->event('save', $save)
+            ->event('delete', $delete)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('tab', $tab)

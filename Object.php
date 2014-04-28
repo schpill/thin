@@ -36,6 +36,14 @@
 
         public function save()
         {
+            if (isset($this->_token)) {
+                $id = sha1('save' . $this->_token);
+                if (Arrays::is($this->values)) {
+                    if (Arrays::exists($id, $this->values)) {
+                        return call_user_func_array($this->values[$id], func_get_args());
+                    }
+                }
+            }
             if(isset($this->db_instance)) {
                 return $this->db_instance->save($this);
             }
@@ -69,6 +77,14 @@
 
         public function delete()
         {
+            if (isset($this->_token)) {
+                $id = sha1('delete' . $this->_token);
+                if (Arrays::is($this->values)) {
+                    if (Arrays::exists($id, $this->values)) {
+                        return call_user_func_array($this->values[$id], func_get_args());
+                    }
+                }
+            }
             if(isset($this->db_instance)) {
                 return $this->db_instance->delete($this);
             }
@@ -261,10 +277,12 @@
                 }
             }
 
-            $id = sha1($func);
-            if (Arrays::is($this->values)) {
-                if (Arrays::exists($id, $this->values)) {
-                    return call_user_func_array($this->values[$id] , $argv);
+            if (isset($this->_token)) {
+                $id = sha1($func . $this->_token);
+                if (Arrays::is($this->values)) {
+                    if (Arrays::exists($id, $this->values)) {
+                        return call_user_func_array($this->values[$id] , $argv);
+                    }
                 }
             }
 
@@ -306,7 +324,7 @@
             $array = isset($this->values) ? $this->values : array();
             if (count($array)) {
                 foreach ($array as $k => $v) {
-                    if (!Arrays::inArray($k, $this->_fields)) {
+                    if (!Arrays::in($k, $this->_fields)) {
                         $this->_fields[] = $k;
                     }
                     $this->$k = $v;
@@ -340,7 +358,7 @@
             $this->$key = $value;
             $this[$key] = $value;
             $this->values[$key] = $value;
-            if (!Arrays::inArray($key, $this->_fields)) {
+            if (!Arrays::in($key, $this->_fields)) {
                 $this->_fields[] = $key;
             }
             return $this;
@@ -349,7 +367,7 @@
         public function offsetSet($key, $value)
         {
             $this->$key = $value;
-            if (!Arrays::inArray($key, $this->_fields)) {
+            if (!Arrays::in($key, $this->_fields)) {
                 $this->_fields[] = $key;
             }
             return $this;
@@ -362,7 +380,7 @@
                     $this->$namespace = array();
                 }
                 foreach ($datas as $k => $v) {
-                    if (Arrays::isArray($k)) {
+                    if (Arrays::is($k)) {
                         $this->populate($k, $namespace);
                     } else {
                         $this->$namespace = array_merge($this->$namespace, array($k => $v));
@@ -370,7 +388,7 @@
                 }
             } else {
                 foreach ($datas as $k => $v) {
-                    if (Arrays::isArray($v)) {
+                    if (Arrays::is($v)) {
                         $o = new self;
                         $o->populate($v);
                         $this->$k = $o;
@@ -430,7 +448,7 @@
         public function put($key, $value)
         {
             $this->$key = $value;
-            if (!Arrays::inArray($key, $this->_fields)) {
+            if (!Arrays::in($key, $this->_fields)) {
                 $this->_fields[] = $key;
             }
             return $this;
@@ -482,7 +500,7 @@
                 return false;
             }
             foreach($search as $key => $value) {
-                if (!Arrays::inArray($key, $this->_fields)) {
+                if (!Arrays::in($key, $this->_fields)) {
                     return false;
                 }
                 if($this->$key <> $value) {
@@ -496,7 +514,7 @@
         {
             $values = $this->values();
             foreach ($values as $k => $v) {
-                if (!Arrays::inArray($k, $this->_fields)) {
+                if (!Arrays::in($k, $this->_fields)) {
                     $this->$k = $v;
                 }
             }

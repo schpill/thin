@@ -213,11 +213,11 @@
             $class->wheres = null;
             $obj = new Container;
 
-            $record = function () use ($class, $obj) {
+            $save = function () use ($class, $obj) {
                 return $class->push($obj->assoc());
             };
 
-            $clear = function () use ($class, $obj) {
+            $delete = function () use ($class, $obj) {
                 return $class->pop($obj->getId());
             };
 
@@ -246,8 +246,8 @@
                 return '/storage/img/' . $obj->$field;
             };
 
-            $obj->event('record', $record)
-            ->event('del', $clear)
+            $obj->event('save', $save)
+            ->event('delete', $delete)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('tab', $tab)
