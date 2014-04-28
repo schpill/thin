@@ -1,7 +1,8 @@
 <?php
     namespace Thin;
+    use PDO;
 
-    class Jsoneav
+    class Dbeav
     {
         private $entity;
         private $dbEntity;
@@ -9,159 +10,44 @@
         private $dbValue;
         private $dbItem;
         private $lastInsertId;
+        private $db;
+        private $_db;
         private $results;
         private $wheres         = array();
         private $cache          = true;
         private $ttl            = 3600;
         private static $configs = array();
 
-        public function __construct($entity)
+        public function __construct($entity, $db = 'db')
         {
-            $this->entity       = $entity;
-            $this->dbEntity     = new Jsondb("thin_eav_entity");
-            $this->dbAttribute  = new Jsondb("thin_eav_attribute");
-            $this->dbValue      = new Jsondb("thin_eav_value");
-            $this->dbItem       = new Jsondb("eav_" . $entity);
-        }
-
-        public function setCache($bool = true)
-        {
-            $this->dbEntity->setCache($bool);
-            $this->dbAttribute->setCache($bool);
-            $this->dbValue->setCache($bool);
-            $this->dbItem->setCache($bool);
-            $this->cache = $bool;
-            return $this;
-        }
-
-        public function save($record)
-        {
-            if (is_object($record)) {
-                $record = $record->assoc();
+            $configs        = container()->getConfig()->getDb();
+            $config         = isAke($configs, $db);
+            if (empty($config)) {
+                throw new Exception("Thde datavase configuration is empty.");
             }
-            $id = isAke($record, 'id', null);
-            if (strlen($id)) {
-                return $this->edit($id, $record);
-            } else {
-                return $this->add($record);
-            }
+            $this->entity   = $entity;
+            $this->_db      = $db;
+            $dsn = $config->getAdapter() . ":dbname=" . $config->getDatabase() . ";host=" . $config->getHost();
+            $this->db = new PDO($dsn, $config->getUsername(), $config->getPassword());
+            $this->models();
         }
 
-        private function exists($name)
+        public function all($force = false)
         {
-            $res = $this->dbEntity->findOneByName($name);
-            return empty($res) ? false : $res->getId();
-        }
-
-        private function add($record)
-        {
-            $this->event('beforeAdd', $record);
-            $name = $this->entity . '_' . sha1(serialize($record));
-            $exists = $this->exists($name);
-            if (false === $exists) {
-                $entity = array(
-                    'name'          => $name,
-                    'date_create'   => time(),
-                    'date_modify'   => time()
-                );
-                $this->dbEntity->push($entity);
-                $this->lastInsertId = $entityId = $this->dbEntity->getLastId();
-
-                foreach ($record as $k => $v) {
-                    $attributeId    = $this->attribute($k);
-                    $valueId        = $this->value($v);
-                    $item = array(
-                        'entity'    => $entityId,
-                        'attribute' => $attributeId,
-                        'value'     => $valueId,
-                    );
-                    $this->dbItem->push($item);
+            $collection = false === $force
+            ? $this->cached('thin_eav_all_db_' . $this->entity)
+            : array();
+            if (empty($collection)) {
+                $collection = array();
+                $entities = $this->dbEntity()->select();
+                $entities = is_object($entities) ? array($entities) : $entities;
+                foreach ($entities as $entity) {
+                    $items = $this->dbItem->findByThinEavEntityId($entity->getId());
+                    array_push($collection, $this->makeTab($items));
                 }
-                $this->all(true);
-            } else {
-                $this->lastInsertId = $exists;
+                $this->cached('thin_eav_all_db_' . $this->entity, $collection);
             }
-            $this->event('afterAdd', $this->lastInsertId);
-            return $this;
-        }
-
-        private function edit($id, $record)
-        {
-            $this->event('beforeEdit', array($id, $record));
-            $rows = $this->dbItem->findObjectsByEntity($id);
-            while (!empty($rows)) {
-                $row = Arrays::first($rows);
-                $row->del();
-                $rows = $this->dbItem->findObjectsByEntity($id);
-            }
-            unset($record['id']);
-
-            foreach ($record as $k => $v) {
-                $attributeId    = $this->attribute($k);
-                $valueId        = $this->value($v);
-                $item = array(
-                    'entity'    => $id,
-                    'attribute' => $attributeId,
-                    'value'     => $valueId,
-                );
-                $this->dbItem->push($item);
-            }
-
-            $this->dbEntity->find($id)->setDateModify(time())->record();
-            $this->all(true);
-
-            $this->event('afterEdit', array($id, $record));
-
-            return $this;
-        }
-
-        public function delete($id)
-        {
-            $this->event('beforeDelete', $id);
-            $rows = $this->dbItem->findObjectsByEntity($id);
-            $entity = $this->dbEntity->find($id);
-            while (!empty($rows)) {
-                $row = Arrays::first($rows);
-                $row->del();
-                $rows = $this->dbItem->findObjectsByEntity($id);
-            }
-            $entity->del();
-            $this->all(true);
-
-            $this->event('afterDelete', $id);
-
-            return $this;
-        }
-
-        private function attribute($a)
-        {
-            $res = $this->dbAttribute->findOneByName($a);
-            if (!empty($res)) {
-                return $res->getId();
-            }
-            $attribute = array(
-                'name' => $a
-            );
-            $this->dbAttribute->push($attribute);
-            return $this->dbAttribute->getLastId();
-        }
-
-        private function value($v)
-        {
-            $res = $this->dbValue->findOneByName($v);
-            if (!empty($res)) {
-                return $res->getId();
-            }
-            $value = array(
-                'name' => $v
-            );
-            $this->dbValue->push($value);
-            return $this->dbValue->getLastId();
-        }
-
-        public function getLastId()
-        {
-            return $$this->lastInsertId;
+            return $collection;
         }
 
         public function exec($object = false)
@@ -180,7 +66,10 @@
 
         public function find($id, $object = true)
         {
-            $items = $this->dbItem->findByEntity($id);
+            $items = $this->dbItem()->findByThinEavEntityId($id);
+
+            $items = is_object($items) ? array($items) : $items;
+
             if (!empty($items)) {
                 return $this->row($items, $object);
             }
@@ -219,11 +108,11 @@
 
         private function functions($obj)
         {
-            $settings = isAke(self::$configs, $this->entity);
+            $settings = isAke(static::$configs, $this->entity);
             $class = $this;
             $class->results = null;
             $class->wheres  = null;
-            $class->configs = null;
+            // $class::$configs = null;
 
             $record = function () use ($class, $obj) {
                 return $class->save($obj->assoc());
@@ -294,32 +183,157 @@
             $tab = array();
             $first = true;
             foreach ($rows as $row) {
-                if (true === $first) {
-                    $tab['id'] = $row['entity'];
+                if (!is_object($row)) {
+                    dieDump($rows);
                 }
-                $attribute  = $this->dbAttribute->find($row['attribute'])->getName();
-                $value      = $this->dbValue->find($row['value'])->getName();
-                $tab[$attribute] = $value;
+                $row = $row->toArray();
+                if (true === $first) {
+                    $tab['id'] = $row['thin_eav_entity_id'];
+                }
+                $attribute  = $this->dbAttribute()->find($row['thin_eav_attribute_id'])->getName();
+                $value      = $this->dbValue()->find($row['thin_eav_value_id'])->getName();
+                $tab[$attribute] = json_decode($value, true);
                 $first = false;
             }
             return $tab;
         }
 
-        private function all($force = false)
+        public function save($record)
         {
-            $collection = false === $force
-            ? $this->cached('eav_all_db_' . $this->entity)
-            : array();
-            if (empty($collection)) {
-                $collection = array();
-                $entities = $this->dbEntity->fetch()->exec();
-                foreach ($entities as $entity) {
-                    $items = $this->dbItem->findByEntity($entity['id']);
-                    array_push($collection, $this->makeTab($items));
-                }
-                $this->cached('eav_all_db_' . $this->entity, $collection);
+            if (is_object($record)) {
+                $record = $record->assoc();
             }
-            return $collection;
+            $id = isAke($record, 'id', null);
+            if (strlen($id)) {
+                return $this->edit($id, $record);
+            } else {
+                return $this->add($record);
+            }
+        }
+
+        private function exists($name)
+        {
+            $res = $this->dbEntity()->findOneByName($name);
+            return empty($res) ? false : $res->getId();
+        }
+
+        private function add($record)
+        {
+            $this->event('beforeAdd', $record);
+            $name = $this->entity . '_' . sha1(serialize($record));
+            $exists = $this->exists($name);
+            if (false === $exists) {
+                $entity = array(
+                    'name'          => $name
+                );
+                $this->dbEntity()->create($entity);
+                $this->lastInsertId = $entityId = $this->dbEntity()->lastInsertId();
+
+                foreach ($record as $k => $v) {
+                    $attributeId    = $this->attribute($k);
+                    $valueId        = $this->value($v);
+                    $item = array(
+                        'thin_eav_entity_id'    => $entityId,
+                        'thin_eav_attribute_id' => $attributeId,
+                        'thin_eav_value_id'     => $valueId,
+                    );
+                    $this->dbItem()->create($item);
+                }
+                $this->all(true);
+            } else {
+                $this->lastInsertId = $exists;
+            }
+            $this->event('afterAdd', $this->lastInsertId);
+            return $this;
+        }
+
+        private function edit($id, $record)
+        {
+            $this->event('beforeEdit', array($id, $record));
+            $rows = $this->dbItem()->findByThinEavEntityId($id);
+            if (is_object($rows)) {
+                $rows = array($rows);
+            }
+            while (!empty($rows)) {
+                $row = Arrays::first($rows);
+                $row->delete();
+                $rows = $this->dbItem()->findByThinEavEntityId($id);
+                if (is_object($rows)) {
+                    $rows = array($rows);
+                }
+            }
+            unset($record['id']);
+
+            foreach ($record as $k => $v) {
+                $attributeId    = $this->attribute($k);
+                $valueId        = $this->value($v);
+                $item = array(
+                    'thin_eav_entity_id'    => $id,
+                    'thin_eav_attribute_id' => $attributeId,
+                    'thin_eav_value_id'     => $valueId,
+                );
+                $this->dbItem()->create($item);
+            }
+
+            $this->all(true);
+
+            $this->event('afterEdit', array($id, $record));
+
+            return $this;
+        }
+
+        public function delete($id)
+        {
+            $this->event('beforeDelete', $id);
+            $rows = $this->dbItem()->findByThinEavEntityId($id);
+
+            if (is_object($rows)) {
+                $rows = array($rows);
+            }
+
+            $entity = $this->dbEntity()->find($id);
+
+            while (!empty($rows)) {
+                $row = Arrays::first($rows);
+                $row->delete();
+                $rows = $this->dbItem()->findByThinEavEntityId($id);
+
+                if (is_object($rows)) {
+                    $rows = array($rows);
+                }
+            }
+            $entity->delete();
+            $this->all(true);
+
+            $this->event('afterDelete', $id);
+
+            return $this;
+        }
+
+        private function attribute($a)
+        {
+            $res = $this->dbAttribute()->findOneByName($a);
+            if (!empty($res)) {
+                return $res->getId();
+            }
+            $attribute = array(
+                'name' => $a
+            );
+            $this->dbAttribute()->create($attribute);
+            return $this->dbAttribute()->lastInsertId();
+        }
+
+        private function value($v)
+        {
+            $res = $this->dbValue()->findOneByName(json_encode($v));
+            if (!empty($res)) {
+                return $res->getId();
+            }
+            $value = array(
+                'name' => json_encode($v)
+            );
+            $this->dbValue()->create($value);
+            return $this->dbValue->lastInsertId();
         }
 
         public function fetch()
@@ -338,7 +352,7 @@
         public function groupBy($field, $results = array())
         {
             $res = count($results) ? $results : $this->results;
-            $keyCache = sha1('eav_groupby' . $field . serialize($res) . $this->entity);
+            $keyCache = sha1('thin_eav_groupby' . $field . serialize($res) . $this->entity);
 
             $groupBys = $this->cached($keyCache);
             if (empty($groupBys)) {
@@ -434,7 +448,7 @@
             }
 
             $keyCache = sha1(
-                'eav_order' .
+                'thin_eav_order' .
                 serialize($fieldOrder) .
                 serialize($orderDirection) .
                 serialize($res) .
@@ -579,7 +593,7 @@
             $collection = array();
             $datas = !count($results) ? $this->all() : $results;
 
-            $keyCache = sha1('eav_search' . $condition . serialize($datas) . $this->entity);
+            $keyCache = sha1('thin_eav_search' . $condition . serialize($datas) . $this->entity);
 
             $cached = $this->cached($keyCache);
             if (empty($cached)) {
@@ -686,6 +700,17 @@
             return false;
         }
 
+        public function getLastId()
+        {
+            return $$this->lastInsertId;
+        }
+
+        public function setCache($bool = true)
+        {
+            $this->cache = $bool;
+            return $this;
+        }
+
         private function cached($key, $value = null)
         {
             if (false === $this->cache) {
@@ -718,12 +743,12 @@
             return $this;
         }
 
-        public static function config($entity, $key, $value = null)
+        public static function configs($entity, $key, $value = null)
         {
             if (!strlen($entity)) {
                 throw new Exception("An entity must be provided to use this method.");
             }
-            if (!Arrays::is(self::$configs[$entity])) {
+            if (!Arrays::is(static::$configs[$entity])) {
                 self::$configs[$entity] = array();
             }
             if (empty($value)) {
@@ -741,7 +766,7 @@
 
         private function event($id, $args = array())
         {
-            $settings = isAke(self::$configs, $this->entity);
+            $settings = isAke(static::$configs, $this->entity);
             $event = isAke($settings, $id);
             if (!empty($event)) {
                 if (is_callable($event)) {
@@ -789,5 +814,170 @@
         public function __toString()
         {
             return $this->entity;
+        }
+
+        private function models()
+        {
+            $this->config();
+            $check = $this->checkTable('thin_eav_entity');
+            if (false === $check) {
+                $q = "create table `thin_eav_entity` (
+                `thin_eav_entity_id` int(11) UNSIGNED NOT NULL auto_increment,
+                `name` varchar(255) default NULL,
+                PRIMARY KEY (`thin_eav_entity_id`),
+                UNIQUE KEY `name` (`name`)
+                );";
+                $res = $this->db->prepare($q);
+                $res->execute();
+            }
+            $check = $this->checkTable('thin_eav_attribute');
+            if (false === $check) {
+                $q = "create table `thin_eav_attribute` (
+                `thin_eav_attribute_id` int(11) UNSIGNED NOT NULL auto_increment,
+                `name` varchar(255) default NULL,
+                PRIMARY KEY (`thin_eav_attribute_id`),
+                UNIQUE KEY `name` (`name`)
+                );";
+                $res = $this->db->prepare($q);
+                $res->execute();
+            }
+            $check = $this->checkTable('thin_eav_value');
+            if (false === $check) {
+                $q = "create table `thin_eav_value` (
+                `thin_eav_value_id` int(11) UNSIGNED NOT NULL auto_increment,
+                `name` TEXT default NULL,
+                PRIMARY KEY (`thin_eav_value_id`)
+                );";
+                $res = $this->db->prepare($q);
+                $res->execute();
+            }
+            $check = $this->checkTable('thin_eav_' . $this->entity);
+            if (false === $check) {
+                $q = "create table `thin_eav_" . $this->entity . "` (
+                `thin_eav_" . $this->entity . "_id` int(11) UNSIGNED NOT NULL auto_increment,
+                `thin_eav_entity_id` int(11) unsigned not null,
+                `thin_eav_attribute_id` int(11) unsigned not null,
+                `thin_eav_value_id` int(11) unsigned not null,
+                PRIMARY KEY (`thin_eav_" . $this->entity . "_id`),
+                unique key `entity_attribute_value` (`thin_eav_entity_id`,`thin_eav_attribute_id`, `thin_eav_value_id`)
+                );";
+                $res = $this->db->prepare($q);
+                $res->execute();
+            }
+            $this->dbEntity     = em($this->_db, 'thin_eav_entity');
+            $this->dbAttribute  = em($this->_db, 'thin_eav_attribute');
+            $this->dbValue      = em($this->_db, 'thin_eav_value');
+            $this->dbItem       = em($this->_db, 'thin_eav_' . $this->entity);
+        }
+
+        private function dbEntity()
+        {
+            return em($this->_db, 'thin_eav_entity');
+        }
+
+        private function dbAttribute()
+        {
+            return em($this->_db, 'thin_eav_attribute');
+        }
+
+        private function dbValue()
+        {
+            return em($this->_db, 'thin_eav_value');
+        }
+
+        private function dbItem()
+        {
+            return em($this->_db, 'thin_eav_' . $this->entity);
+        }
+
+        private function checkTable($table)
+        {
+            $res = $this->db->prepare("SHOW TABLES");
+            $res->execute();
+            if (Arrays::is($res)) {
+                $count = count($res);
+            } else {
+                $count = $res->rowCount();
+            }
+            if ($count < 1) {
+                return false;
+            }
+            foreach ($res as $row) {
+                $tabletmp = Arrays::first($row);
+                if ($table == $tabletmp) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private function config()
+        {
+            $db = $this->_db;
+            $containerConfig    = container()->getConfig();
+
+            $models = array();
+            $models[$db] = array();
+            $models[$db]['tables'] = array();
+
+            $models[$db]['tables']['thin_eav_entity'] = array();
+            $models[$db]['tables']['thin_eav_entity']['relationship'] = array();
+            $models[$db]['tables']['thin_eav_entity']['relationship']['thin_eav_entity_id'] = array(
+                'type'          => 'oneToMany',
+                'fieldName'     => 'thin_eav_entity_id',
+                'foreignTable'  => 'thin_eav_' . $this->entity,
+                'foreignKey'    => 'thin_eav_entity_id',
+                'relationKey'   => 'items',
+            );
+
+            $models[$db]['tables']['thin_eav_attribute'] = array();
+            $models[$db]['tables']['thin_eav_attribute']['relationship'] = array();
+            $models[$db]['tables']['thin_eav_attribute']['relationship']['thin_eav_attribute_id'] = array(
+                'type'          => 'oneToMany',
+                'fieldName'     => 'thin_eav_attribute_id',
+                'foreignTable'  => 'thin_eav_' . $this->entity,
+                'foreignKey'    => 'thin_eav_attribute_id',
+                'relationKey'   => 'items',
+            );
+
+            $models[$db]['tables']['thin_eav_value'] = array();
+            $models[$db]['tables']['thin_eav_value']['relationship'] = array();
+            $models[$db]['tables']['thin_eav_value']['relationship']['thin_eav_value_id'] = array(
+                'type'          => 'oneToMany',
+                'fieldName'     => 'thin_eav_value_id',
+                'foreignTable'  => 'thin_eav_' . $this->entity,
+                'foreignKey'    => 'thin_eav_entity_id',
+                'relationKey'   => 'items',
+            );
+
+            $models[$db]['tables']['thin_eav_' . $this->entity] = array();
+            $models[$db]['tables']['thin_eav_' . $this->entity]['relationship'] = array();
+
+            $models[$db]['tables']['thin_eav_' . $this->entity]['relationship']['thin_eav_entity_id'] = array(
+                'type'          => 'manyToOne',
+                'fieldName'     => 'thin_eav_entity_id',
+                'foreignTable'  => 'thin_eav_entity',
+                'foreignKey'    => 'thin_eav_entity_id',
+                'relationKey'   => 'entity',
+            );
+
+            $models[$db]['tables']['thin_eav_' . $this->entity]['relationship']['thin_eav_attribute_id'] = array(
+                'type'          => 'manyToOne',
+                'fieldName'     => 'thin_eav_attribute_id',
+                'foreignTable'  => 'thin_eav_attribute',
+                'foreignKey'    => 'thin_eav_attribute_id',
+                'relationKey'   => 'attribute',
+            );
+
+            $models[$db]['tables']['thin_eav_' . $this->entity]['relationship']['thin_eav_value_id'] = array(
+                'type'          => 'manyToOne',
+                'fieldName'     => 'thin_eav_value_id',
+                'foreignTable'  => 'thin_eav_value',
+                'foreignKey'    => 'thin_eav_value_id',
+                'relationKey'   => 'value',
+            );
+
+            $containerConfig->setModels($models);
+            container()->setConfig($containerConfig);
         }
     }
