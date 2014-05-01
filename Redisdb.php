@@ -1,39 +1,25 @@
 <?php
     namespace Thin;
 
-    class Jsondb
+    class Redisdb
     {
         private $results;
         private $wheres = array();
         private $lock;
         private $db;
+        private $dbName;
         private $type;
-        private $cache = true;
+        private $cache = false;
         private $ttl = 3600;
         private $lastIbsertId;
         private static $configs = array();
 
         public function __construct($type)
         {
-            $this->type = $type;
-
-            $this->db   = STORAGE_PATH . DS . Inflector::camelize('json_db_' . $type) . '.store';
-            $this->lock = STORAGE_PATH . DS . Inflector::camelize('json_db_' . $type) . '.lock';
-            if (!File::exists($this->db)) {
-                touch($this->db);
-            }
-        }
-
-        public function reset()
-        {
-            $this->results = null;
-            $this->wheres  = array();
-            return $this;
-        }
-
-        public function set($value)
-        {
-            return $this->save($value);
+            $this->type     = $type;
+            $this->dbName   = 'RDB_' . $type;
+            $this->lock     = STORAGE_PATH . DS . Inflector::camelize('redis_db') . '.lock';
+            $this->db       = container()->redis();
         }
 
         private function lock()
@@ -59,23 +45,52 @@
             return $this;
         }
 
+        public function reset()
+        {
+            $this->results = null;
+            $this->wheres  = array();
+            return $this;
+        }
+
+        public function set($value)
+        {
+            return $this->save($value);
+        }
+
         public function save($data, $id = null)
         {
             $this->lock();
-            File::delete($this->db);
+            $data = count($data) ? $this->clean($data) : $data;
             $json = json_encode($data);
-            File::put($this->db, $json);
-            $this->cached('all_db_JDB_' . $this->type, $this->id($data, $id));
+            container()->redis()->set($this->dbName, $json);
             return $this->unlock();
+        }
+
+        private function clean($data)
+        {
+            $clean = array();
+            $evers = array();
+            foreach ($data as $row) {
+                if (Arrays::is($row)) {
+                    $id = isAke($row, 'id', null);
+                    if (strlen($id)) {
+                        unset($row['id']);
+                    }
+                    $key = sha1(serialize($row));
+                    if (!Arrays::in($key, $evers)) {
+                        array_push($clean, $row);
+                        array_push($evers, $key);
+                    }
+                }
+            }
+            return $clean;
         }
 
         public function all()
         {
-            $data = $this->cached('all_db_JDB_' . $this->type);
-            if (empty($data)) {
-                $data = fgc($this->db);
-                $data = strlen($data) ? $this->id(json_decode($data, true)) : array();
-            }
+            $this->waitUnlock();
+            $data = container()->redis()->get($this->dbName);dieDump($data);
+            $data = strlen($data) ? $this->id(json_decode($data, true)) : array();
             return $data;
         }
 
@@ -83,15 +98,20 @@
         {
             $collection = array();
             foreach ($tab as $id => $row) {
-                $row['id'] = $id;
-                $collection[] = $row;
+                if (isset($id) && Arrays::is($row)) {
+                    $row['id'] = $id;
+                    $collection[] = $row;
+                }
             }
-            $this->lastIbsertId = !strlen($idSave) ? $id : $idSave;
+            $this->lastIbsertId = !strlen($idSave) ? isset($id) ? $id : null : $idSave;
             return $collection;
         }
 
         public function getLastId()
         {
+            if (!strlen($this->lastIbsertId)) {
+                $this->lastIbsertId = 0;
+            }
             return $this->lastIbsertId;
         }
 
@@ -274,7 +294,7 @@
         public function groupBy($field, $results = array())
         {
             $res = count($results) ? $results : $this->results;
-            $keyCache = sha1('groupbyJDB' . $field . serialize($res) . $this->type);
+            $keyCache = sha1('groupbyRDB' . $field . serialize($res) . $this->type);
 
             $groupBys = $this->cached($keyCache);
             if (empty($groupBys)) {
@@ -370,7 +390,7 @@
             }
 
             $keyCache = sha1(
-                'orderJDB' .
+                'orderRDB' .
                 serialize($fieldOrder) .
                 serialize($orderDirection) .
                 serialize($res) .
@@ -515,7 +535,7 @@
             $collection = array();
             $datas = !count($results) ? $this->all() : $results;
 
-            $keyCache = sha1('searchJDB' . $condition . serialize($datas) . $this->type);
+            $keyCache = sha1('searchRDB' . $condition . serialize($datas) . $this->type);
 
             $cached = $this->cached($keyCache);
             if (empty($cached)) {
@@ -637,34 +657,6 @@
             if (false === $this->cache) {
                 return null;
             }
-            $settings = isAke(self::$configs, $this->type);
-            $event = isAke($settings, 'cache');
-            if (!empty($event)) {
-                return $this->$event($key, $value);
-            } else die('oco db');
-            $file = STORAGE_PATH . DS . 'cache' . DS . $key . '.eav';
-            if (empty($value)) {
-                if (File::exists($file)) {
-                    $age = filemtime($file);
-                    $maxAge = time() - $this->ttl;
-                    if ($maxAge < $age) {
-                        return json_decode(File::get($file), true);
-                    } else {
-                        File::delete($file);
-                        return null;
-                    }
-                }
-            } else {
-                if (File::exists($file)) {
-                    File::delete($file);
-                }
-                File::put($file, json_encode($value));
-                return true;
-            }
-        }
-
-        private function redis($key, $value = null)
-        {
             $db = container()->redis();
             if (empty($value)) {
                 $val = $db->get($key);

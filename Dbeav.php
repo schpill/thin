@@ -25,7 +25,7 @@
             if (empty($config)) {
                 throw new Exception("Thde datavase configuration is empty.");
             }
-            $this->entity   = $entity;
+            $this->entity   = Inflector::lower($entity);
             $this->_db      = $db;
             $dsn = $config->getAdapter() . ":dbname=" . $config->getDatabase() . ";host=" . $config->getHost();
             $this->db = new PDO($dsn, $config->getUsername(), $config->getPassword());
@@ -35,7 +35,7 @@
         public function all($force = false)
         {
             $collection = false === $force
-            ? $this->cached('thin_eav_all_db_' . $this->entity)
+            ? $this->cached('thin_eavdb_all_data_' . $this->entity)
             : array();
             if (empty($collection)) {
                 $collection = array();
@@ -45,7 +45,7 @@
                     $items = $this->dbItem->findByThinEavEntityId($entity->getId());
                     array_push($collection, $this->makeTab($items));
                 }
-                $this->cached('thin_eav_all_db_' . $this->entity, $collection);
+                $this->cached('thin_eavdb_all_data_' . $this->entity, $collection);
             }
             return $collection;
         }
@@ -112,7 +112,6 @@
             $class = $this;
             $class->results = null;
             $class->wheres  = null;
-            // $class::$configs = null;
 
             $save = function () use ($class, $obj) {
                 return $class->save($obj->assoc());
@@ -122,11 +121,11 @@
                 return $class->delete($obj->getId());
             };
 
-            $date = function ($f)  use ($obj) {
+            $date = function ($f) use ($obj) {
                 return date('Y-m-d H:i:s', $obj->$f);
             };
 
-            $hydrate = function ($data)  use ($obj) {
+            $hydrate = function ($data) use ($obj) {
                 if (Arrays::isAssoc($data)) {
                     foreach ($data as $k => $v) {
                         $obj->$k = $v;
@@ -144,7 +143,7 @@
                 }
             };
 
-            $tab = function ()  use ($obj) {
+            $tab = function () use ($obj) {
                 return $obj->assoc();
             };
 
@@ -180,22 +179,30 @@
 
         private function makeTab($rows)
         {
-            $tab = array();
-            $first = true;
-            foreach ($rows as $row) {
-                if (!is_object($row)) {
-                    dieDump($rows);
+            if (!empty($rows)) {
+                $keyCache = sha1('tabDB_' . serialize($rows) . $this->entity);
+                $cached = $this->cached($keyCache);
+                if (empty($cached)) {
+                    $tab = array();
+                    $first = true;
+                    foreach ($rows as $row) {
+                        if (!is_object($row)) {
+                            dieDump($rows);
+                        }
+                        $row = $row->toArray();
+                        if (true === $first) {
+                            $tab['id'] = $row['thin_eav_entity_id'];
+                        }
+                        $attribute  = $this->dbAttribute()->find($row['thin_eav_attribute_id'])->getName();
+                        $value      = $this->dbValue()->find($row['thin_eav_value_id'])->getName();
+                        $tab[$attribute] = json_decode($value, true);
+                        $first = false;
+                    }
+                    $this->cached($keyCache, $tab);
+                    return $tab;
                 }
-                $row = $row->toArray();
-                if (true === $first) {
-                    $tab['id'] = $row['thin_eav_entity_id'];
-                }
-                $attribute  = $this->dbAttribute()->find($row['thin_eav_attribute_id'])->getName();
-                $value      = $this->dbValue()->find($row['thin_eav_value_id'])->getName();
-                $tab[$attribute] = json_decode($value, true);
-                $first = false;
+                return $cached;
             }
-            return $tab;
         }
 
         public function save($record)
@@ -213,8 +220,15 @@
 
         private function exists($name)
         {
-            $res = $this->dbEntity()->findOneByName($name);
-            return empty($res) ? false : $res->getId();
+            $keyCache = sha1('existsDB_' . serialize($name) . $this->entity);
+            $cached = $this->cached($keyCache);
+            if (empty($cached)) {
+                $res = $this->dbEntity()->findOneByName($name);
+                $val = empty($res) ? false : $res->getId();
+                $this->cached($keyCache, $val);
+                return $val;
+            }
+            return $cached;
         }
 
         private function add($record)
@@ -312,28 +326,42 @@
 
         private function attribute($a)
         {
-            $res = $this->dbAttribute()->findOneByName($a);
-            if (!empty($res)) {
-                return $res->getId();
+            $keyCache = sha1('attributeDB_' . serialize($a) . $this->entity);
+            $cached = $this->cached($keyCache);
+            if (empty($cached)) {
+                $res = $this->dbAttribute()->findOneByName($a);
+                if (!empty($res)) {
+                    return $res->getId();
+                }
+                $attribute = array(
+                    'name' => $a
+                );
+                $this->dbAttribute()->create($attribute);
+                $val = $this->dbAttribute()->lastInsertId();
+                $this->cached($keyCache, $val);
+                return $val;
             }
-            $attribute = array(
-                'name' => $a
-            );
-            $this->dbAttribute()->create($attribute);
-            return $this->dbAttribute()->lastInsertId();
+            return $cached;
         }
 
         private function value($v)
         {
-            $res = $this->dbValue()->findOneByName(json_encode($v));
-            if (!empty($res)) {
-                return $res->getId();
+            $keyCache = sha1('valueDB_' . serialize($v) . $this->entity);
+            $cached = $this->cached($keyCache);
+            if (empty($cached)) {
+                $res = $this->dbValue()->findOneByName(json_encode($v));
+                if (!empty($res)) {
+                    return $res->getId();
+                }
+                $value = array(
+                    'name' => json_encode($v)
+                );
+                $this->dbValue()->create($value);
+                return $this->dbValue()->lastInsertId();
+                $this->cached($keyCache, $val);
+                return $val;
             }
-            $value = array(
-                'name' => json_encode($v)
-            );
-            $this->dbValue()->create($value);
-            return $this->dbValue->lastInsertId();
+            return $cached;
         }
 
         public function fetch()
@@ -352,7 +380,7 @@
         public function groupBy($field, $results = array())
         {
             $res = count($results) ? $results : $this->results;
-            $keyCache = sha1('thin_eav_groupby' . $field . serialize($res) . $this->entity);
+            $keyCache = sha1('thin_eavDB_groupby_' . $field . serialize($res) . $this->entity);
 
             $groupBys = $this->cached($keyCache);
             if (empty($groupBys)) {
@@ -387,7 +415,7 @@
 
             if (count($res)) {
                 foreach ($res as $id => $tab) {
-                    $val = isAke($tab, $field, null);
+                    $val = isAke($tab, $field, 0);
                     $sum += $val;
                 }
             }
@@ -407,7 +435,7 @@
             if (count($res)) {
                 $first = true;
                 foreach ($res as $id => $tab) {
-                    $val = isAke($tab, $field, null);
+                    $val = isAke($tab, $field, 0);
                     if (true === $first) {
                         $min = $val;
                     } else {
@@ -427,7 +455,7 @@
             if (count($res)) {
                 $first = true;
                 foreach ($res as $id => $tab) {
-                    $val = isAke($tab, $field, null);
+                    $val = isAke($tab, $field, 0);
                     if (true === $first) {
                         $max = $val;
                     } else {
@@ -448,7 +476,7 @@
             }
 
             $keyCache = sha1(
-                'thin_eav_order' .
+                'thin_eavDB_order_' .
                 serialize($fieldOrder) .
                 serialize($orderDirection) .
                 serialize($res) .
@@ -457,11 +485,16 @@
             $cached = $this->cached($keyCache);
 
             if (empty($cached)) {
-                $fields = array_keys(Arrays::first($res));
+                $settings   = isAke(self::$configs, $this->entity);
+                $_fields    = isAke($settings, 'fields');
+                $fields     = empty($_fields) ? array_keys(Arrays::first($res)) : $_fields;
 
                 $sort = array();
                 foreach($res as $i => $tab) {
                     foreach ($fields as $k) {
+                        if (!Arrays::exists($k, $sort)) {
+                            $sort[$k] = array();
+                        }
                         $value = isAke($tab, $k, null);
                         $sort[$k][] = $value;
                     }
@@ -469,7 +502,7 @@
 
                 $asort = array();
                 foreach ($sort as $key => $rows) {
-                    for ($i = 0 ; $i < count($rows) ; $i++) {
+                    for ($i = 0; $i < count($rows); $i++) {
                         if (empty($$key) || is_string($$key)) {
                             $$key = array();
                         }
@@ -593,7 +626,7 @@
             $collection = array();
             $datas = !count($results) ? $this->all() : $results;
 
-            $keyCache = sha1('thin_eav_search' . $condition . serialize($datas) . $this->entity);
+            $keyCache = sha1('thin_eavDB_search_' . $condition . serialize($datas) . $this->entity);
 
             $cached = $this->cached($keyCache);
             if (empty($cached)) {
@@ -604,19 +637,21 @@
                     list($field, $op, $value) = explode(' ', $condition, 3);
 
                     foreach ($datas as $id => $tab) {
-                        if ($field == 'id') {
-                            $val = $id;
-                        } else {
-                            $val = isAke($tab, $field, null);
-                        }
-                        if (strlen($val)) {
-                            $val = repl('|', ' ', $val);
-                            $check = $this->compare($val, $op, $value);
-                        } else {
-                            $check = ('null' == $value) ? true : false;
-                        }
-                        if (true === $check) {
-                            array_push($collection, $tab);
+                        if (!empty($tab)) {
+                            if ($field == 'id') {
+                                $val = $id;
+                            } else {
+                                $val = isAke($tab, $field, null);
+                            }
+                            if (strlen($val)) {
+                                $val = repl('|', ' ', $val);
+                                $check = $this->compare($val, $op, $value);
+                            } else {
+                                $check = ('null' == $value) ? true : false;
+                            }
+                            if (true === $check) {
+                                array_push($collection, $tab);
+                            }
                         }
                     }
                     $this->cached($keyCache, $collection);
@@ -631,78 +666,86 @@
             return $collection;
         }
 
+
         private function compare($comp, $op, $value)
         {
-            if (isset($comp)) {
-                $comp   = Inflector::lower($comp);
-                $value  = Inflector::lower($value);
-                switch ($op) {
-                    case '=':
-                        return sha1($comp) == sha1($value);
-                        break;
-                    case '>=':
-                        return $comp >= $value;
-                        break;
-                    case '>':
-                        return $comp > $value;
-                        break;
-                    case '<':
-                        return $comp < $value;
-                        break;
-                    case '<=':
-                        return $comp <= $value;
-                        break;
-                    case '<>':
-                    case '!=':
-                        return sha1($comp) != sha1($value);
-                        break;
-                    case 'LIKE':
-                        $value = repl("'", '', $value);
-                        $value = repl('%', '', $value);
-                        if (strstr($comp, $value)) {
-                            return true;
-                        }
-                        break;
-                    case 'NOTLIKE':
-                        $value = repl("'", '', $value);
-                        $value = repl('%', '', $value);
-                        if (!strstr($comp, $value)) {
-                            return true;
-                        }
-                        break;
-                    case 'LIKE START':
-                        $value = repl("'", '', $value);
-                        $value = repl('%', '', $value);
-                        return (substr($comp, 0, strlen($value)) === $value);
-                        break;
-                    case 'LIKE END':
-                        $value = repl("'", '', $value);
-                        $value = repl('%', '', $value);
-                        if (!strlen($comp)) {
-                            return true;
-                        }
-                        return (substr($comp, -strlen($value)) === $value);
-                        break;
-                    case 'IN':
-                        $value = repl('(', '', $value);
-                        $value = repl(')', '', $value);
-                        $tabValues = explode(',', $value);
-                        return Arrays::in($comp, $tabValues);
-                        break;
-                    case 'NOTIN':
-                        $value = repl('(', '', $value);
-                        $value = repl(')', '', $value);
-                        $tabValues = explode(',', $value);
-                        return !Arrays::in($comp, $tabValues);
-                        break;
+            $keyCache = sha1('compare_' . serialize(func_get_args()));
+            $cached = $this->cached($keyCache);
+            if (empty($cached)) {
+                $res = false;
+                if (isset($comp)) {
+                    $comp   = Inflector::lower($comp);
+                    $value  = Inflector::lower($value);
+                    switch ($op) {
+                        case '=':
+                            $res = sha1($comp) == sha1($value);
+                            break;
+                        case '>=':
+                            $res = $comp >= $value;
+                            break;
+                        case '>':
+                            $res = $comp > $value;
+                            break;
+                        case '<':
+                            $res = $comp < $value;
+                            break;
+                        case '<=':
+                            $res = $comp <= $value;
+                            break;
+                        case '<>':
+                        case '!=':
+                            $res = sha1($comp) != sha1($value);
+                            break;
+                        case 'LIKE':
+                            $value = repl("'", '', $value);
+                            $value = repl('%', '', $value);
+                            if (strstr($comp, $value)) {
+                                $res = true;
+                            }
+                            break;
+                        case 'NOTLIKE':
+                            $value = repl("'", '', $value);
+                            $value = repl('%', '', $value);
+                            if (!strstr($comp, $value)) {
+                                $res = true;
+                            }
+                            break;
+                        case 'LIKE START':
+                            $value = repl("'", '', $value);
+                            $value = repl('%', '', $value);
+                            $res = (substr($comp, 0, strlen($value)) === $value);
+                            break;
+                        case 'LIKE END':
+                            $value = repl("'", '', $value);
+                            $value = repl('%', '', $value);
+                            if (!strlen($comp)) {
+                                $res = true;
+                            }
+                            $res = (substr($comp, -strlen($value)) === $value);
+                            break;
+                        case 'IN':
+                            $value = repl('(', '', $value);
+                            $value = repl(')', '', $value);
+                            $tabValues = explode(',', $value);
+                            $res = Arrays::in($comp, $tabValues);
+                            break;
+                        case 'NOTIN':
+                            $value = repl('(', '', $value);
+                            $value = repl(')', '', $value);
+                            $tabValues = explode(',', $value);
+                            $res = !Arrays::in($comp, $tabValues);
+                            break;
+                    }
                 }
+                $this->cached($keyCache, $res);
+                return $res;
             }
-            return false;
+            return $cached;
         }
 
         public function getLastId()
         {
-            return $$this->lastInsertId;
+            return $this->lastInsertId;
         }
 
         public function setCache($bool = true)
@@ -716,7 +759,12 @@
             if (false === $this->cache) {
                 return null;
             }
-            $file = STORAGE_PATH . DS . 'cache' . DS . $key;
+            $settings = isAke(self::$configs, $this->entity);
+            $event = isAke($settings, 'cache');
+            if (!empty($event)) {
+                return $this->$event($key, $value);
+            }
+            $file = STORAGE_PATH . DS . 'cache' . DS . $key . '.eav';
             if (empty($value)) {
                 if (File::exists($file)) {
                     $age = filemtime($file);
@@ -737,6 +785,22 @@
             }
         }
 
+        private function redis($key, $value = null)
+        {
+            $db = container()->redis();
+            if (empty($value)) {
+                $val = $db->get($key);
+                if (strlen($val)) {
+                    return json_decode($val, true);
+                }
+                return null;
+            } else {
+                $db->set($key, json_encode($value));
+                $db->expire($key, $this->ttl);
+                return true;
+            }
+        }
+
         public function setTtl($ttl = 3600)
         {
             $this->ttl = $ttl;
@@ -748,7 +812,7 @@
             if (!strlen($entity)) {
                 throw new Exception("An entity must be provided to use this method.");
             }
-            if (!Arrays::is(static::$configs[$entity])) {
+            if (!Arrays::exists($entity, static::$configs)) {
                 self::$configs[$entity] = array();
             }
             if (empty($value)) {
@@ -859,7 +923,7 @@
                 `thin_eav_attribute_id` int(11) unsigned not null,
                 `thin_eav_value_id` int(11) unsigned not null,
                 PRIMARY KEY (`thin_eav_" . $this->entity . "_id`),
-                unique key `entity_attribute_value` (`thin_eav_entity_id`,`thin_eav_attribute_id`, `thin_eav_value_id`)
+                UNIQUE KEY `entity_attribute_value` (`thin_eav_entity_id`,`thin_eav_attribute_id`, `thin_eav_value_id`)
                 );";
                 $res = $this->db->prepare($q);
                 $res->execute();

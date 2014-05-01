@@ -1109,7 +1109,9 @@
                     }
                 }
             }
-            $this->_datas['fields'] = array_unique($this->_datas['fields']);
+            if(ake('fields', $this->_datas)) {
+                $this->_datas['fields'] = array_unique($this->_datas['fields']);
+            }
             if(ake('keys', $this->_datas)) {
                 $this->_datas['keys'] = array_unique($this->_datas['keys']);
             }

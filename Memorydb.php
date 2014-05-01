@@ -1,27 +1,148 @@
 <?php
     namespace Thin;
+    use Redis;
 
-    class Jsondb
+    class Memorydb
     {
-        private $results;
-        private $wheres = array();
-        private $lock;
+        private $entity;
         private $db;
-        private $type;
-        private $cache = true;
-        private $ttl = 3600;
-        private $lastIbsertId;
+        private $lastInsertId;
+        private $lock;
+        private $results;
+        private $wheres         = array();
+        private $cache          = false;
+        private $debug          = false;
+        private $ttl            = 3600;
         private static $configs = array();
+        private static $queries = 0;
 
-        public function __construct($type)
+        public function __construct($entity)
         {
-            $this->type = $type;
+            $this->entity   = $entity;
+            $this->db       = 'db_' . $entity;
+            $this->lock     = Inflector::camelize('redis_db');
+        }
 
-            $this->db   = STORAGE_PATH . DS . Inflector::camelize('json_db_' . $type) . '.store';
-            $this->lock = STORAGE_PATH . DS . Inflector::camelize('json_db_' . $type) . '.lock';
-            if (!File::exists($this->db)) {
-                touch($this->db);
+        public function count()
+        {
+            return count($this->all(true));
+        }
+
+        public function post()
+        {
+            return $this->save($_POST);
+        }
+
+        public function save($data)
+        {
+            if (is_object($data)) {
+                $data = $data->assoc();
             }
+
+            $id = isAke($data, 'id', null);
+            if (strlen($id)) {
+                return $this->edit($id, $data);
+            } else {
+                return $this->add($data);
+            }
+        }
+
+        private function add($data)
+        {
+            $this->lock('add');
+            $key = sha1(serialize($data) . $this->entity);
+            $exists = container()->redis()->get($key);
+            if (!strlen($exists)) {
+                $this->lastInsertId = $id = container()->redis()->incr($this->entity . '_count');
+                $data['id'] = $id;
+                $add = container()->redis()->set($this->db . '::' . $id, json_encode($data));
+                $this->all(true);
+                container()->redis()->set($key, $id);
+                $this->unlock('add');
+                return $this->find($id);
+            }
+            $this->unlock('add');
+            $this->lastInsertId = $exists;
+            return $this->find($exists);
+        }
+
+        private function edit($id, $data)
+        {
+            $this->delete($id);
+            $this->lock('edit');
+            $clone = $data;
+            unset($clone['id']);
+            $key = sha1(serialize($clone) . $this->entity);
+            $edit = container()->redis()->set($this->db . '::' . $id, json_encode($data));
+            $this->all(true);
+            container()->redis()->set($key, $id);
+            $this->unlock('edit');
+            return $this->find($id);
+        }
+
+        public function delete($id)
+        {
+            $this->lock('delete');
+            container()->redis()->delete($this->db . '::' . $id);
+            $this->unlock('delete');
+            return $this;
+        }
+
+        public function find($id, $object = true)
+        {
+            return $this->findBy('id', $id, true, $object);
+        }
+
+        public function findBy($field, $value, $one = false, $object = false)
+        {
+            $res = $this->search("$field = $value");
+            if (count($res) && true === $one) {
+                return $object ? $this->toObject(Arrays::first($res)) : Arrays::first($res);
+            }
+            if (!count($res) && true === $one && true === $object) {
+                return null;
+            }
+            return $this->exec($object);
+        }
+
+        public function exec($object = false)
+        {
+            $collection = array();
+            if (count($this->results)) {
+                foreach ($this->results as $row) {
+                    $item = $object ? $this->toObject($row) : $row;
+                    array_push($collection, $item);
+                }
+            }
+            if (!count($collection) && true === $object) {
+                return null;
+            }
+            return $collection;
+        }
+
+        public function all($force = false)
+        {
+            $cached = false === $force
+            ? $this->cached('RDB_allDb_' . $this->entity)
+            : array();
+            if (empty($cached)) {
+                $rows = container()->redis()->keys($this->db . '::*');
+                $collection = array();
+                foreach ($rows as $k => $row) {
+                    $tab = json_decode(container()->redis()->get($row), true);
+                    array_push($collection, $tab);
+                }
+                $this->cached('RDB_allDb_' . $this->entity, $collection);
+                return $collection;
+            } else {
+                return $cached;
+            }
+        }
+
+        public function fetch()
+        {
+            $this->results = $this->all();
+            return $this;
         }
 
         public function reset()
@@ -31,250 +152,10 @@
             return $this;
         }
 
-        public function set($value)
-        {
-            return $this->save($value);
-        }
-
-        private function lock()
-        {
-            $this->waitUnlock();
-            File::put($this->lock, time());
-            return $this;
-        }
-
-        private function unlock()
-        {
-            File::delete($this->lock);
-            return $this;
-        }
-
-        private function waitUnlock()
-        {
-            $wait = File::exists($this->lock);
-            while (true == $wait) {
-                usleep(100);
-                $wait = File::exists($this->lock);
-            }
-            return $this;
-        }
-
-        public function save($data, $id = null)
-        {
-            $this->lock();
-            File::delete($this->db);
-            $json = json_encode($data);
-            File::put($this->db, $json);
-            $this->cached('all_db_JDB_' . $this->type, $this->id($data, $id));
-            return $this->unlock();
-        }
-
-        public function all()
-        {
-            $data = $this->cached('all_db_JDB_' . $this->type);
-            if (empty($data)) {
-                $data = fgc($this->db);
-                $data = strlen($data) ? $this->id(json_decode($data, true)) : array();
-            }
-            return $data;
-        }
-
-        private function id($tab, $idSave = null)
-        {
-            $collection = array();
-            foreach ($tab as $id => $row) {
-                $row['id'] = $id;
-                $collection[] = $row;
-            }
-            $this->lastIbsertId = !strlen($idSave) ? $id : $idSave;
-            return $collection;
-        }
-
-        public function getLastId()
-        {
-            return $this->lastIbsertId;
-        }
-
-        public function get()
-        {
-            return $this->all();
-        }
-
-        public function results($object = true)
-        {
-            if (false === $object) {
-                return $this->results;
-            }
-            $collection = array();
-            foreach ($this->results as $res) {
-                $tmp = $this->row($res);
-                array_push($collection, $tmp);
-            }
-            $this->reset();
-            return $collection;
-        }
-
-        public function exec($object = false)
-        {
-            if (false === $object) {
-                return $this->results;
-            }
-            $collection = array();
-            foreach ($this->results as $res) {
-                $tmp = $this->row($res);
-                array_push($collection, $tmp);
-            }
-            $this->reset();
-            return $collection;
-        }
-
-        public function fetch()
-        {
-            $this->results = $this->all();
-            return $this;
-        }
-
-        public function push($value)
-        {
-            $list = $this->get();
-            $id = isAke($value, 'id', null);
-            if (strlen($id)) {
-                unset($value['id']);
-                return $this->edit($id, $value, $list);
-            }
-            array_push($list, $value);
-            return $this->save($list);
-        }
-
-        public function edit($index, $value, $list)
-        {
-            $collection = array();
-            foreach ($list as $k => $v) {
-                if ($k == $index) {
-                    $collection[$k] = $value;
-                } else {
-                    $collection[$k] = $v;
-                }
-            }
-            return $this->save($collection, $index);
-        }
-
-        public function pop($index)
-        {
-            $list = $this->all();
-            $collection = array();
-            foreach ($list as $k => $v) {
-                if ($k != $index) {
-                    $collection[$k] = $v;
-                }
-            }
-            return $this->save($collection);
-        }
-
-        public function first($results = array())
-        {
-            $res = count($results) ? $results : $this->results;
-            $row = null;
-
-            if (count($res)) {
-                $row = $this->row(Arrays::first($res));
-            }
-
-            $this->reset();
-            return $row;
-        }
-
-        public function last($results = array())
-        {
-            $res = count($results) ? $results : $this->results;
-            $row = null;
-
-            if (count($res)) {
-                $row = $this->row(Arrays::last($res));
-            }
-
-            $this->reset();
-            return $row;
-        }
-
-        public function query($q)
-        {
-            return $this->where($q)->results();
-        }
-
-        public function toObject(array $array)
-        {
-            return $this->row($array);
-        }
-
-        public function row(array $values)
-        {
-            $class = $this;
-            $class->results = null;
-            $class->wheres = null;
-            $obj = new Container;
-
-            $save = function () use ($class, $obj) {
-                return $class->push($obj->assoc());
-            };
-
-            $delete = function () use ($class, $obj) {
-                return $class->pop($obj->getId());
-            };
-
-            $date = function ($f) use ($obj) {
-                return date('Y-m-d H:i:s', $obj->$f);
-            };
-
-            $hydrate = function ($data) use ($obj) {
-                if (Arrays::isAssoc($data)) {
-                    foreach ($data as $k => $v) {
-                        $obj->$k = $v;
-                    }
-                }
-                return $obj;
-            };
-
-            $display = function ($field) use ($obj) {
-                return Html\Helper::display($obj->$field);
-            };
-
-            $tab = function () use ($obj) {
-                return $obj->assoc();
-            };
-
-            $asset = function ($field) use ($obj) {
-                return '/storage/img/' . $obj->$field;
-            };
-
-            $obj->event('save', $save)
-            ->event('delete', $delete)
-            ->event('date', $date)
-            ->event('hydrate', $hydrate)
-            ->event('tab', $tab)
-            ->event('asset', $asset)
-            ->event('display', $display);
-            return $obj->populate($values);
-        }
-
-        public function find($id)
-        {
-            return $this->findBy('id', $id, true);
-        }
-
-        public function findBy($field, $value, $one = false, $object = false)
-        {
-            $res = $this->search("$field = $value");
-            if (count($res) && true === $one) {
-                return $this->row(Arrays::first($res));
-            }
-            return $this->exec($object);
-        }
-
         public function groupBy($field, $results = array())
         {
             $res = count($results) ? $results : $this->results;
-            $keyCache = sha1('groupbyJDB' . $field . serialize($res) . $this->type);
+            $keyCache = sha1('RDB_groupby_' . $field . serialize($res) . $this->entity);
 
             $groupBys = $this->cached($keyCache);
             if (empty($groupBys)) {
@@ -370,16 +251,18 @@
             }
 
             $keyCache = sha1(
-                'orderJDB' .
+                'RDB_order_' .
                 serialize($fieldOrder) .
                 serialize($orderDirection) .
                 serialize($res) .
-                $this->type
+                $this->entity
             );
             $cached = $this->cached($keyCache);
 
             if (empty($cached)) {
-                $fields = array_keys(Arrays::first($res));
+                $settings   = isAke(self::$configs, $this->entity);
+                $_fields    = isAke($settings, 'fields');
+                $fields     = empty($_fields) ? array_keys(Arrays::first($res)) : $_fields;
 
                 $sort = array();
                 foreach($res as $i => $tab) {
@@ -510,14 +393,18 @@
             return $this;
         }
 
-        public function search($condition, $results = array(), $populate = true)
+        private function search($condition = null, $results = array(), $populate = true)
         {
+            self::$queries++;
             $collection = array();
-            $datas = !count($results) ? $this->all() : $results;
+            $datas      = !count($results) ? $this->all() : $results;
+            if (empty($condition)) {
+                return $datas;
+            }
 
-            $keyCache = sha1('searchJDB' . $condition . serialize($datas) . $this->type);
+            $keyCache   = sha1('eavRDB_search_' . $condition . serialize($datas) . $this->entity);
 
-            $cached = $this->cached($keyCache);
+            $cached     = $this->cached($keyCache);
             if (empty($cached)) {
                 if(count($datas)) {
                     $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
@@ -525,13 +412,9 @@
 
                     list($field, $op, $value) = explode(' ', $condition, 3);
 
-                    foreach ($datas as $id => $tab) {
+                    foreach ($datas as $tab) {
                         if (!empty($tab)) {
-                            if ($field == 'id') {
-                                $val = $id;
-                            } else {
-                                $val = isAke($tab, $field, null);
-                            }
+                            $val = isAke($tab, $field, null);
                             if (strlen($val)) {
                                 $val = repl('|', ' ', $val);
                                 $check = $this->compare($val, $op, $value);
@@ -539,7 +422,6 @@
                                 $check = ('null' == $value) ? true : false;
                             }
                             if (true === $check) {
-                                $tab['id'] = $id;
                                 array_push($collection, $tab);
                             }
                         }
@@ -632,39 +514,131 @@
             return $cached;
         }
 
+        public function create($tab = array())
+        {
+            return $this->toObject($tab);
+        }
+
+        public function toObject($tab = array())
+        {
+            $o = new Container;
+            $o->populate($tab);
+            return $this->functions($o);
+        }
+
+        private function functions($obj)
+        {
+            $settings = isAke(self::$configs, $this->entity);
+            $class = $this;
+            $class->results = null;
+            $class->wheres  = null;
+            // $class->configs = null;
+
+            $export = function () use ($class, $obj) {
+                if (isset($obj->id)) {
+                    $class->where("id = " . $obj->id)->export();
+                }
+            };
+
+            $save = function () use ($class, $obj) {
+                return $class->save($obj->assoc());
+            };
+
+            $delete = function () use ($class, $obj) {
+                return $class->delete($obj->getId());
+            };
+
+            $date = function ($f) use ($obj) {
+                return date('Y-m-d H:i:s', $obj->$f);
+            };
+
+            $hydrate = function ($data) use ($obj) {
+                if (Arrays::isAssoc($data)) {
+                    foreach ($data as $k => $v) {
+                        $obj->$k = $v;
+                    }
+                }
+                return $obj;
+            };
+
+            $display = function ($field, $echo = true)  use ($obj) {
+                $val = Html\Helper::display($obj->$field);
+                if (true === $echo) {
+                    echo $val;
+                } else {
+                    return $val;
+                }
+            };
+
+            $tab = function () use ($obj) {
+                return $obj->assoc();
+            };
+
+            $asset = function ($field) use ($obj) {
+                return '/storage/img/' . $obj->$field;
+            };
+
+            $extend = function ($n, \Closure $f) use ($obj) {
+            if (version_compare(PHP_VERSION, '5.4.0', "<")) {
+                    $share = function () use ($obj, $f) {
+                        return $f($obj);
+                    };
+                } else {
+                    $share = $f->bindTo($obj);
+                }
+                $obj->event($n, $share);
+            };
+
+            $obj->event('save', $save)
+            ->event('delete', $delete)
+            ->event('extend', $extend)
+            ->event('date', $date)
+            ->event('hydrate', $hydrate)
+            ->event('tab', $tab)
+            ->event('export', $export)
+            ->event('display', $display);
+
+            $functions = isAke($settings, 'functions');
+
+            if (count($functions)) {
+                foreach ($functions as $closureName => $callable) {
+                    $closureName = lcfirst(Inflector::camelize($closureName));
+                    if (version_compare(PHP_VERSION, '5.4.0', "<")) {
+                        $share = function () use ($obj, $callable) {
+                            return $callable($obj);
+                        };
+                    } else {
+                        $share = $callable->bindTo($obj);
+                    }
+                    $obj->event($closureName, $share);
+                }
+            }
+
+            return $obj;
+        }
+
+        public function getLastId()
+        {
+            return $this->lastInsertId;
+        }
+
+        public function setCache($bool = true)
+        {
+            $this->cache = $bool;
+            return $this;
+        }
+
+        public function setDebug($bool = true)
+        {
+            $this->debug = $bool;
+            return $this;
+        }
+
         private function cached($key, $value = null)
         {
             if (false === $this->cache) {
                 return null;
             }
-            $settings = isAke(self::$configs, $this->type);
-            $event = isAke($settings, 'cache');
-            if (!empty($event)) {
-                return $this->$event($key, $value);
-            } else die('oco db');
-            $file = STORAGE_PATH . DS . 'cache' . DS . $key . '.eav';
-            if (empty($value)) {
-                if (File::exists($file)) {
-                    $age = filemtime($file);
-                    $maxAge = time() - $this->ttl;
-                    if ($maxAge < $age) {
-                        return json_decode(File::get($file), true);
-                    } else {
-                        File::delete($file);
-                        return null;
-                    }
-                }
-            } else {
-                if (File::exists($file)) {
-                    File::delete($file);
-                }
-                File::put($file, json_encode($value));
-                return true;
-            }
-        }
-
-        private function redis($key, $value = null)
-        {
             $db = container()->redis();
             if (empty($value)) {
                 $val = $db->get($key);
@@ -677,6 +651,17 @@
                 $db->expire($key, $this->ttl);
                 return true;
             }
+        }
+
+        public function setTtl($ttl = 3600)
+        {
+            $this->ttl = $ttl;
+            return $this;
+        }
+
+        public function config($key, $value = null)
+        {
+            self::configs($this->entity, $key, $value);
         }
 
         public static function configs($entity, $key, $value = null)
@@ -702,7 +687,7 @@
 
         private function event($id, $args = array())
         {
-            $settings = isAke(self::$configs, $this->type);
+            $settings = isAke(self::$configs, $this->entity);
             $event = isAke($settings, $id);
             if (!empty($event)) {
                 if (is_callable($event)) {
@@ -712,18 +697,6 @@
                     return call_user_func_array($event , $args);
                 }
             }
-        }
-
-        public function setCache($bool = true)
-        {
-            $this->cache = $bool;
-            return $this;
-        }
-
-        public function setTtl($ttl = 3600)
-        {
-            $this->ttl = $ttl;
-            return $this;
         }
 
         public function __call($method, $parameters)
@@ -743,6 +716,125 @@
                 $field = Inflector::lower($uncamelizeMethod);
                 $value = Arrays::first($parameters);
                 return $this->findBy($field, $value, true);
+            } else {
+                $settings   = isAke(self::$configs, $this->entity);
+                $event      = isAke($settings, $method);
+                if (!empty($event)) {
+                    if (is_callable($event)) {
+                        if (version_compare(PHP_VERSION, '5.4.0', ">=")) {
+                            $event = $event->bindTo($this);
+                        }
+                        return call_user_func_array($event , $parameters);
+                    }
+                } else {
+                    throw new Exception("The method '$method' is not callable.");
+                }
             }
+        }
+
+        public function __toString()
+        {
+            return $this->entity;
+        }
+
+        private function lock($action)
+        {
+            if (true === $this->debug) {
+                container()->log("lock " . $action);
+            }
+            $this->waitUnlock($action);
+            container()->redis()->set($this->lock, time());
+            return $this;
+        }
+
+        private function unlock($action)
+        {
+            if (true === $this->debug) {
+                container()->log("unlock " . $action);
+            }
+            container()->redis()->delete($this->lock);
+            return $this;
+        }
+
+        private function waitUnlock($action)
+        {
+            if (true === $this->debug) {
+                container()->log("wait " . $action);
+            }
+            $wait = strlen(container()->redis()->get($this->lock)) ? true : false;
+            $i = 1;
+            while (true == $wait) {
+                if (1000 == $i) {
+                    $this->unlock('forced ' . $action);
+                }
+                usleep(100);
+                $wait = strlen(container()->redis()->get($this->lock)) ? true : false;
+                $i++;
+            }
+            return $this;
+        }
+
+        public function import($csv)
+        {
+            $datas      = explode("\n", $csv);
+            $fields     = explode(';', Arrays::first($datas));
+            $count      = count($datas);
+
+            for ($i = 1; $i < $count; $i++) {
+                $data   = trim($datas[$i]);
+                $row    = array();
+                $j      = 0;
+                $values = explode(';', $data);
+                foreach ($fields as $field) {
+                    $row[$field] = $values[$j];
+                    $j++;
+                }
+                $this->save($row);
+            }
+        }
+
+        public function export($q = null, $type = 'csv')
+        {
+            if (count($this->wheres)) {
+                $datas = $this->results;
+            } else {
+                $datas = $this->search($q);
+            }
+            if (count($datas)) {
+                $settings   = isAke(self::$configs, $this->entity);
+                $_fields    = isAke($settings, 'fields');
+                $fields     = empty($_fields) ? array_keys(Arrays::first($datas)) : $_fields;
+                $rows = array();
+                $rows[] = implode(';', $fields);
+                foreach ($datas as $row) {
+                    $tmp = array();
+                    foreach ($fields as $field) {
+                        $value = isAke($row, $field, null);
+                        $tmp[] = $value;
+                    }
+                    $rows[] = implode(';', $tmp);
+                }
+                $this->$type($rows);
+            } else {
+                if (count($this->wheres)) {
+                    $this->reset();
+                    die('This query has no result.');
+                } else {
+                    die('This database is empty.');
+                }
+            }
+        }
+
+        private function csv($data)
+        {
+            $csv = implode("\n", $data);
+            header("Pragma: public");
+            header("Expires: 0");
+            header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+            header("Cache-Control: private", false);
+            header("Content-Type: application/octet-stream");
+            header("Content-Disposition: attachment; filename=\"Export.csv\";" );
+            header("Content-Transfer-Encoding: binary");
+            die($csv);
         }
     }
