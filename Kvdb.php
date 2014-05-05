@@ -140,11 +140,14 @@
 
         private function connect()
         {
-            $dsn = $this->config->getAdapter()
-            . ":dbname="
-            . $this->config->getDatabase()
-            . ";host="
-            . $this->config->getHost();
+            $dsn = $this->config->getDsn();
+            if (empty($dsn)) {
+                $dsn = $this->config->getAdapter()
+                . ":dbname="
+                . $this->config->getDatabase()
+                . ";host="
+                . $this->config->getHost();
+            }
             $this->db = new PDO(
                 $dsn,
                 $this->config->getUsername(),
