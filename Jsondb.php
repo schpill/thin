@@ -202,6 +202,11 @@
             return $this->where($q)->results();
         }
 
+        public function create($tab = array())
+        {
+            return $this->toObject($tab);
+        }
+
         public function toObject(array $array)
         {
             return $this->row($array);
@@ -481,7 +486,7 @@
 
         public function where($condition, $op = 'AND', $results = array())
         {
-            $res = $this->search($condition, $results);
+            $res = $this->search($condition, $results, false);
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
@@ -632,6 +637,11 @@
             return $cached;
         }
 
+        public function count()
+        {
+            return count($this->all());
+        }
+
         private function cached($key, $value = null)
         {
             if (false === $this->cache) {
@@ -641,7 +651,7 @@
             $event = isAke($settings, 'cache');
             if (!empty($event)) {
                 return $this->$event($key, $value);
-            } else die('oco db');
+            }
             $file = STORAGE_PATH . DS . 'cache' . DS . $key . '.eav';
             if (empty($value)) {
                 if (File::exists($file)) {

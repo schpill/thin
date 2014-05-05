@@ -298,6 +298,14 @@
                 || substr($func, 0, 3) !== 'add'
                 || substr($func, 0, 6) !== 'remove'
             ) {
+                $callabke = strrev(repl('_', '', $func));
+                if (!is_callable($callabke)) {
+                    if(method_exists($this, $callabke)) {
+                        return call_user_func_array(array($this, $callabke), $argv);
+                    }
+                } else {
+                    return call_user_func_array($callabke, $argv);
+                }
                 if(isset($this->thin_litedb)) {
                     $closure = isAke($this->thin_litedb->closures, $func);
                     if (!empty($closure) && $closure instanceof \Closure) {

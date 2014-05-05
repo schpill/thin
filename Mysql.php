@@ -90,5 +90,4 @@
         {
             return mysql_query('ROLLBACK', $this->_db);
         }
-
     }

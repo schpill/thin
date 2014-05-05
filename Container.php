@@ -162,11 +162,36 @@
             return $this;
         }
 
+        public function daol($c, $f, $args = array())
+        {
+            $c = strstr($c, '-') ? strrev(repl('-', '', $c)) : $c;
+            $exist = isAke($this->values, sha1($f . $this->_token), null);
+            if (empty($exist)) {
+                $exist = isAke($this->_closures, $f, null);
+                if (empty($exist)) {
+                    $exist = registry('events.' . $f);
+                    if (!empty($exist)) {
+                        event($c, $exist);
+                    } else {
+                        $callable = function () use ($f) {
+                            return call_user_func_array($f, func_get_args());
+                        };
+                        event($c, $callable);
+                    }
+                } else {
+                    event($c, $exist);
+                }
+            } else {
+                event($c, $exist);
+            }
+            return $this;
+        }
+
         public function run($id, $args = array())
         {
             $id = sha1($id . $this->_token);
             if (Arrays::exists($id, $this->values)) {
-                return call_user_func_array($this->values[$id] , $args);
+                return call_user_func_array($this->values[$id], $args);
             }
             return null;
         }

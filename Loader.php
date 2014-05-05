@@ -8,7 +8,7 @@
         });
 
         set_error_handler(function($type, $message, $file, $line) {
-            $exception = new \ErrorException($message, $type, 0, $file, $line);
+            $exception = new ErrorException($message, $type, 0, $file, $line);
             showException($exception);
         });
 
@@ -25,59 +25,60 @@
     require_once 'Swift/swift_required.php';
 
     define('MB_STRING', (int) function_exists('mb_get_info'));
-    \Thin\Autoloader::registerNamespace('ThinEntity',    APPLICATION_PATH . DS . 'entities');
-    \Thin\Autoloader::registerNamespace('ThinHelper',    APPLICATION_PATH . DS . 'helpers');
-    \Thin\Autoloader::registerNamespace('ThinModel',     APPLICATION_PATH . DS . 'models');
-    \Thin\Autoloader::registerNamespace('ThinService',   APPLICATION_PATH . DS . 'services');
-    \Thin\Autoloader::registerNamespace('ThinPlugin',    APPLICATION_PATH . DS . 'plugins');
-    \Thin\Autoloader::registerNamespace('ThinForm',      APPLICATION_PATH . DS . 'forms');
+    Thin\Autoloader::registerNamespace('ThinEntity',    APPLICATION_PATH . DS . 'entities');
+    Thin\Autoloader::registerNamespace('ThinHelper',    APPLICATION_PATH . DS . 'helpers');
+    Thin\Autoloader::registerNamespace('ThinModel',     APPLICATION_PATH . DS . 'models');
+    Thin\Autoloader::registerNamespace('ThinService',   APPLICATION_PATH . DS . 'services');
+    Thin\Autoloader::registerNamespace('ThinPlugin',    APPLICATION_PATH . DS . 'plugins');
+    Thin\Autoloader::registerNamespace('ThinForm',      APPLICATION_PATH . DS . 'forms');
 
     spl_autoload_register('Thin\\Autoloader::autoload');
 
     container();
 
     define('THINSTART', time());
-
-    $protocol = 'http';
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
-        $protocol = 'https';
-    }
-
-    container()->setProtocol($protocol);
-
-    $urlSite = "$protocol://" . $_SERVER["SERVER_NAME"] . "/";
-
-    if (strstr($urlSite, '//')) {
-        $urlSite = repl('//', '/', $urlSite);
-        $urlSite = repl($protocol . ':/', $protocol . '://', $urlSite);
-    }
-
-    if (\Thin\Inflector::upper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        $tab = explode('\\', $urlSite);
-        $r = '';
-        foreach ($tab as $c => $v) {
-            $r .= $v;
+    if (Thin\Arrays::exists('SERVER_NAME', $_SERVER)) {
+        $protocol = 'http';
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
+            $protocol = 'https';
         }
-        $r = repl('//', '/', $r);
-        $r = repl($protocol . ':/', $protocol . '://', $r);
-        $urlSite = $r;
-    }
-    container()->setNonRoot(false);
 
+        container()->setProtocol($protocol);
 
-    if (null !== request()->getFromHtaccess()) {
-        if ('true' == request()->getFromHtaccess() && !getenv('FROM_ROOT')) {
-            $dir                        = $_SERVER['SCRIPT_NAME'];
-            $htaccessDir                = repl(DS . 'web' . DS . 'index.php', '', $dir);
-            $uri                        = $_SERVER['REQUEST_URI'];
-            $uri                        = repl($htaccessDir . DS, '', $uri);
-            $_SERVER['REQUEST_URI']     = DS . $uri;
-            $urlSite                    .= repl(DS, '', $htaccessDir) . DS;
-            container()->setNonRoot(true);
+        $urlSite = "$protocol://" . $_SERVER["SERVER_NAME"] . "/";
+
+        if (strstr($urlSite, '//')) {
+            $urlSite = repl('//', '/', $urlSite);
+            $urlSite = repl($protocol . ':/', $protocol . '://', $urlSite);
         }
-    }
 
-    \Thin\Utils::set("urlsite", $urlSite);
-    define('URLSITE', $urlSite);
-    container()->setUrlsite(URLSITE);
+        if (Thin\Inflector::upper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $tab = explode('\\', $urlSite);
+            $r = '';
+            foreach ($tab as $c => $v) {
+                $r .= $v;
+            }
+            $r = repl('//', '/', $r);
+            $r = repl($protocol . ':/', $protocol . '://', $r);
+            $urlSite = $r;
+        }
+        container()->setNonRoot(false);
+
+
+        if (null !== request()->getFromHtaccess()) {
+            if ('true' == request()->getFromHtaccess() && !getenv('FROM_ROOT')) {
+                $dir                        = $_SERVER['SCRIPT_NAME'];
+                $htaccessDir                = repl(DS . 'web' . DS . 'index.php', '', $dir);
+                $uri                        = $_SERVER['REQUEST_URI'];
+                $uri                        = repl($htaccessDir . DS, '', $uri);
+                $_SERVER['REQUEST_URI']     = DS . $uri;
+                $urlSite                    .= repl(DS, '', $htaccessDir) . DS;
+                container()->setNonRoot(true);
+            }
+        }
+
+        Thin\Utils::set("urlsite", $urlSite);
+        define('URLSITE', $urlSite);
+        container()->setUrlsite(URLSITE);
+    }
 

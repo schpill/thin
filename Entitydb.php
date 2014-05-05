@@ -1,7 +1,7 @@
 <?php
     namespace Thin;
 
-    class Memorydb
+    class Entitydb
     {
         private $entity;
         private $db;
@@ -21,20 +21,20 @@
         {
             $this->entity   = $entity;
             $this->db       = 'db_' . $entity;
-            $this->lock     = Inflector::camelize('redis_db');
+            $this->lock     = Inflector::camelize('entity_db');
         }
 
         public function begin()
         {
             $key = 'begin::db_' . $this->entity;
-            container()->redis()->set($key, json_encode($this->all(true)));
+            container()->kvs()->set($key, json_encode($this->all(true)));
             $this->begin = $key;
             return $this;
         }
 
         public function rollback()
         {
-            $data = container()->redis()->get($this->begin);
+            $data = container()->kvs()->get($this->begin);
             if (strlen($data)) {
                 $begin = json_decode($data, true);
                 foreach ($begin as $row) {
@@ -42,7 +42,7 @@
                 }
             }
             $this->reset();
-            container()->redis()->del($this->begin);
+            container()->kvs()->del($this->begin);
             return $this;
         }
 
@@ -101,16 +101,16 @@
             $this->lock('add');
             $data = $this->checkValues($data);
             $key = sha1(serialize($data) . $this->entity);
-            $exists = container()->redis()->get($key);
+            $exists = container()->kvs()->get($key);
             if (!strlen($exists)) {
                 if (!Arrays::is($data)) {
                     return $data;
                 }
-                $this->lastInsertId = $id = container()->redis()->incr($this->entity . '_count');
+                $this->lastInsertId = $id = container()->kvs()->incr($this->entity . '_count');
                 $data['id'] = $id;
-                $add = container()->redis()->set($this->db . '::' . $id, json_encode($data));
+                $add = container()->kvs()->set($this->db . '::' . $id, json_encode($data));
                 $this->all(true);
-                container()->redis()->set($key, $id);
+                container()->kvs()->set($key, $id);
                 $this->unlock('add');
                 return $this->find($id);
             }
@@ -126,15 +126,15 @@
             $clone = $data;
             unset($clone['id']);
             $key = sha1(serialize($clone) . $this->entity);
-            $exists = container()->redis()->get($key);
+            $exists = container()->kvs()->get($key);
             if (!strlen($exists)) {
                 $data = $this->checkValues($data);
                 if (!Arrays::is($data)) {
                     return $data;
                 }
-                $edit = container()->redis()->set($this->db . '::' . $id, json_encode($data));
+                $edit = container()->kvs()->set($this->db . '::' . $id, json_encode($data));
                 $this->all(true);
-                container()->redis()->set($key, $id);
+                container()->kvs()->set($key, $id);
                 $this->unlock('edit');
                 return $this->find($id);
             }
@@ -147,8 +147,8 @@
             unset($row['id']);
             $key = sha1(serialize($row) . $this->entity);
             $this->lock('delete');
-            container()->redis()->del($this->db . '::' . $id);
-            container()->redis()->del($key);
+            container()->kvs()->del($this->db . '::' . $id);
+            container()->kvs()->del($key);
             $this->unlock('delete');
             return $this;
         }
@@ -303,10 +303,10 @@
             ? $this->cached('RDB_allDb_' . $this->entity)
             : array();
             if (empty($cached)) {
-                $rows = container()->redis()->keys($this->db . '::*');
+                $rows = container()->kvs()->keys($this->db . '::*');
                 $collection = array();
-                foreach ($rows as $k => $row) {
-                    $tab = json_decode(container()->redis()->get($row), true);
+                foreach ($rows as $row) {
+                    $tab = json_decode($row, true);
                     array_push($collection, $tab);
                 }
                 $this->cached('RDB_allDb_' . $this->entity, $collection);
@@ -819,7 +819,7 @@
             if (false === $this->cache) {
                 return null;
             }
-            $db = container()->redis();
+            $db = container()->kvs();
             if (empty($value)) {
                 $val = $db->get($key);
                 if (strlen($val)) {
@@ -827,8 +827,7 @@
                 }
                 return null;
             } else {
-                $db->set($key, json_encode($value));
-                $db->expire($key, $this->ttl);
+                $db->set($key, json_encode($value), $this->ttl);
                 return true;
             }
         }
@@ -937,7 +936,7 @@
                 container()->log("lock " . $action);
             }
             $this->waitUnlock($action);
-            container()->redis()->set($this->lock, time());
+            container()->kvs()->set($this->lock, time());
             return $this;
         }
 
@@ -946,7 +945,7 @@
             if (true === $this->debug) {
                 container()->log("unlock " . $action);
             }
-            container()->redis()->del($this->lock);
+            container()->kvs()->del($this->lock);
             return $this;
         }
 
@@ -955,14 +954,14 @@
             if (true === $this->debug) {
                 container()->log("wait " . $action);
             }
-            $wait = strlen(container()->redis()->get($this->lock)) ? true : false;
+            $wait = strlen(container()->kvs()->get($this->lock)) ? true : false;
             $i = 1;
             while (true == $wait) {
                 if (1000 == $i) {
                     $this->unlock('forced ' . $action);
                 }
                 usleep(100);
-                $wait = strlen(container()->redis()->get($this->lock)) ? true : false;
+                $wait = strlen(container()->kvs()->get($this->lock)) ? true : false;
                 $i++;
             }
             return $this;

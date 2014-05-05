@@ -24,7 +24,7 @@
 
         public static function autoload($className)
         {
-            if (strstr($className, 'Predis')) {
+            if (strstr($className, 'Predis')) {var_dump($className);
                 $className2 = str_replace('Predis\\', '', $className);
                 $className2 = str_replace('Predis', '', $className2);
                 $check = LIBRARIES_PATH . DS . 'predis' . DS . 'lib' . DS . 'Predis' . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $className2) . '.php';
