@@ -190,6 +190,45 @@
             return $this;
         }
 
+        private function indexedValues()
+        {
+            $rows = container()->redis()->keys($this->db . '::index::*');
+            $collection = array();
+            foreach ($rows as $k => $row) {
+                $tab = json_decode(container()->redis()->get($row), true);
+                array_push($collection, $tab);
+            }
+            return $collection;
+        }
+
+        private function addIndexedValue($id, $value)
+        {
+            $row = container()->redis()->get($this->db . '::index::' . sha1($value));
+            if (strlen($row)) {
+                $tab = json_decode(container()->redis()->get($row), true);
+            } else {
+                $tab = array();
+            }
+            if (!Arrays::in($id, $tab) {
+                $tab[] = $id;
+            }
+            container()->redis()->set($this->db . '::index::' . sha1($value), json_encode($tab));
+        }
+
+        private function indexedValue($value)
+        {
+            $row = container()->redis()->get($this->db . '::index::' . sha1($value));
+            if (strlen($row)) {
+                return json_decode(container()->redis()->get($row), true);
+            }
+            return array();
+        }
+
+        private function indexes()
+        {
+            return isAke(isAke(self::$configs, $this->entity), 'indexs');
+        }
+
         private function checkValues($data)
         {
             $settings   = isAke(self::$configs, $this->entity);
@@ -920,7 +959,7 @@
                     if (count($parameters) == 1) {
                         return self::configs($this->entity, $method, Arrays::first($parameters));
                     } else {
-                        throw new Exception("The method '$method' is not callable.");
+                        throw new Exception("The method '$method' is not callable in this class.");
                     }
                 }
             }
