@@ -209,7 +209,7 @@
             } else {
                 $tab = array();
             }
-            if (!Arrays::in($id, $tab) {
+            if (!Arrays::in($id, $tab)) {
                 $tab[] = $id;
             }
             container()->redis()->set($this->db . '::index::' . sha1($value), json_encode($tab));
