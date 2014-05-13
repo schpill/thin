@@ -29,7 +29,7 @@
         public function keys($pattern)
         {
             $pattern = repl('*', '%', $pattern);
-            $q = "SELECT UNCOMPRESS(value) AS value FROM kvs_db WHERE kvs_db_id LIKE '$pattern'";
+            $q = "SELECT kvs_db_id FROM kvs_db WHERE kvs_db_id LIKE '$pattern'";
             $res = $this->execute($q);
             if (Arrays::is($res)) {
                 $count = count($res);
@@ -41,7 +41,7 @@
             }
             $collection = array();
             foreach ($res as $row) {
-                array_push($collection, $row['value']);
+                array_push($collection, $row['kvs_db_id']);
             }
             return $collection;
         }

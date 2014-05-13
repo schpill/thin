@@ -1,7 +1,7 @@
 <?php
     namespace Thin;
 
-    class Memorydb extends Customize
+    class Storedb
     {
         private $entity;
         private $db;
@@ -22,7 +22,7 @@
         {
             $this->entity   = $entity;
             $this->db       = 'db_' . $entity;
-            $this->lock     = Inflector::camelize('redis_db');
+            $this->lock     = Inflector::camelize('text_db');
         }
 
         public function begin()
@@ -167,7 +167,7 @@
                             $pattern = "index::$this->entity::" . sha1(Inflector::lower($index));
                             $get = $this->driver()->get($pattern);
                             if (strlen($get)) {
-                                $tab = json_decode($get, true);
+                                $tab = json_decode($het, true);
                             } else {
                                 $tab = array();
                             }
@@ -293,7 +293,7 @@
         private function driver()
         {
             $drivers = isAke(isAke(self::$configs, $this->entity), 'drivers');
-            return count($drivers) ? Arrays::first($drivers) : container()->redis();
+            return count($drivers) ? Arrays::first($drivers) : container()->textdb();
         }
 
         private function indexes()
@@ -782,40 +782,13 @@
             return $this->where($condition, 'XOR', $results);
         }
 
+
+
         public function join($table, $field, $fieldFk = null)
         {
             $this->joins[$table] = array();
             array_push($this->joins[$table], array($field, $fieldFk));
             return $this;
-        }
-
-        private function intersect($tab1, $tab2)
-        {
-            $ids1       = array();
-            $ids2       = array();
-            $collection = array();
-
-            foreach ($tab1 as $row) {
-                $id = isAke($row, 'id', null);
-                if (strlen($id)) {
-                    array_push($ids1, $id);
-                }
-            }
-
-            foreach ($tab2 as $row) {
-                $id = isAke($row, 'id', null);
-                if (strlen($id)) {
-                    array_push($ids2, $id);
-                }
-            }
-
-            $sect = array_intersect($ids1, $ids2);
-            if (count($sect)) {
-                foreach ($sect as $idRow) {
-                    array_push($collection, $this->find($idRow, false));
-                }
-            }
-            return $collection;
         }
 
         public function where($condition, $op = 'AND', $results = array())
@@ -827,22 +800,21 @@
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
-                $values = array_values($this->results);
                 switch ($op) {
                     case 'AND':
-                        $this->results = $this->intersect($values, array_values($res));
+                        $this->results = array_intersect($this->results, array_values($res));
                         break;
                     case 'OR':
-                        $this->results = array_merge($values, array_values($res));
+                        $this->results = array_merge($this->results, array_values($res));
                         break;
                     case 'XOR':
                         $this->results = array_merge(
                             array_diff(
-                                $values,
+                                $this->results,
                                 array_values($res),
                                 array_diff(
                                     array_values($res),
-                                    $values
+                                    $this->results
                                 )
                             )
                         );
@@ -1263,7 +1235,7 @@
             if ('s' == $last) {
                 self::$configs[$entity][$key] = $value;
             } else {
-                if (!Arrays::exists($key . 's', self::$configs[$entity])) {
+                if (!Arrays::is(self::$configs[$entity][$key . 's'])) {
                     self::$configs[$entity][$key . 's'] = array();
                 }
                 array_push(self::$configs[$entity][$key . 's'], $value);
@@ -1330,7 +1302,7 @@
                         };
                         return self::configs($this->entity, $method, Arrays::first($parameters), $cb);
                     } else {
-                        return $this->__fire($method, $parameters);
+                        throw new Exception("The method '$method' is not callable in this class.");
                     }
                 }
             }

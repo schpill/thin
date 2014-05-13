@@ -8,7 +8,7 @@
         private $key;
         private $db;
 
-        public function __construct($ns)
+        public function __construct($ns, $store = 'Thin\\Store')
         {
             $ns = 'thin_' . $ns;
             $c = cookies()->$ns;
@@ -22,7 +22,7 @@
                 throw new Exception("Cookies must be functional to execute this class.");
             }
             $this->model($ns);
-            $this->db = new Store('thin_forever_' . $ns);
+            $this->db = new $store('thin_forever_' . $ns);
             $this->fetch();
         }
 

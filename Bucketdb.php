@@ -1,7 +1,7 @@
 <?php
     namespace Thin;
 
-    class Memorydb extends Customize
+    class Bucketdb
     {
         private $entity;
         private $db;
@@ -22,7 +22,7 @@
         {
             $this->entity   = $entity;
             $this->db       = 'db_' . $entity;
-            $this->lock     = Inflector::camelize('redis_db');
+            $this->lock     = Inflector::camelize('bucket_db');
         }
 
         public function begin()
@@ -293,7 +293,7 @@
         private function driver()
         {
             $drivers = isAke(isAke(self::$configs, $this->entity), 'drivers');
-            return count($drivers) ? Arrays::first($drivers) : container()->redis();
+            return count($drivers) ? Arrays::first($drivers) : container()->bucket();
         }
 
         private function indexes()
@@ -527,10 +527,10 @@
             ? $this->cached('RDB_allDb_' . $this->entity)
             : array();
             if (empty($cached)) {
-                $rows = $this->driver()->keys($this->db . '::*');
+                $rows = $this->driver()->all($this->db . '::*');
                 $collection = array();
                 foreach ($rows as $k => $row) {
-                    $tab = json_decode($this->driver()->get($row), true);
+                    $tab = json_decode($row, true);
                     array_push($collection, $tab);
                 }
                 $this->cached('RDB_allDb_' . $this->entity, $collection);
@@ -833,16 +833,16 @@
                         $this->results = $this->intersect($values, array_values($res));
                         break;
                     case 'OR':
-                        $this->results = array_merge($values, array_values($res));
+                        $this->results = array_merge($this->results, array_values($res));
                         break;
                     case 'XOR':
                         $this->results = array_merge(
                             array_diff(
-                                $values,
+                                $this->results,
                                 array_values($res),
                                 array_diff(
                                     array_values($res),
-                                    $values
+                                    $this->results
                                 )
                             )
                         );
@@ -1263,7 +1263,7 @@
             if ('s' == $last) {
                 self::$configs[$entity][$key] = $value;
             } else {
-                if (!Arrays::exists($key . 's', self::$configs[$entity])) {
+                if (!Arrays::is(self::$configs[$entity][$key . 's'])) {
                     self::$configs[$entity][$key . 's'] = array();
                 }
                 array_push(self::$configs[$entity][$key . 's'], $value);
@@ -1330,7 +1330,7 @@
                         };
                         return self::configs($this->entity, $method, Arrays::first($parameters), $cb);
                     } else {
-                        return $this->__fire($method, $parameters);
+                        throw new Exception("The method '$method' is not callable in this class.");
                     }
                 }
             }
@@ -1584,5 +1584,10 @@
         private function queryParamsCallback($matches)
         {
             return preg_replace('/./Uui', '*', Arrays::first($matches));
+        }
+
+        private function log()
+        {
+            container()->log(func_get_args());
         }
     }

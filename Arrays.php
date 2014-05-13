@@ -723,4 +723,37 @@
         {
             return array_key_exists($key, $search);
         }
+
+        public static function __callStatic($method, $args)
+        {
+            if (is_callable($method)) {
+                if (count($args) == 0) {
+                    return $method();
+                } elseif (count($args) == 1) {
+                    $arg = static::first($args);
+                    return $method($arg);
+                } elseif (count($args) == 2) {
+                    $arg1 = static::first($args);
+                    $arg2 = static::last($args);
+                    return $method($arg1, $arg2);
+                } else {
+                    return call_user_func_array($method, $args);
+                }
+            }
+            $method = 'array_' . $method;
+            if (is_callable($method)) {
+                if (count($args) == 0) {
+                    return $method();
+                } elseif (count($args) == 1) {
+                    $arg = static::first($args);
+                    return $method($arg);
+                } elseif (count($args) == 2) {
+                    $arg1 = static::first($args);
+                    $arg2 = static::last($args);
+                    return $method($arg1, $arg2);
+                } else {
+                    return call_user_func_array($method, $args);
+                }
+            }
+        }
     }

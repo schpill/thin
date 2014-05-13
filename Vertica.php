@@ -12,7 +12,11 @@
 
         public function __construct($debug = false)
         {
-            $this->_lnk = @odbc_connect('Driver=' . VERTICA_DRIVER . ';Servername=' . VERTICA_SERVER . ';Database=' . VERTICA_DATABASE,VERTICA_USER_ETL, VERTICA_PASS_ETL);
+            $this->_lnk = @odbc_connect(
+                'Driver=' . VERTICA_DRIVER . ';Servername=' . VERTICA_SERVER . ';Database=' . VERTICA_DATABASE,
+                VERTICA_USER_ETL,
+                VERTICA_PASS_ETL
+                );
             $this->_debug = (bool) $debug;
         }
 
@@ -147,7 +151,7 @@
             return $this;
         }
 
-        public function getLohs()
+        public function getLogs()
         {
             return $this->_logs;
         }

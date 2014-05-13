@@ -1,0 +1,205 @@
+<?php
+    namespace Thin;
+
+    class Bucket
+    {
+        private $bucket;
+        private $response;
+        private $url = 'http://bucket.gpluscloud.com/';
+
+        public function __construct($bucket)
+        {
+            $this->bucket = $bucket;
+            $this->session = session('datad_bucket_' . $bucket);
+        }
+
+        public function all($pattern)
+        {
+            $data = $this->session->getData();
+            if (!is_null($data)) {
+                return $data;
+            }
+            $this->call('all', array("pattern" => $pattern));
+            $tab = json_decode($this->response, true);
+            $res = isAke($tab, 'message');
+            $collection = array();
+            if (Arrays::is($res)) {
+                if (count($res)) {
+                    foreach ($res as $key => $row) {
+                        $this->_set($key, $row);
+                        array_push($collection, $row);
+                    }
+                }
+            }
+            $this->session->setData($collection);
+            return $collection;
+        }
+
+        public function keys($pattern)
+        {
+            $keys = $this->session->getKeys();
+            if (!empty($keys)) {
+                $seg = isAke($keys, sha1($pattern));
+                if (!empty($seg)) {
+                    return $seg;
+                }
+            }
+            $this->call('keys', array("pattern" => $pattern));
+            $tab = json_decode($this->response, true);
+            $res = isAke($tab, 'message');
+            $collection = array();
+            if (Arrays::is($res)) {
+                if (count($res)) {
+                    foreach ($res as $row) {
+                        array_push($collection, $row);
+                    }
+                }
+            }
+            if (empty($keys)) {
+                $keys = array();
+            }
+            $keys[sha1($pattern)] = $collection;
+            $this->session->setKeys($keys);
+            return $collection;
+        }
+
+        public function get($key)
+        {
+            $hash = sha1($key);
+            $values = $this->session->getValues();
+            if (!empty($values)) {
+                $value = isAke($values, $hash);
+                if (!empty($value)) {
+                    return $value;
+                }
+            }
+            $this->call('get', array("key" => $key));
+            $tab = json_decode($this->response, true);
+            $value = isAke($tab, 'message');
+            if (empty($values)) {
+                $values = array();
+            }
+            $values[$hash] = $value;
+            $this->session->setValues($values);
+            return $value;
+        }
+
+        public function _set($key, $value)
+        {
+            $hash = sha1($key);
+            $values = $this->session->getValues();
+            if (empty($values)) {
+                $values = array();
+            }
+            $values[$hash] = $value;
+            $this->session->setValues($values);
+            return $this;
+        }
+
+        public function set($key, $value, $expire = 0)
+        {
+            $this->call('set', array("key" => $key, "value" => $value, "expire" => $expire));
+            $hash = sha1($key);
+            $values = $this->session->getValues();
+            if (empty($values)) {
+                $values = array();
+            }
+            $values[$hash] = $value;
+            $this->session->setValues($values);
+            return $this;
+        }
+
+        public function expire($key, $val, $ttl = 3600)
+        {
+            return $this->set($key, $val, time() + $ttl);
+        }
+
+        public function del($key)
+        {
+            $this->call('del', array("key" => $key));
+            $hash = sha1($key);
+            $values = $this->session->getValues();
+            if (empty($values)) {
+                $values = array();
+            }
+            $values[$hash] = null;
+            $this->session->setValues($values);
+            $this->session->setKeys(array());
+            $this->session->setData(null);
+            return $this;
+        }
+
+        public function incr($key, $by = 1)
+        {
+            $val = $this->get($key);
+            if (!strlen($val)) {
+                $val = 1;
+            } else {
+                $val = (int) $val;
+                $val += $by;
+            }
+            $this->set($key, $val);
+            return $val;
+        }
+
+        public function decr($key, $by = 1)
+        {
+            $val = $this->get($key);
+            if (!strlen($val)) {
+                $val = 0;
+            } else {
+                $val = (int) $val;
+                $val -= $by;
+                $val = 0 > $bal ? 0 : $val;
+            }
+            $this->set($key, $val);
+            return $val;
+        }
+
+        private function check()
+        {
+            $this->call('check');
+        }
+
+        public function upload($file)
+        {
+            $tab = explode(DS, $file);
+            $fileName = Arrays::last($tab);
+            $tab = explode('.', $fileName);
+            $extension = Inflector::lower(Arrays::last($tab));
+            $name = Utils::UUID() . '.' . $extension;
+            $data = fgc($file);
+            $this->call('upload', array("data" => $data, "name" => $name));
+            $tab = json_decode($this->response, true);
+            $res = isAke($tab, 'message');
+            return $res;
+        }
+
+        public function data($data, $extension)
+        {
+            $name = Utils::UUID() . '.' . Inflector::lower($extension);
+            $this->call('upload', array("data" => $data, "name" => $name));
+            $tab = json_decode($this->response, true);
+            $res = isAke($tab, 'message');
+            return $res;
+        }
+
+        private function call($action, $params = array())
+        {
+            $params['bucket'] = $this->bucket;
+            $params['action'] = $action;
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $this->url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+
+            $this->response = curl_exec($ch);
+        }
+
+        private function log()
+        {
+            container()->log(func_get_args());
+        }
+    }

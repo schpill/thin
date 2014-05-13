@@ -20,6 +20,57 @@
     use Thin\Registry;
     use Thin\Functions;
     use Thin\Forever;
+    use Thin\Memorydb;
+    use Thin\Context;
+
+    if (!function_exists('context')) {
+        function context($context = 'core')
+        {
+            return Context::instance($context);
+        }
+    }
+
+    if (!function_exists('infosIP')) {
+        function infosIP($array = false, $localhost = false)
+        {
+            $session = session('web');
+            $infosIP = $session->getInfosIp();
+            if (empty($infosIP)) {
+                $ip = $_SERVER["REMOTE_ADDR"];
+                if (true === $localhost) {
+                    $url = "http://ip-api.com/json";
+                } else {
+                    $url = "http://ip-api.com/json/$ip";
+                }
+                $json = dwn($url);
+                $json = str_replace(
+                    array(
+                        'query',
+                        'countryCode',
+                        'regionName'
+                    ),
+                    array(
+                        'ip',
+                        'country_code',
+                        'region_name'
+                    ),
+                    $json
+                );
+                $infos = json_decode($json, true);
+                if (Arrays::isArray($infos)) {
+                    if (ake('status', $infos)) {
+                        if ($infos['status'] == 'fail') {
+                            return infosIP($array, true);
+                        }
+                    }
+                    $InfosIp = o("IP");
+                    $InfosIp->populate($infos);
+                    $session->setInfosIp($InfosIp);
+                }
+            }
+            return false === $array ? $infosIP : $infos;
+        }
+    }
 
     if (!function_exists('mySprintf')) {
         function mySprintf($str = null, $args = array(), $char = '%')

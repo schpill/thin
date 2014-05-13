@@ -10,6 +10,7 @@
         private $results;
         private $begin;
         private $transactions   = array();
+        private $joins          = array();
         private $wheres         = array();
         private $cache          = false;
         private $debug          = false;
@@ -27,14 +28,14 @@
         public function begin()
         {
             $key = 'begin::db_' . $this->entity;
-            container()->kvs()->set($key, json_encode($this->all(true)));
+            $this->driver()->set($key, json_encode($this->all(true)));
             $this->begin = $key;
             return $this;
         }
 
         public function rollback()
         {
-            $data = container()->kvs()->get($this->begin);
+            $data = $this->driver()->get($this->begin);
             if (strlen($data)) {
                 $begin = json_decode($data, true);
                 foreach ($begin as $row) {
@@ -42,7 +43,7 @@
                 }
             }
             $this->reset();
-            container()->kvs()->del($this->begin);
+            $this->driver()->del($this->begin);
             return $this;
         }
 
@@ -101,17 +102,18 @@
             $this->lock('add');
             $data = $this->checkValues($data);
             $key = sha1(serialize($data) . $this->entity);
-            $exists = container()->kvs()->get($key);
+            $exists = $this->driver()->get($key);
             if (!strlen($exists)) {
                 if (!Arrays::is($data)) {
                     return $data;
                 }
-                $this->lastInsertId = $id = container()->kvs()->incr($this->entity . '_count');
+                $this->lastInsertId = $id = $this->driver()->incr($this->entity . '_count');
                 $data['id'] = $id;
-                $add = container()->kvs()->set($this->db . '::' . $id, json_encode($data));
+                $add = $this->driver()->set($this->db . '::' . $id, json_encode($data));
                 $this->all(true);
-                container()->kvs()->set($key, $id);
+                $this->driver()->set($key, $id);
                 $this->unlock('add');
+                $this->makeIndexes($data, $id);
                 return $this->find($id);
             }
             $this->unlock('add');
@@ -126,19 +128,55 @@
             $clone = $data;
             unset($clone['id']);
             $key = sha1(serialize($clone) . $this->entity);
-            $exists = container()->kvs()->get($key);
+            $exists = $this->driver()->get($key);
             if (!strlen($exists)) {
                 $data = $this->checkValues($data);
                 if (!Arrays::is($data)) {
                     return $data;
                 }
-                $edit = container()->kvs()->set($this->db . '::' . $id, json_encode($data));
+                $edit = $this->driver()->set($this->db . '::' . $id, json_encode($data));
                 $this->all(true);
-                container()->kvs()->set($key, $id);
+                $this->driver()->set($key, $id);
                 $this->unlock('edit');
+                $this->makeIndexes($data, $id);
                 return $this->find($id);
             }
             return $this->find($exists);
+        }
+
+        private function makeIndexes($data, $id)
+        {
+            $indexes = $this->indexes();
+            $fulltextes = $this->fulltextes();
+            if (count($fulltextes)) {
+                foreach ($fulltextes as $fulltext) {
+                    $v = isAke($data, $fulltext, null);
+                    if (!empty($v)) {
+                        $pattern = "fulltext::$this->entity::" . sha1(Inflector::lower($fulltext)) . "::$id";
+                        $prepareFulltext = $this->prepareFulltext($v);
+                        $this->driver()->set($pattern, json_encode($prepareFulltext));
+                    }
+                }
+            }
+            if (count($indexes)) {
+                if (count($data)) {
+                    foreach ($indexes as $index) {
+                        $v = isAke($data, $index, null);
+                        if (!empty($v)) {
+                            $v = Arrays::is($v) || is_object($v) ? serialize($v) : $v;
+                            $pattern = "index::$this->entity::" . sha1(Inflector::lower($index));
+                            $get = $this->driver()->get($pattern);
+                            if (strlen($get)) {
+                                $tab = json_decode($get, true);
+                            } else {
+                                $tab = array();
+                            }
+                            $tab[$id] = $v;
+                            $this->driver()->set($pattern, json_encode($tab));
+                        }
+                    }
+                }
+            }
         }
 
         public function delete($id)
@@ -147,8 +185,36 @@
             unset($row['id']);
             $key = sha1(serialize($row) . $this->entity);
             $this->lock('delete');
-            container()->kvs()->del($this->db . '::' . $id);
-            container()->kvs()->del($key);
+            $this->driver()->del($this->db . '::' . $id);
+            $this->driver()->del($key);
+            $indexes = $this->indexes();
+            $fulltextes = $this->fulltextes();
+            if (count($fulltextes)) {
+                foreach ($fulltextes as $fulltext) {
+                    $pattern = "fulltext::$this->entity::" . sha1(Inflector::lower($fulltext)) . "::$id";
+                    $this->driver()->del($pattern);
+                }
+            }
+            if (count($indexes)) {
+                foreach ($indexes as $index) {
+                    $pattern = "index::$this->entity::" . sha1(Inflector::lower($index));
+                    $get = $this->driver()->get($pattern);
+                    if (strlen($get)) {
+                        $tab = json_decode($het, true);
+                    } else {
+                        $tab = array();
+                    }
+                    $newTab = array();
+                    if (count($tab)) {
+                        foreach ($tab as $k => $v) {
+                            if ($k != $id) {
+                                $newTab[$k] = $v;
+                            }
+                        }
+                    }
+                    $this->driver()->set($pattern, json_encode($newTab));
+                }
+            }
             $this->unlock('delete');
             return $this;
         }
@@ -190,6 +256,73 @@
             return $this;
         }
 
+        private function indexedValues()
+        {
+            $rows = $this->driver()->keys($this->db . '::index::*');
+            $collection = array();
+            foreach ($rows as $k => $row) {
+                $tab = json_decode($this->driver()->get($row), true);
+                array_push($collection, $tab);
+            }
+            return $collection;
+        }
+
+        private function addIndexedValue($id, $value)
+        {
+            $row = $this->driver()->get($this->db . '::index::' . sha1($value));
+            if (strlen($row)) {
+                $tab = json_decode($this->driver()->get($row), true);
+            } else {
+                $tab = array();
+            }
+            if (!Arrays::in($id, $tab)) {
+                $tab[] = $id;
+            }
+            $this->driver()->set($this->db . '::index::' . sha1($value), json_encode($tab));
+        }
+
+        private function indexedValue($value)
+        {
+            $row = $this->driver()->get($this->db . '::index::' . sha1($value));
+            if (strlen($row)) {
+                return json_decode($this->driver()->get($row), true);
+            }
+            return array();
+        }
+
+        private function driver()
+        {
+            $drivers = isAke(isAke(self::$configs, $this->entity), 'drivers');
+            return count($drivers) ? Arrays::first($drivers) : container()->kvs();
+        }
+
+        private function indexes()
+        {
+            return isAke(isAke(self::$configs, $this->entity), 'indexs');
+        }
+
+        private function fulltextes()
+        {
+            return isAke(isAke(self::$configs, $this->entity), 'fulltexts');
+        }
+
+        private function prepareFulltext($text)
+        {
+            $slugs = explode(' ', Inflector::slug($text, ' '));
+            if (count($slugs)) {
+                $collection = array();
+                foreach ($slugs as $slug) {
+                    if (strlen($slug) > 1) {
+                        if (!Arrays::in($slug, $collection)) {
+                            array_push($collection, $slug);
+                        }
+                    }
+                }
+                asort($collection);
+            }
+            return $collection;
+        }
+
         private function checkValues($data)
         {
             $settings   = isAke(self::$configs, $this->entity);
@@ -197,6 +330,17 @@
             $requires   = isAke($settings, 'requires');
             $controls   = isAke($settings, 'controls');
             $uniques    = isAke($settings, 'uniques');
+
+            if (count($data)) {
+                $new = array();
+                foreach ($data as $k => $v) {
+                    $new[$k] = $v;
+                    if ($v instanceof Container) {
+                        $new[$k] = $v->getId();
+                    }
+                }
+                $data = $new;
+            }
 
             if (count($defaults)) {
                 foreach ($defaults as $default => $value) {
@@ -249,7 +393,12 @@
 
         public function find($id, $object = true)
         {
-            return $this->findBy('id', $id, true, $object);
+            $row = $this->driver()->get($this->db . '::' . $id);
+            if (strlen($row)) {
+                $tab = json_decode($row, true);
+                return $object ? $this->toObject($tab) : $tab;
+            }
+            return $object ? null : array();
         }
 
         public function findBy($field, $value, $one = false, $object = false)
@@ -266,19 +415,93 @@
 
         public function first($object = false)
         {
+            $res = $this->results;
+            $this->reset();
             if (true === $object) {
-                return count($this->results) ? $this->toObject(Arrays::first($this->results)) : null;
+                return count($res) ? $this->toObject(Arrays::first($res)) : null;
             } else {
-                return count($this->results) ? Arrays::first($this->results) : array();
+                return count($res) ? Arrays::first($res) : array();
             }
         }
 
         public function last($object = false)
         {
+            $res = $this->results;
+            $this->reset();
             if (true === $object) {
-                return count($this->results) ? $this->toObject(Arrays::last($this->results)) : null;
+                return count($res) ? $this->toObject(Arrays::last($res)) : null;
             } else {
-                return count($this->results) ? Arrays::last($this->results) : array();
+                return count($res) ? Arrays::last($res) : array();
+            }
+        }
+
+        public function select($fields, $object = false)
+        {
+            $data = $this->exec($object);
+            if (count($data)) {
+                if (is_string($fields)) {
+                    $fields = array($fields);
+                }
+                $collection = array();
+                foreach ($data as $row) {
+                    if ($row instanceof Container) {
+                        $row = $row->assoc();
+                    }
+                    $addRow = array();
+                    foreach ($fields as $field) {
+                        if (strstr($field, '.')) {
+                            list($table, $field) = explode('.', $field, 2);
+                            if ($table != $this->entity) {
+                                $fkFields = isAke($this->joins, $table);
+                                if (empty($fkFields)) {
+                                    $fkFields = array(array($table, null));
+                                }
+                                if (!empty($fkFields)) {
+                                    $db = new self($table);
+                                    list($entityField, $fkField) = Arrays::first($fkFields);
+                                    $fkField = empty($fkField) ? 'id' : $fkField;
+                                    $joinVal = isAke($row, $entityField, null);
+                                    if (strlen($joinVal)) {
+                                        $foreignDatas = $db->where("$fkField = $joinVal")->exec();
+                                        foreach ($foreignDatas as $foreignTab) {
+                                            if (!empty($foreignTab)) {
+                                                $val = isAke($foreignTab, $field, null);
+
+                                                /* Relation has one */
+                                                if (1 == count($foreignDatas)) {
+                                                    $addRow[$table . '_' . $field] = $val;
+                                                } else {
+                                                    /* Relation has many */
+                                                    if (!Arrays::exists($table . '_' . $field, $addRow)) {
+                                                        $addRow[$table . '_' . $field] = array();
+                                                    }
+                                                    array_push($addRow[$table . '_' . $field], $val);
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    throw new Exception("You must join the table $table.");
+                                }
+                            } else {
+                                $val = isAke($row, $field, null);
+                                $addRow[$field] = $val;
+                            }
+                        } else {
+                            $val = isAke($row, $field, null);
+                            $addRow[$field] = $val;
+                        }
+                    }
+                    // $addRow['id'] = $row['id'];
+                    if (true === $object) {
+                        array_push($collection, $this->toObject($addRow));
+                    } else {
+                        array_push($collection, $addRow);
+                    }
+                }
+                return $collection;
+            } else {
+                return $data;
             }
         }
 
@@ -291,6 +514,7 @@
                     array_push($collection, $item);
                 }
             }
+            $this->reset();
             if (!count($collection) && true === $object) {
                 return null;
             }
@@ -303,10 +527,10 @@
             ? $this->cached('RDB_allDb_' . $this->entity)
             : array();
             if (empty($cached)) {
-                $rows = container()->kvs()->keys($this->db . '::*');
+                $rows = $this->driver()->keys($this->db . '::*');
                 $collection = array();
-                foreach ($rows as $row) {
-                    $tab = json_decode($row, true);
+                foreach ($rows as $k => $row) {
+                    $tab = json_decode($this->driver()->get($row), true);
                     array_push($collection, $tab);
                 }
                 $this->cached('RDB_allDb_' . $this->entity, $collection);
@@ -324,10 +548,11 @@
 
         public function reset()
         {
-            $this->results = null;
-            $this->begin = null;
-            $this->wheres  = array();
-            $this->transactions  = array();
+            $this->results          = null;
+            $this->begin            = null;
+            $this->joins            = array();
+            $this->wheres           = array();
+            $this->transactions     = array();
             return $this;
         }
 
@@ -512,6 +737,21 @@
             return $this;
         }
 
+        public function andWhere($condition, $results = array())
+        {
+            return $this->where($condition, 'AND', $results);
+        }
+
+        public function orWhere($condition, $results = array())
+        {
+            return $this->where($condition, 'OR', $results);
+        }
+
+        public function xorWhere($condition, $results = array())
+        {
+            return $this->where($condition, 'XOR', $results);
+        }
+
         public function _and($condition, $results = array())
         {
             return $this->where($condition, 'AND', $results);
@@ -542,15 +782,55 @@
             return $this->where($condition, 'XOR', $results);
         }
 
+        public function join($table, $field, $fieldFk = null)
+        {
+            $this->joins[$table] = array();
+            array_push($this->joins[$table], array($field, $fieldFk));
+            return $this;
+        }
+
+        private function intersect($tab1, $tab2)
+        {
+            $ids1       = array();
+            $ids2       = array();
+            $collection = array();
+
+            foreach ($tab1 as $row) {
+                $id = isAke($row, 'id', null);
+                if (strlen($id)) {
+                    array_push($ids1, $id);
+                }
+            }
+
+            foreach ($tab2 as $row) {
+                $id = isAke($row, 'id', null);
+                if (strlen($id)) {
+                    array_push($ids2, $id);
+                }
+            }
+
+            $sect = array_intersect($ids1, $ids2);
+            if (count($sect)) {
+                foreach ($sect as $idRow) {
+                    array_push($collection, $this->find($idRow, false));
+                }
+            }
+            return $collection;
+        }
+
         public function where($condition, $op = 'AND', $results = array())
         {
+            if ('dummy' == $this->entity) {
+                throw new Exception('A correct entity is mandatory to execute a query. Please use the from methode.');
+            }
             $res = $this->search($condition, $results, false);
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
+                $values = array_values($this->results);
                 switch ($op) {
                     case 'AND':
-                        $this->results = array_intersect($this->results, array_values($res));
+                        $this->results = $this->intersect($values, array_values($res));
                         break;
                     case 'OR':
                         $this->results = array_merge($this->results, array_values($res));
@@ -573,11 +853,90 @@
             return $this;
         }
 
+        private function searchFulltextes($field, $value)
+        {
+            $collection = array();
+            $pattern = "fulltext::$this->entity::" . sha1(Inflector::lower($field)) . "::";
+            $words = explode(' ', $value);
+            $rows = $this->driver()->keys($pattern . '*');
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $id = (int) repl($pattern, '', $row);
+                    $tabWords = json_decode($this->driver()->get($row), true);
+                    foreach ($tabWords as $tabWord) {
+                        foreach ($words as $word) {
+                            if (strlen($word) > 1) {
+                                if (strstr($tabWord, $word)) {
+                                    array_push($collection, $id);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return $collection;
+        }
+
+        private function searchIndexes($field, $op, $value)
+        {
+            $collection = array();
+            $pattern = "index::$this->entity::" . sha1(Inflector::lower($field));
+            $get = $this->driver()->get($pattern);
+            if (strlen($get)) {
+                $tab = json_decode($get, true);
+            } else {
+                $tab = array();
+            }
+            if (count($tab)) {
+                foreach ($tab as $id => $val) {
+                    $check = $this->compare($val, $op, $value);
+                    if (true === $check) {
+                        array_push($collection, $id);
+                    }
+                }
+            }
+            return $collection;
+        }
+
         private function search($condition = null, $results = array(), $populate = true)
         {
             self::$queries++;
             $collection = array();
-            $datas      = !count($results) ? $this->all() : $results;
+
+            $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
+            $condition  = repl('NOT IN', 'NOTIN', $condition);
+            list($field, $op, $value) = explode(' ', $condition, 3);
+            $indexes = $this->indexes();
+            $fulltextes = $this->fulltextes();
+
+            if (true === Arrays::in($field, $indexes)) {
+                $ids = $this->searchIndexes($field, $op, $value);
+                if (count($ids)) {
+                    foreach ($ids as $id) {
+                        array_push($collection, $this->find($id, false));
+                    }
+                    if (true === $populate) {
+                        $this->results = $collection;
+                    }
+                    return $collection;
+                }
+            }
+
+            if ($op == 'LIKE' && Arrays::in($field, $fulltextes)) {
+                $ids = $this->searchFulltextes($field, Inflector::slug($value, ' '));
+                if (count($ids)) {
+                    foreach ($ids as $id) {
+                        array_push($collection, $this->find($id, false));
+                    }
+                    if (true === $populate) {
+                        $this->results = $collection;
+                    }
+                    return $collection;
+                }
+            }
+
+            $datas      = !count($results) ? $this->all(true) : $results;
             if (empty($condition)) {
                 return $datas;
             }
@@ -587,26 +946,62 @@
             $cached     = $this->cached($keyCache);
             if (empty($cached)) {
                 if(count($datas)) {
-                    $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
-                    $condition  = repl('NOT IN', 'NOTIN', $condition);
-
-                    list($field, $op, $value) = explode(' ', $condition, 3);
-
-                    foreach ($datas as $tab) {
-                        if (!empty($tab)) {
-                            $val = isAke($tab, $field, null);
-                            if (strlen($val)) {
-                                $val = repl('|', ' ', $val);
-                                $check = $this->compare($val, $op, $value);
+                    if (strstr($field, '.')) {
+                        list($table, $field) = explode('.', $field, 2);
+                        if ($table != $this->entity) {
+                            $fkFields = isAke($this->joins, $table);
+                            if (!empty($fkFields)) {
+                                $db = new self($table);
+                                list($entityField, $fkField) = Arrays::first($fkFields);
+                                $fkField = empty($fkField) ? 'id' : $fkField;
+                                foreach ($datas as $tab) {
+                                    if (!empty($tab)) {
+                                        $joinVal = isAke($tab, $entityField, null);
+                                        if (strlen($joinVal)) {
+                                            $foreignDatas = $db->where("$fkField = $joinVal")->exec();
+                                            foreach ($foreignDatas as $foreignTab) {
+                                                if (!empty($foreignTab)) {
+                                                    $val = isAke($foreignTab, $field, null);
+                                                    if (strlen($val)) {
+                                                        $val = repl('|', ' ', $val);
+                                                        $check = $this->compare($val, $op, $value);
+                                                    } else {
+                                                        $check = ('null' == $value) ? true : false;
+                                                    }
+                                                    if (true === $check) {
+                                                        array_push($collection, $tab);
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            throw new Exception("The field $entityField has no value and must be not nulled.");
+                                        }
+                                    }
+                                }
                             } else {
-                                $check = ('null' == $value) ? true : false;
+                                throw new Exception("The table $table is not correctly joined.");
                             }
-                            if (true === $check) {
-                                array_push($collection, $tab);
+                        } else {
+                            $condition = repl($this->entity . '.', '', $condition);
+                            return $this->search($condition, $results, $populate);
+                        }
+                    } else {
+                        foreach ($datas as $tab) {
+                            if (!empty($tab)) {
+                                $val = isAke($tab, $field, null);
+                                if (strlen($val)) {
+                                    $val = repl('|', ' ', $val);
+                                    $check = $this->compare($val, $op, $value);
+                                } else {
+                                    $check = ('null' == $value) ? true : false;
+                                }
+                                if (true === $check) {
+                                    array_push($collection, $tab);
+                                }
                             }
                         }
+                        $this->cached($keyCache, $collection);
                     }
-                    $this->cached($keyCache, $collection);
                 }
             } else {
                 $collection = $cached;
@@ -708,11 +1103,12 @@
 
         private function closures($obj)
         {
-            $settings = isAke(self::$configs, $this->entity);
-            $class = $this;
-            $class->results = null;
-            $class->wheres  = null;
-            // $class->configs = null;
+            $settings               = isAke(self::$configs, $this->entity);
+            $class                  = $this;
+            $class->results         = null;
+            $class->wheres          = null;
+            $class->joins           = null;
+            $class->transactions    = null;
 
             $export = function () use ($class, $obj) {
                 if (isset($obj->id)) {
@@ -819,7 +1215,7 @@
             if (false === $this->cache) {
                 return null;
             }
-            $db = container()->kvs();
+            $db = $this->driver();
             if (empty($value)) {
                 $val = $db->get($key);
                 if (strlen($val)) {
@@ -827,7 +1223,8 @@
                 }
                 return null;
             } else {
-                $db->set($key, json_encode($value), $this->ttl);
+                $db->set($key, json_encode($value));
+                $db->expire($key, $this->ttl);
                 return true;
             }
         }
@@ -843,7 +1240,7 @@
             self::configs($this->entity, $key, $value);
         }
 
-        public static function configs($entity, $key, $value = null)
+        public static function configs($entity, $key, $value = null, $cb = null)
         {
             if (!strlen($entity)) {
                 throw new Exception("An entity must be provided to use this method.");
@@ -869,9 +1266,14 @@
                 if (!Arrays::is(self::$configs[$entity][$key . 's'])) {
                     self::$configs[$entity][$key . 's'] = array();
                 }
-                self::$configs[$entity][$key . 's'] += $value;
+                array_push(self::$configs[$entity][$key . 's'], $value);
             }
-            return true;
+            return !is_callable($cb) ? true : $cb();
+        }
+
+        public static function makeQuery()
+        {
+            return new self('dummy');
         }
 
         private function event($id, $args = array())
@@ -905,6 +1307,11 @@
                 $field = Inflector::lower($uncamelizeMethod);
                 $value = Arrays::first($parameters);
                 return $this->findBy($field, $value, true);
+            } elseif (substr($method, 0, 15) == 'findOneObjectBy') {
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 15)));
+                $field = Inflector::lower($uncamelizeMethod);
+                $value = Arrays::first($parameters);
+                return $this->findBy($field, $value, true, true);
             } else {
                 $settings   = isAke(self::$configs, $this->entity);
                 $event      = isAke($settings, $method);
@@ -917,9 +1324,13 @@
                     }
                 } else {
                     if (count($parameters) == 1) {
-                        return self::configs($this->entity, $method, Arrays::first($parameters));
+                        $c = $this;
+                        $cb = function() use ($c) {
+                            return $c;
+                        };
+                        return self::configs($this->entity, $method, Arrays::first($parameters), $cb);
                     } else {
-                        throw new Exception("The method '$method' is not callable.");
+                        throw new Exception("The method '$method' is not callable in this class.");
                     }
                 }
             }
@@ -936,7 +1347,7 @@
                 container()->log("lock " . $action);
             }
             $this->waitUnlock($action);
-            container()->kvs()->set($this->lock, time());
+            $this->driver()->set($this->lock, time());
             return $this;
         }
 
@@ -945,7 +1356,7 @@
             if (true === $this->debug) {
                 container()->log("unlock " . $action);
             }
-            container()->kvs()->del($this->lock);
+            $this->driver()->del($this->lock);
             return $this;
         }
 
@@ -954,14 +1365,14 @@
             if (true === $this->debug) {
                 container()->log("wait " . $action);
             }
-            $wait = strlen(container()->kvs()->get($this->lock)) ? true : false;
+            $wait = strlen($this->driver()->get($this->lock)) ? true : false;
             $i = 1;
             while (true == $wait) {
                 if (1000 == $i) {
                     $this->unlock('forced ' . $action);
                 }
                 usleep(100);
-                $wait = strlen(container()->kvs()->get($this->lock)) ? true : false;
+                $wait = strlen($this->driver()->get($this->lock)) ? true : false;
                 $i++;
             }
             return $this;

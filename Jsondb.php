@@ -8,7 +8,7 @@
         private $lock;
         private $db;
         private $type;
-        private $cache = true;
+        private $cache = false;
         private $ttl = 3600;
         private $lastIbsertId;
         private static $configs = array();
@@ -102,27 +102,19 @@
 
         public function results($object = true)
         {
-            if (false === $object) {
-                return $this->results;
-            }
-            $collection = array();
-            foreach ($this->results as $res) {
-                $tmp = $this->row($res);
-                array_push($collection, $tmp);
-            }
-            $this->reset();
-            return $collection;
+            return $this->exec($object);
         }
 
         public function exec($object = false)
         {
             if (false === $object) {
-                return $this->results;
-            }
-            $collection = array();
-            foreach ($this->results as $res) {
-                $tmp = $this->row($res);
-                array_push($collection, $tmp);
+                $collection = $this->results;
+            } else {
+                $collection = array();
+                foreach ($this->results as $res) {
+                    $tmp = $this->row($res);
+                    array_push($collection, $tmp);
+                }
             }
             $this->reset();
             return $collection;
@@ -262,9 +254,9 @@
             return $obj->populate($values);
         }
 
-        public function find($id)
+        public function find($id, $object = true)
         {
-            return $this->findBy('id', $id, true);
+            return $this->findBy('id', $id, true, $$object);
         }
 
         public function findBy($field, $value, $one = false, $object = false)
@@ -484,15 +476,45 @@
             return $this->where($condition, 'XOR', $results);
         }
 
+        private function intersect($tab1, $tab2)
+        {
+            $ids1       = array();
+            $ids2       = array();
+            $collection = array();
+
+            foreach ($tab1 as $row) {
+                $id = isAke($row, 'id', null);
+                if (strlen($id)) {
+                    array_push($ids1, $id);
+                }
+            }
+
+            foreach ($tab2 as $row) {
+                $id = isAke($row, 'id', null);
+                if (strlen($id)) {
+                    array_push($ids2, $id);
+                }
+            }
+
+            $sect = array_intersect($ids1, $ids2);
+            if (count($sect)) {
+                foreach ($sect as $idRow) {
+                    array_push($collection, $this->find($idRow, false));
+                }
+            }
+            return $collection;
+        }
+
         public function where($condition, $op = 'AND', $results = array())
         {
             $res = $this->search($condition, $results, false);
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
+                $values = array_values($this->results);
                 switch ($op) {
                     case 'AND':
-                        $this->results = array_intersect($this->results, array_values($res));
+                        $this->results = $this->intersect($values, array_values($res));
                         break;
                     case 'OR':
                         $this->results = array_merge($this->results, array_values($res));
@@ -549,6 +571,7 @@
                             }
                         }
                     }
+
                     $this->cached($keyCache, $collection);
                 }
             } else {

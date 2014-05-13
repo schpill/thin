@@ -35,7 +35,6 @@
                 }
                 $dir = json_decode(dwn(static::$_urlAPI . 'checkDirectory/' . $type));
                 $object = static::$_urlAPI . 'storage' . '/' . $dir . '/' . $id . '.data';
-                dieDump($object);
             }
             $objectDwn = unserialize(dwn($object));
             return $objectDwn;
@@ -111,7 +110,6 @@
             if (is_null($key)) {
                 $key    = json_decode(dwn(static::$_urlAPI . 'makeKey/' . $type));
             }
-            //*GP* dieDump(static::post($type, $key, $serialize));
             $store = json_decode(dwn(static::$_urlAPI . 'store/' . $type . '/' . $key . '/' . base64_encode($serialize)));
             return $object;
         }

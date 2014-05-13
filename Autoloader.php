@@ -24,12 +24,15 @@
 
         public static function autoload($className)
         {
-            if (strstr($className, 'Predis')) {var_dump($className);
+            if (strstr(strtolower($className), 'predis')) {
                 $className2 = str_replace('Predis\\', '', $className);
                 $className2 = str_replace('Predis', '', $className2);
                 $check = LIBRARIES_PATH . DS . 'predis' . DS . 'lib' . DS . 'Predis' . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $className2) . '.php';
-                if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
-                    require_once($check);
+                $parts = explode('\\', substr($className, strlen('Predis\\')));
+                $filepath = LIBRARIES_PATH . DS . 'predis' . DS . 'lib' . DS . 'Predis' . DS . implode(DS, $parts) . '.php';
+                // var_dump($filepath);
+                if(is_readable($filepath) && !array_key_exists($className, static::$_classes)) {
+                    require_once($filepath);
                     static::$_classes[$className] = true;
                 }
             }
