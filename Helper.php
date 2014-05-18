@@ -1638,8 +1638,33 @@ $(document).ready(function() {
         function displays($tpl)
         {
             $view   = container()->getView();
+            $view   = !is_object($view) ? context()->getView() : $view;
             $tab    = explode(DS, $view->_viewFile);
             $path   = repl(Arrays::last($tab), $tpl, $view->_viewFile);
+            if (File::exists($path)) {
+                $content = fgc($path);
+                $content = repl('$this->', '$view->', View::cleanCode($content));
+                $file = CACHE_PATH . DS . sha1($content) . '.display';
+                File::put($file, $content);
+                ob_start();
+                include $file;
+                $html = ob_get_contents();
+                ob_end_clean();
+                File::delete($file);
+                echo $html;
+            }
+        }
+    }
+
+    if (!function_exists('tpl')) {
+        function tpl($tpl)
+        {
+            $view   = container()->getView();
+            $view   = !is_object($view) ? context()->getView() : $view;
+            $tab    = explode(DS, $view->_viewFile);
+            $path   = repl(DS . Arrays::last($tab), '', $view->_viewFile);
+            $path   = repl($tab[count($tab) - 2], 'partials' . DS . $tpl, $path);
+
             if (File::exists($path)) {
                 $content = fgc($path);
                 $content = repl('$this->', '$view->', View::cleanCode($content));

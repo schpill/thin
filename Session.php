@@ -59,14 +59,17 @@
                 $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $this->_duration;
                 $_SESSION['__Thin__'][$this->_sessionName]['__start__'] = time();
             }
+
             $tab = (array) $this;
             unset($tab['_sessionName']);
             unset($tab['_isLocked']);
+            unset($tab['_duration']);
+
             foreach ($tab as $key => $value) {
                 $_SESSION['__Thin__'][$this->_sessionName][$key] = $value;
             }
-            $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $this->_duration;
-            $_SESSION['__Thin__'][$this->_sessionName]['__start__'] = time();
+            $_SESSION['__Thin__'][$this->_sessionName]['__timeout__']   = time() + $this->_duration;
+            $_SESSION['__Thin__'][$this->_sessionName]['__start__']     = time();
             return $this;
         }
 
@@ -84,7 +87,7 @@
 
         public function __call($func, $argv)
         {
-            if (substr($func, 0, 3) == 'get') {
+            if (substr($func, 0, 3) == 'get' && strlen($func) > 3) {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 if (isset($this->$var)) {
@@ -93,7 +96,7 @@
                 } else {
                     return null;
                 }
-            } elseif (substr($func, 0, 3) == 'set') {
+            } elseif (substr($func, 0, 3) == 'set' && strlen($func) > 3) {
                 $value = $argv[0];
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
@@ -101,8 +104,8 @@
                     $this->$var = $value;
                 }
                 return $this->save();
-            } elseif (substr($func, 0, 6) == 'forget') {
-                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+            } elseif (substr($func, 0, 6) == 'forget' && strlen($func) > 6) {
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 6)));
                 $var = Inflector::lower($uncamelizeMethod);
                 if (false === $this->_isLocked) {
                     $this->erase($var);
@@ -133,8 +136,9 @@
         {
             $this->checkTimeout();
             if (false === $this->_isLocked) {
-                $this->$var;
+                return $this->$var;
             }
+            return null;
         }
 
         public function put($key, $value)

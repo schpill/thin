@@ -1,4 +1,4 @@
- <?php
+<?php
     namespace Thin;
     class Googlesearch
     {
@@ -17,13 +17,14 @@
         public function search($q)
         {
             $this->q = $q;
-            $this->getPagination();
+            // $this->getPagination();
             $i = 1;
             do {
                 $this->getSource((($i > 1) ? false : true), $i);
                 $i++;
                 $this->getLinks();
-            } while ($i <= $this->pages);
+            } while ($i <= 10);
+            return $this;
         }
 
         private function writeLinks()
@@ -40,12 +41,12 @@
         public function getSource($first = true, $page = 1)
         {
             $string = urlencode($this->q);
-            $link = 'http://www.google.com/search?q=';
+            $link = 'http://www.google.fr/search?q=';
             if($first) {
-                $link .= $string . '&hl=pt-BR&newwindow=1&prmd=imvns&filter=0&biw=1366&bih=667';
+                $link .= $string . '&hl=fr-FR&newwindow=1&prmd=imvns&filter=0&biw=1366&bih=667';
             } else {
                 $link .= $string;
-                $link .= '&hl=pt-BR&newwindow=1&prmd=imvns&ei=9NtQULzRD-r00gGpnYD4CQ&start=';
+                $link .= '&hl=fr-FR&newwindow=1&prmd=imvns&ei=9NtQULzRD-r00gGpnYD4CQ&start=';
                 $link .= (($page - 1) * 10);
                 $link .= '&sa=N&filter=0&biw=1366&bih=667';
             }
@@ -55,7 +56,8 @@
         private function getPagination()
         {
             $this->getSource(true);
-            preg_match_all('/<\s*td[^>]*>(.*?)<\/td>/', $this->source, $matches, PREG_SET_ORDER);
+            $pagine = Utils::cut('<table id="mnav"><tr valign="top">', '</tr></table>', $this->source);
+            preg_match_all('/<\s*td[^>]*>(.*?)<\/td>/', $pagine, $matches, PREG_SET_ORDER);
             $this->pages = 1;
             $pagination = array();
             if(count($matches) > 0) {
@@ -76,9 +78,9 @@
                 return false;
             }
             $stop = strlen($_);
-            $_ = str_replace('<a href="/url?q=', '', Inflector::lower($_));
+            $_ = str_replace('/url?q=', '', Inflector::lower($_));
             for($i = 0; $i < $stop; $i++) {
-                if(Arrays::inArray($_[$i], array('&amp;', '"', '&', "'"))) {
+                if(Arrays::in($_[$i], array('&amp;', '"', '&', "'"))) {
                     $stop = $i;
                     $i = strlen($_);
                 }
@@ -96,8 +98,11 @@
             preg_match_all($regex, $this->source, $matches, PREG_SET_ORDER);
             if(count($matches) > 0) {
                 foreach($matches as $match) {
-                    if(preg_match('/string/i', $match[1])) {
-                        $this->links[] = $yhis->sanitize($match[1]);
+                    if(strstr($match[1], 'a href')) {
+                        $href = Utils::cut('a href="', '"', $match[1]);
+                        if (!strstr($href, '/images?q=')) {
+                            $this->links[] = $this->sanitize($href);
+                        }
                     }
                 }
             }

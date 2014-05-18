@@ -521,6 +521,26 @@
             return $collection;
         }
 
+        public static function tables()
+        {
+            $db = container()->redis();
+            $rows = $db->keys('*_count');
+            $tables = array();
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $index = repl('_count', '', $row);
+                    $tableName = 'db_' . $index;
+                    $tables[$index]['count'] = $db->get($row);
+                    $data = $db->keys($tableName . '::*');
+                    $first = Arrays::first($data);
+                    $first = json_decode($db->get($first), true);
+                    $fields = array_keys($first);
+                    $tables[$index]['fields'] = $fields;
+                }
+            }
+            return $tables;
+        }
+
         public function all($force = false)
         {
             $cached = false === $force
@@ -1216,7 +1236,7 @@
                 return null;
             }
             $db = $this->driver();
-            if (empty($value)) {
+            if (!strlen($value)) {
                 $val = $db->get($key);
                 if (strlen($val)) {
                     return json_decode($val, true);

@@ -5,19 +5,16 @@
     class Customize
     {
         private static $__callables = array();
+        private $__values = array();
 
         public function __event($name, Closure $callable)
         {
+            if (method_exists($this, $name)) {
+                throw new Exception("The method $name is a native class' method. Please choose an other name.");
+            }
             $obj = $this;
             $key = sha1($name);
-            if (version_compare(PHP_VERSION, '5.4.0', "<")) {
-                $share = function () use ($obj, $callable) {
-                    return $callable($obj);
-                };
-            } else {
-                $share = $callable->bindTo($obj);
-            }
-            self::$__callables[$key] = $share;
+            self::$__callables[$key] = $callable;
             return $this;
         }
 
@@ -36,5 +33,28 @@
             $key = sha1($event);
             $callable = isAke(self::$__callables, $key, null);
             return is_callable($callable);
+        }
+
+        public function set($key, $value)
+        {
+            $this->__values[$key] = $value;
+            return $this;
+        }
+
+        public function forget($key)
+        {
+            $this->__values[$key] = null;
+            return $this;
+        }
+
+        public function has($key)
+        {
+            $value = isAke($this->__values, $key, null);
+            return !is_null($value);
+        }
+
+        public function get($key, $default = null)
+        {
+            return isAke($this->__values, $key, $default);
         }
     }
