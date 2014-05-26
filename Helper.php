@@ -2315,6 +2315,19 @@ $(document).ready(function() {
     if (!function_exists('request')) {
         function request()
         {
+            $tab = explode('?', $_SERVER['REQUEST_URI']);
+
+            if (count($tab) > 1) {
+                list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
+                if (strlen($query)) {
+                    $str = parse_str($query, $output);
+                    if (count($output)) {
+                        foreach ($output as $k => $v) {
+                            $_REQUEST[$k] = $v;
+                        }
+                    }
+                }
+            }
             $object = new Request();
             $object->populate($_REQUEST);
             $uri = substr($_SERVER['REQUEST_URI'], 1, strlen($_SERVER['REQUEST_URI']));

@@ -1,8 +1,9 @@
 <?php
     namespace Thin;
 
-    class Memorydb extends Customize
+    class Txtdata extends Customize
     {
+        private $ns;
         private $entity;
         private $db;
         private $lastInsertId;
@@ -18,11 +19,12 @@
         private static $configs = array();
         private static $queries = 0;
 
-        public function __construct($entity)
+        public function __construct($entity, $ns = 'core')
         {
+            $this->ns       = $ns;
             $this->entity   = $entity;
             $this->db       = 'db_' . $entity;
-            $this->lock     = Inflector::camelize('redis_db');
+            $this->lock     = Inflector::camelize('txt_db');
         }
 
         public function begin()
@@ -293,7 +295,7 @@
         private function driver()
         {
             $drivers = isAke(isAke(self::$configs, $this->entity), 'drivers');
-            return count($drivers) ? Arrays::first($drivers) : container()->redis();
+            return count($drivers) ? Arrays::first($drivers) : container()->txtdb($this->ns);
         }
 
         private function indexes()
@@ -523,9 +525,9 @@
 
         private static function structure($table, $fields)
         {
-            $dbt = container()->model('rma_table');
-            $dbf = container()->model('rma_field');
-            $dbs = container()->model('rma_structure');
+            $dbt = container()->dbm('dma_table');
+            $dbf = container()->dbm('dma_field');
+            $dbs = container()->dbm('dma_structure');
 
             $t = $dbt->where('name = ' . $table)->first(true);
             if (is_null($t)) {
@@ -559,14 +561,17 @@
 
         public static function tables()
         {
-            $db = container()->redis();
-            $dbt = container()->model('rma_table');
+            $db = container()->txtdb();
+            $dbt = container()->dbm('dma_table');
             $rows = $db->keys('*_count');
             $tables = array();
             if (count($rows)) {
                 foreach ($rows as $row) {
-                    $index = repl('_count', '', $row);
-                    if (!strstr($index, 'rma_')) {
+                    $tab = explode(DS, $row);
+                    $rowI = Arrays::last($tab);
+                    list($rowI, $dummy) = explode('#', $rowI, 2);
+                    $index = repl('_count', '', $rowI);
+                    if (!strstr($index, 'dma_')) {
                         $t = $dbt->where('name = ' . $index)->first(true);
                         if (is_null($t)) {
                             $tableName                  = 'db_' . $index;
@@ -751,42 +756,89 @@
         public function order($fieldOrder, $orderDirection = 'ASC', $results = array())
         {
             $res = count($results) ? $results : $this->results;
-
             if (empty($res)) {
                 return $this;
             }
 
-            $sortFunc = function($key, $direction) {
-                return function ($a, $b) use ($key, $direction) {
-                    if ('ASC' == $direction) {
-                        return $a[$key] > $b[$key];
-                    } else {
-                        return $a[$key] < $b[$key];
+            $keyCache = sha1(
+                'RDB_order_' .
+                serialize($fieldOrder) .
+                serialize($orderDirection) .
+                serialize($res) .
+                $this->entity
+            );
+            $cached = $this->cached($keyCache);
+
+            if (empty($cached)) {
+                $settings   = isAke(self::$configs, $this->entity);
+                $_fields    = isAke($settings, 'fields');
+                $fields     = empty($_fields) ? array_keys(Arrays::first($res)) : $_fields;
+
+                $sort = array();
+                foreach($res as $i => $tab) {
+                    foreach ($fields as $k) {
+                        $value = isAke($tab, $k, null);
+                        $sort[$k][] = $value;
                     }
-                };
-            };
-
-            if (Arrays::is($fieldOrder) && !Arrays::is($orderDirection)) {
-                $t = array();
-                foreach ($fieldOrder as $tmpField) {
-                    array_push($t, $orderDirection);
                 }
-                $orderDirection = $t;
-            }
 
-            if (!Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
-                $orderDirection = Arrays::first($orderDirection);
-            }
-
-            if (Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
-                for ($i = 0 ; $i < count($fieldOrder) ; $i++) {
-                    usort($res, $sortFunc($fieldOrder[$i], $orderDirection[$i]));
+                $asort = array();
+                foreach ($sort as $key => $rows) {
+                    for ($i = 0 ; $i < count($rows) ; $i++) {
+                        if (empty($$key) || is_string($$key)) {
+                            $$key = array();
+                        }
+                        $asort[$i][$key] = $rows[$i];
+                        array_push($$key, $rows[$i]);
+                    }
                 }
+
+                if (Arrays::is($fieldOrder) && !Arrays::is($orderDirection)) {
+                    $t = array();
+                    foreach ($fieldOrder as $tmpField) {
+                        array_push($t, $orderDirection);
+                    }
+                    $orderDirection = $t;
+                }
+
+                if (Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
+                    if (count($orderDirection) < count($fieldOrder)) {
+                        throw new Exception('You must provide the same arguments number of fields sorting and directions sorting.');
+                    }
+                    if (count($fieldOrder) == 1) {
+                        $fieldOrder = Arrays::first($fieldOrder);
+                        if ('ASC' == Inflector::upper(Arrays::first($orderDirection))) {
+                            array_multisort($$fieldOrder, SORT_ASC, $asort);
+                        } else {
+                            array_multisort($$fieldOrder, SORT_DESC, $asort);
+                        }
+                    } elseif(count($fieldOrder) > 1) {
+                        $params = array();
+                        foreach ($fieldOrder as $k => $tmpField) {
+                            $tmpSort    = isset($orderDirection[$k]) ? $orderDirection[$k] : 'ASC';
+                            $params[]   = $$tmpField;
+                            $params[]   = 'ASC' == $tmpSort ? SORT_ASC : SORT_DESC;
+                        }
+                        $params[] = $asort;
+                        call_user_func_array('array_multisort', $params);
+                    }
+                } else {
+                    if ('ASC' == Inflector::upper($orderDirection)) {
+                        array_multisort($$fieldOrder, SORT_ASC, $asort);
+                    } else {
+                        array_multisort($$fieldOrder, SORT_DESC, $asort);
+                    }
+                }
+                $collection = array();
+                foreach ($asort as $key => $row) {
+                    array_push($collection, $row);
+                }
+                $this->cached($keyCache, $collection);
             } else {
-                usort($res, $sortFunc($fieldOrder, $orderDirection));
+                $collection = $cached;
             }
 
-            $this->results = $res;
+            $this->results = $collection;
             return $this;
         }
 
@@ -1280,7 +1332,7 @@
 
         public function model($name)
         {
-            return container()->model($name);
+            return container()->dbm($name);
         }
 
         public function getLastId()
@@ -1306,9 +1358,7 @@
                 return null;
             }
             $db = $this->driver();
-            if (false === $value) $value = 'false';
-            if (0 == $value) $value = '0';
-            if (!empty($value)) {
+            if (!strlen($value)) {
                 $val = $db->get($key);
                 if (strlen($val)) {
                     return json_decode($val, true);

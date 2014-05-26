@@ -15,8 +15,11 @@
             return container();
         }
 
-        public function __construct (array $values = array())
+        public function __construct ($values = array())
         {
+            if (is_object($values)) {
+                $values = $values->assoc();
+            }
             $this->values = $values;
             $this->_token = Utils::token();
         }

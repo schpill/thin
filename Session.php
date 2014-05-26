@@ -4,20 +4,21 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
-    class Session
+    class Session extends Customize
     {
-        public $_sessionName;
-        public $_isLocked = false;
-        public $_duration = 3600;
+        private $_sessionName;
+        private $_isLocked = false;
+        private $_duration = 3600;
+        private static $_instances   = array();
 
         public static function instance($name, $duration = 3600)
         {
-            if (null === Utils::get('__Thin__Session__' . $name)) {
-                $instance = new self($name, $duration);
-                Utils::set('__Thin__Session__' . $name, $instance);
-                return $instance;
+            $i = isAke(static::$_instances, $name, null);
+            if (is_null($i)) {
+                $i = new self($name, $duration);
+                static::$_instances[$name] = $i;
             }
-            return Utils::get('__Thin__Session__' . $name);
+            return $i;
         }
 
         public function __construct($name, $duration = 3600)
@@ -49,7 +50,7 @@
             return $this->save();
         }
 
-        public function save()
+        private function save()
         {
             if (!Arrays::exists('__Thin__', $_SESSION)) {
                 $_SESSION['__Thin__'] = array();
@@ -64,6 +65,7 @@
             unset($tab['_sessionName']);
             unset($tab['_isLocked']);
             unset($tab['_duration']);
+            unset($tab['_instances']);
 
             foreach ($tab as $key => $value) {
                 $_SESSION['__Thin__'][$this->_sessionName][$key] = $value;
@@ -126,6 +128,7 @@
 
         public function __set($var, $value)
         {
+            $var = trim($var);
             if (false === $this->_isLocked) {
                 $this->$var = $value;
             }
@@ -147,7 +150,7 @@
             return $this->save();
         }
 
-        public function checkTimeout()
+        private function checkTimeout()
         {
             if (Arrays::exists('__Thin__', $_SESSION)) {
                 if (Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
@@ -165,7 +168,7 @@
             if (!Arrays::exists('__Thin__', $_SESSION)) {
                 $_SESSION['__Thin__'] = array();
             }
-            if (null === $key) {
+            if (is_null($key)) {
                 unset($_SESSION['__Thin__'][$this->_sessionName]);
                 return $this;
             } else {
