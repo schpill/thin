@@ -45,12 +45,12 @@
 
         public static function getInfosVideo($videoId, $returnObject = true)
         {
-            $xml                        = dwn(repl('##videoId##', $videoId, static::VIDEO_INFOS_URI));
-            $xml                        = simplexml_load_string($xml);
-            $json                       = json_encode($xml);
-            $array                      = json_decode($json, true);
-            $obj                        = new YoutubeVideo($array);
+            $xml    = dwn(repl('##videoId##', $videoId, static::VIDEO_INFOS_URI));
+            $xml    = simplexml_load_string($xml);
+            $json   = json_encode($xml);
+            $array  = json_decode($json, true);
             if (true === $returnObject) {
+                $obj = new Container($array);
                 return $obj;
             }
             return $array;
