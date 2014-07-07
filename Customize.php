@@ -57,4 +57,12 @@
         {
             return isAke($this->__values, $key, $default);
         }
+
+        public function reset()
+        {
+            $this->__values = array();
+            self::$__callables = array();
+            return $this;
+        }
+
     }

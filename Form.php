@@ -56,7 +56,7 @@
         {
             $method = Inflector::upper($method);
 
-            if (!array_key_exists('id', $attributes)) {
+            if (!Arrays::exists('id', $attributes)) {
                 $attributes['id'] = md5(static::action($action, $https));
             }
 
@@ -251,9 +251,9 @@
             $attributes['name'] = $name;
             $attributes['id'] = static::id($name, $attributes);
 
-            if ( ! Arrays::exists('rows', $attributes)) $attributes['rows'] = 10;
-            if ( ! Arrays::exists('cols', $attributes)) $attributes['cols'] = 50;
-            if ( ! Arrays::exists('required', $attributes)) $attributes['required'] = false;
+            if (!Arrays::exists('rows', $attributes)) $attributes['rows'] = 10;
+            if (!Arrays::exists('cols', $attributes)) $attributes['cols'] = 50;
+            if (!Arrays::exists('required', $attributes)) $attributes['required'] = false;
 
             $required = $attributes['required'];
             if (false === $required) {
@@ -450,7 +450,7 @@
             if (Arrays::exists('id', $attributes)) {
                 return $attributes['id'];
             }
-            if (in_array($name, static::$labels)) {
+            if (Arrays::in($name, static::$labels)) {
                 return $name;
             }
         }

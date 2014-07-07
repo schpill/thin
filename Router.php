@@ -139,11 +139,273 @@
             }
         }
 
-        public static function match($pathComp, $route = null)
+        public static function matches($resourceUri, $path)
         {
-            $path = trim(urldecode(static::$_uri), static::URI_DELIMITER);
-            $path = empty($path) ? trim(urldecode($_SERVER['REQUEST_URI']), static::URI_DELIMITER) : $path;
-            $regex = '#^' . $pathComp . '$#u';
+            $patternAsRegex = preg_replace_callback(
+                '#:([\w]+)\+?#',
+                array('Thin\\Router', 'matchesCallback'),
+                str_replace(')', ')?', (string) $path)
+            );
+            if (substr($path, -1) === '/') {
+                $patternAsRegex .= '?';
+            }
+
+            $regex = '#^' . $patternAsRegex . '$#';
+            if (!preg_match($regex, $resourceUri, $paramValues)) {
+                return false;
+            }
+            foreach ($paramValues as $i => $value) {
+                if (!is_int($i) || $i === 0) {
+                    unset($paramValues[$i]);
+                }
+            }
+            foreach (static::$_values as $k => $name) {
+                if (isset($paramValues[$k + 1])) {
+                    $_REQUEST[$name] = urldecode($paramValues[$k + 1]);
+                }
+            }
+
+            return true;
+        }
+
+        public static function context()
+        {
+            $uri    = $_SERVER['REQUEST_URI'];
+            $routes = context('router')->getRoutes();
+            $find   = false;
+            if (!empty($routes)) {
+                foreach ($routes as $route) {
+                    if (!$route instanceof Container) {
+                        continue;
+                    }
+                    $name = $route->getName();
+                    if (404 == $name) {
+                        $route404 = $route;
+                    }
+                    $path = $route->getPath();
+                    if (strlen($path) && $path == $uri) {
+                        static::make($route);
+                        $find = true;
+                        break;
+                    }
+                    $matched = static::match($path, $route, $uri);
+
+                    if (false === $matched || !count($matched)) {
+                        continue;
+                    } else {
+                        if (null !== $route->getRedirect()) {
+                            static::redirect($route->getRedirect());
+                        }
+                        static::make($route);
+                        $find = true;
+                        break;
+                    }
+                }
+            }
+            if (false === $find) {
+                static::redirect($route404->getPath());
+            }
+            context()->setRoute($route);
+        }
+
+        public static function deliver()
+        {
+            $core = context();
+            Request::$route = $route = $core->getRoute();
+
+            $render         = $route->getRender();
+            $tplDir         = $route->getTemplateDir();
+            $controllerDir  = $route->getControllerDir();
+            $module         = $route->getModule();
+            $controller     = $route->getController();
+            $action         = $route->getAction();
+            $render         = empty($render) ? $action : $render;
+            $alert          = $route->getAlert();
+            $page           = $core->getPage();
+            $isCms          = !empty($page);
+
+            if (!empty($action)) {
+                $tplMotor = $route->getTemplateMotor();
+
+                $tplDir = empty($tplDir)
+                    ? realpath(APPLICATION_PATH . DS . 'modules' . DS . Inflector::lower($module) . DS . 'views')
+                    : $tplDir;
+
+                $controllerDir = empty($controllerDir)
+                    ? realpath(APPLICATION_PATH . DS . 'modules' . DS . Inflector::lower($module) . DS . 'controllers')
+                    : $controllerDir;
+
+                $tpl = $tplDir . DS . Inflector::lower($controller) . DS . Inflector::lower($render) . '.phtml';
+                $controllerFile = $controllerDir . DS . Inflector::lower($controller) . '.php';
+
+                $hasTpl = File::exists($tpl);
+
+                if (File::exists($controllerFile)) {
+                    if ('Twig' == $tplMotor) {
+                        if (!class_exists('Twig_Autoloader')) {
+                            require_once 'Twig/Autoloader.php';
+                        }
+
+                        $tab    = explode(DS, $tpl);
+                        $file   = Arrays::last($tab);
+
+                        $path   = repl(DS . $file, '', $tpl);
+
+                        $loader = new \Twig_Loader_Filesystem($path);
+                        $view   = new \Twig_Environment(
+                            $loader,
+                            array(
+                                'cache'             => CACHE_PATH,
+                                'debug'             => false,
+                                'charset'           => 'utf-8',
+                                'strict_variables'  => false
+                            )
+                        );
+                        $core->setView($view);
+                        require_once $controllerFile;
+
+                        $controllerClass    = 'Thin\\' . Inflector::lower($controller) . 'Controller';
+                        $controller         = new $controllerClass;
+                        $controller->view   = $view;
+                        $core->setController($controller);
+
+
+                        $actions = get_class_methods($controllerClass);
+
+                        $core->setAction($action);
+
+                        if (strstr($action, '-')) {
+                            $words = explode('-', $action);
+                            $newAction = '';
+                            for ($i = 0; $i < count($words); $i++) {
+                                $word = trim($words[$i]);
+                                if ($i > 0) {
+                                    $word = ucfirst($word);
+                                }
+                                $newAction .= $word;
+                            }
+                            $action = $newAction;
+                        }
+
+                        $actionName = $action . 'Action';
+
+                        if (Arrays::in('init', $actions)) {
+                            $controller->init();
+                        }
+                        if (Arrays::in('preDispatch', $actions)) {
+                            $controller->preDispatch();
+                        }
+
+                        if (!Arrays::in($actionName, $actions)) {
+                            context('router')->error(
+                                array(
+                                    'status' => 500,
+                                    'message' => "The action '$actionName' does not exist."
+                                )
+                            );
+                        }
+
+                        $controller->$actionName();
+
+                        $params = null === $core->getViewParams() ? array() : $core->getViewParams();
+                        echo $view->render($file, $params);
+                        if (Arrays::in('postDispatch', $actions)) {
+                            $controller->preDispatch();
+                        }
+                        /* stats */
+                        if (null === $core->getNoShowStats() && null === $route->getNoShowStats()) {
+                            echo View::showStats();
+                        }
+                    } else {
+                        if ($hasTpl) {
+                            $view = new View($tpl);
+                            $core->setView($view);
+                        }
+                        require_once $controllerFile;
+
+                        $controllerClass    = 'Thin\\' . Inflector::lower($controller) . 'Controller';
+                        $controller         = new $controllerClass;
+                        if ($hasTpl) {
+                            $controller->view   = $view;
+                        }
+                        $core->setController($controller);
+
+
+                        $actions = get_class_methods($controllerClass);
+
+                        $core->setAction($action);
+
+                        if (strstr($action, '-')) {
+                            $words = explode('-', $action);
+                            $newAction = '';
+                            for ($i = 0; $i < count($words); $i++) {
+                                $word = trim($words[$i]);
+                                if ($i > 0) {
+                                    $word = ucfirst($word);
+                                }
+                                $newAction .= $word;
+                            }
+                            $action = $newAction;
+                        }
+
+                        $actionName = $action . 'Action';
+
+                        if (Arrays::in('init', $actions)) {
+                            $controller->init();
+                        }
+                        if (Arrays::in('preDispatch', $actions)) {
+                            $controller->preDispatch();
+                        }
+
+                        if (!Arrays::in($actionName, $actions)) {
+                            context('router')->error(
+                                array(
+                                    'status' => 500,
+                                    'message' => "The action '$actionName' does not exist."
+                                )
+                            );
+                        }
+
+                        $controller->$actionName();
+                        if ($hasTpl) {
+                            $controller->view->render();
+                            /* stats */
+                            if (null === $core->getNoShowStats() && null === $route->getNoShowStats()) {
+                                echo View::showStats();
+                            }
+                        }
+                        if (Arrays::in('postDispatch', $actions)) {
+                            $controller->preDispatch();
+                        }
+                        if (Arrays::in('quit', $actions)) {
+                            $controller->quit();
+                        }
+                        exit;
+                    }
+                } else {
+                    context('router')->error(
+                        array(
+                            'status' => 500,
+                            'message' => "$controllerFile is missing."
+                        )
+                    );
+                }
+            }
+        }
+
+        public static function matchesCallback($m)
+        {
+            static::$_values[] = $m[1];
+            return '(.*)';
+        }
+
+        public static function match($pathComp, $route = null, $path = null)
+        {
+            if (empty($path)) {
+                $path = trim(urldecode(static::$_uri), static::URI_DELIMITER);
+                $path = empty($path) ? trim(urldecode($_SERVER['REQUEST_URI']), static::URI_DELIMITER) : $path;
+            }
+            $regex  = '#^' . $pathComp . '$#';
             $res = preg_match($regex, $path, $values);
 
             if ($res === 0) {

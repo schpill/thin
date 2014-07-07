@@ -13,7 +13,7 @@
                 $configs        = container()->getConfig()->getDb();
                 $config         = isAke($configs, 'db');
                 if (empty($config)) {
-                    throw new Exception("Thde database configuration is empty.");
+                    throw new Exception("The database configuration is empty.");
                 }
             }
             $this->config = $config;
@@ -86,6 +86,11 @@
             return false;
         }
 
+        public function delete($key)
+        {
+            return $this->del($key);
+        }
+
         public function del($key)
         {
             $q = "DELETE FROM kvs_db WHERE kvs_db_id = " . $this->quote($key);
@@ -114,7 +119,7 @@
             } else {
                 $val = (int) $val;
                 $val -= $by;
-                $val = 0 > $bal ? 0 : $val;
+                $val = 0 > $val ? 0 : $val;
             }
             $this->set($key, $val);
             return $val;

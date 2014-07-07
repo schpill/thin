@@ -23,6 +23,7 @@
     require_once 'Helper.php';
     require_once 'Autoloader.php';
     require_once 'Swift/swift_required.php';
+    require_once 'facebook/facebook.php';
 
     define('MB_STRING', (int) function_exists('mb_get_info'));
     Thin\Autoloader::registerNamespace('ThinEntity',    APPLICATION_PATH . DS . 'entities');
@@ -31,12 +32,14 @@
     Thin\Autoloader::registerNamespace('ThinService',   APPLICATION_PATH . DS . 'services');
     Thin\Autoloader::registerNamespace('ThinPlugin',    APPLICATION_PATH . DS . 'plugins');
     Thin\Autoloader::registerNamespace('ThinForm',      APPLICATION_PATH . DS . 'forms');
+    Thin\Autoloader::registerNamespace('ThinProject',   APPLICATION_PATH . DS . 'lib');
 
     spl_autoload_register('Thin\\Autoloader::autoload');
 
     container();
+    $core = context('core');
 
-    define('THINSTART', time());
+    define('THINSTART', microtime());
     if (Thin\Arrays::exists('SERVER_NAME', $_SERVER)) {
         $protocol = 'http';
         if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
@@ -80,5 +83,8 @@
         Thin\Utils::set("urlsite", $urlSite);
         define('URLSITE', $urlSite);
         container()->setUrlsite(URLSITE);
+        $core->setIsCli(false)->setUrlsite(URLSITE);
+    } else {
+        $core->setIsCli(true);
     }
 

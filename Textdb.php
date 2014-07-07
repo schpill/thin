@@ -51,7 +51,13 @@
 
         public function expire($key, $ttl = 3600)
         {
+            $val = $this->get($key);
             return $this->set($key, $val, time() + $ttl);
+        }
+
+        public function delete($key)
+        {
+            return $this->del($key);
         }
 
         public function del($key)
@@ -86,7 +92,7 @@
             } else {
                 $val = (int) $val;
                 $val -= $by;
-                $val = 0 > $bal ? 0 : $val;
+                $val = 0 > $val ? 0 : $val;
             }
             $this->set($key, $val);
             return $val;

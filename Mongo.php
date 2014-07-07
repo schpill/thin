@@ -5,6 +5,8 @@
      */
 
     namespace Thin;
+    use Mongo;
+    use MongoId;
     class Mongo
     {
         public $_link;
@@ -77,7 +79,10 @@
                     $this->_db->selectCollection($to)->ensureIndex($index["key"], $options);
                 }
             }
-            $ret = $this->_db->execute('function (coll, coll2) { return db.getCollection(coll).copyTo(coll2);}', array( $from, $to ));
+            $ret = $this->_db->execute(
+                'function (coll, coll2) { return db.getCollection(coll).copyTo(coll2);}',
+                array($from, $to)
+            );
             return $ret["ok"];
         }
 
@@ -86,7 +91,7 @@
             if (null === $coll) {
                 $coll = $this->_coll;
             }
-            if (!count($query) || !is_array($query)) {
+            if (!count($query) || !Arrays::is($query)) {
                 return $this->all($coll);
             }
 
@@ -97,8 +102,7 @@
                 if (!strstr($stm, 'LIKE')) {
                     if ($stm == '=') {
                         $stm = '==';
-                    }
-                    else if ($stm == '<>') {
+                    } else if ($stm == '<>') {
                         $stm = '!=';
                     }
                     $q .= "this.$field $stm '$value'";
@@ -202,8 +206,8 @@
 
         public function a2o($array = array())
         {
-            if (is_array($array)) {
-                $data = new stdClass;
+            if (Arrays::is($array)) {
+                $data = new \stdClass;
                 if (!count($array)) {
                     return $data;
                 }
@@ -227,10 +231,10 @@
                         }
                     }
                 }
-                return (string)$mongo_id;
+                return (string) $mongo_id;
             }
             else {
-                return (string)$id;
+                return (string) $id;
             }
         }
 
@@ -245,7 +249,7 @@
                     }
                     $objects[] = $thisObject;
                 }
-                if(is_array($objects)) {
+                if(Arrays::is($objects)) {
                     if(!empty($objects)) {
                         return $objects;
                     }

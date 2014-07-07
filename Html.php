@@ -82,7 +82,7 @@
         public static function image($url, $alt = '', $attributes = array())
         {
             $attributes['alt'] = $alt;
-            return '<img src="' . $url . '"' . static::attributes($attributes) . '>';
+            return '<img src="' . $url . '"' . static::attributes($attributes) . ' />';
         }
 
         public static function ol($list, $attributes = array())
@@ -99,13 +99,15 @@
         {
             $html = '';
 
-            if (count($list) == 0) return $html;
+            if (count($list) == 0) {
+                return $html;
+            }
 
             foreach ($list as $key => $value) {
                 // If the value is an array, we will recurse the function so that we can
                 // produce a nested list within the list being built. Of course, nested
                 // lists may exist within nested lists, etc.
-                if (is_array($value)) {
+                if (Arrays::is($value)) {
                     if (is_int($key)) {
                         $html .= static::listing($type, $value);
                     } else {
@@ -123,7 +125,9 @@
         {
             $html = '';
 
-            if (count($list) == 0) return $html;
+            if (count($list) == 0) {
+                return $html;
+            }
 
             foreach ($list as $term => $description) {
                 $html .= '<dt>' . static::entities($term) . '</dt>';
@@ -141,7 +145,9 @@
                 // For numeric keys, we will assume that the key and the value are the
                 // same, as this will convert HTML attributes such as "required" that
                 // may be specified as required="required", etc.
-                if (is_numeric($key)) $key = $value;
+                if (is_numeric($key)) {
+                    $key = $value;
+                }
 
                 if (null !== $value) {
                     $html[] = $key . '="' . static::entities($value) . '"';
@@ -254,9 +260,9 @@
         public static function __callStatic($method, $parameters)
         {
             if (2 == count($parameters)) {
-                return static::tag($method, current($parameters), end($parameters));
+                return static::tag($method, Arrays::first($parameters), Arrays::last($parameters));
             } else if (1 == count($parameters)) {
-                return static::tag($method, current($parameters));
+                return static::tag($method, Arrays::first($parameters));
             } else if (0 == count($parameters)) {
                 return static::tag($method);
             } else {

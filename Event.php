@@ -6,8 +6,8 @@
     namespace Thin;
     class Event
     {
-        public static $events = array();
-        public static $queued = array();
+        public static $events   = array();
+        public static $queued   = array();
         public static $flushers = array();
 
         public static function listeners($event)
@@ -87,7 +87,12 @@
                         }
                     }
                 } else {
-                    $error = (strstr($event, '.init') || strstr($event, '.start') || strstr($event, '.done') || strstr($event, '.stop')) ? false : true;
+                    $error = (
+                        strstr($event, '.init')
+                        || strstr($event, '.start')
+                        || strstr($event, '.done')
+                        || strstr($event, '.stop')
+                    ) ? false : true;
                     if (true === $error) {
                         throw new Exception("The event $event doesn't exist.");
                     }

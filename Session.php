@@ -4,20 +4,21 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
-    class Session
+    class Session extends Customize
     {
-        public $_sessionName;
-        public $_isLocked = false;
-        public $_duration = 3600;
+        private $_sessionName;
+        private $_isLocked = false;
+        private $_duration = 3600;
+        private static $_instances   = array();
 
         public static function instance($name, $duration = 3600)
         {
-            if (null === Utils::get('__Thin__Session__' . $name)) {
-                $instance = new self($name, $duration);
-                Utils::set('__Thin__Session__' . $name, $instance);
-                return $instance;
+            $i = isAke(static::$_instances, $name, null);
+            if (is_null($i)) {
+                $i = new self($name, $duration);
+                static::$_instances[$name] = $i;
             }
-            return Utils::get('__Thin__Session__' . $name);
+            return $i;
         }
 
         public function __construct($name, $duration = 3600)
@@ -49,7 +50,7 @@
             return $this->save();
         }
 
-        public function save()
+        private function save()
         {
             if (!Arrays::exists('__Thin__', $_SESSION)) {
                 $_SESSION['__Thin__'] = array();
@@ -59,14 +60,18 @@
                 $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $this->_duration;
                 $_SESSION['__Thin__'][$this->_sessionName]['__start__'] = time();
             }
+
             $tab = (array) $this;
             unset($tab['_sessionName']);
             unset($tab['_isLocked']);
+            unset($tab['_duration']);
+            unset($tab['_instances']);
+
             foreach ($tab as $key => $value) {
                 $_SESSION['__Thin__'][$this->_sessionName][$key] = $value;
             }
-            $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $this->_duration;
-            $_SESSION['__Thin__'][$this->_sessionName]['__start__'] = time();
+            $_SESSION['__Thin__'][$this->_sessionName]['__timeout__']   = time() + $this->_duration;
+            $_SESSION['__Thin__'][$this->_sessionName]['__start__']     = time();
             return $this;
         }
 
@@ -84,7 +89,7 @@
 
         public function __call($func, $argv)
         {
-            if (substr($func, 0, 3) == 'get') {
+            if (substr($func, 0, 3) == 'get' && strlen($func) > 3) {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 if (isset($this->$var)) {
@@ -93,7 +98,7 @@
                 } else {
                     return null;
                 }
-            } elseif (substr($func, 0, 3) == 'set') {
+            } elseif (substr($func, 0, 3) == 'set' && strlen($func) > 3) {
                 $value = $argv[0];
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
@@ -101,8 +106,8 @@
                     $this->$var = $value;
                 }
                 return $this->save();
-            } elseif (substr($func, 0, 6) == 'forget') {
-                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
+            } elseif (substr($func, 0, 6) == 'forget' && strlen($func) > 6) {
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 6)));
                 $var = Inflector::lower($uncamelizeMethod);
                 if (false === $this->_isLocked) {
                     $this->erase($var);
@@ -123,6 +128,7 @@
 
         public function __set($var, $value)
         {
+            $var = trim($var);
             if (false === $this->_isLocked) {
                 $this->$var = $value;
             }
@@ -133,8 +139,9 @@
         {
             $this->checkTimeout();
             if (false === $this->_isLocked) {
-                $this->$var;
+                return $this->$var;
             }
+            return null;
         }
 
         public function put($key, $value)
@@ -143,7 +150,7 @@
             return $this->save();
         }
 
-        public function checkTimeout()
+        private function checkTimeout()
         {
             if (Arrays::exists('__Thin__', $_SESSION)) {
                 if (Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
@@ -161,7 +168,7 @@
             if (!Arrays::exists('__Thin__', $_SESSION)) {
                 $_SESSION['__Thin__'] = array();
             }
-            if (null === $key) {
+            if (is_null($key)) {
                 unset($_SESSION['__Thin__'][$this->_sessionName]);
                 return $this;
             } else {

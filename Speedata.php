@@ -1,8 +1,9 @@
 <?php
     namespace Thin;
 
-    class Memorydb extends Customize
+    class Speedata extends Customize
     {
+        private $ns;
         private $entity;
         private $db;
         private $lastInsertId;
@@ -18,11 +19,12 @@
         private static $configs = array();
         private static $queries = 0;
 
-        public function __construct($entity)
+        public function __construct($entity, $ns = 'core')
         {
+            $this->ns       = $ns;
             $this->entity   = $entity;
             $this->db       = 'db_' . $entity;
-            $this->lock     = Inflector::camelize('redis_db');
+            $this->lock     = Inflector::camelize('txt_db');
         }
 
         public function begin()
@@ -293,7 +295,7 @@
         private function driver()
         {
             $drivers = isAke(isAke(self::$configs, $this->entity), 'drivers');
-            return count($drivers) ? Arrays::first($drivers) : container()->redis();
+            return count($drivers) ? Arrays::first($drivers) : Speedb::instance($this->ns);
         }
 
         private function indexes()
@@ -523,9 +525,9 @@
 
         private static function structure($table, $fields)
         {
-            $dbt = container()->model('rma_table');
-            $dbf = container()->model('rma_field');
-            $dbs = container()->model('rma_structure');
+            $dbt = container()->sbm('sma_table');
+            $dbf = container()->sbm('sma_field');
+            $dbs = container()->sbm('sma_structure');
 
             $t = $dbt->where('name = ' . $table)->first(true);
             if (is_null($t)) {
@@ -559,14 +561,17 @@
 
         public static function tables()
         {
-            $db = container()->redis();
-            $dbt = container()->model('rma_table');
+            $db = new Speedb();
+            $dbt = container()->sbm('sma_table');
             $rows = $db->keys('*_count');
             $tables = array();
             if (count($rows)) {
                 foreach ($rows as $row) {
-                    $index = repl('_count', '', $row);
-                    if (!strstr($index, 'rma_')) {
+                    $tab = explode(DS, $row);
+                    $rowI = Arrays::last($tab);
+                    list($rowI, $dummy) = explode('#', $rowI, 2);
+                    $index = repl('_count', '', $rowI);
+                    if (!strstr($index, 'sma_')) {
                         $t = $dbt->where('name = ' . $index)->first(true);
                         if (is_null($t)) {
                             $tableName                  = 'db_' . $index;
@@ -630,7 +635,8 @@
                 $rows = $this->driver()->keys($this->db . '::*');
                 $collection = array();
                 foreach ($rows as $k => $row) {
-                    $tab = json_decode($this->driver()->get($row), true);
+                    $data = $this->driver()->get($row);
+                    $tab = json_decode($data, true);
                     array_push($collection, $tab);
                 }
                 $this->cached('RDB_allDb_' . $this->entity, $collection);
@@ -1280,7 +1286,7 @@
 
         public function model($name)
         {
-            return container()->model($name);
+            return container()->sbm($name);
         }
 
         public function getLastId()
@@ -1306,9 +1312,7 @@
                 return null;
             }
             $db = $this->driver();
-            if (false === $value) $value = 'false';
-            if (0 == $value) $value = '0';
-            if (!empty($value)) {
+            if (!strlen($value)) {
                 $val = $db->get($key);
                 if (strlen($val)) {
                     return json_decode($val, true);
@@ -1439,7 +1443,7 @@
                 container()->log("lock " . $action);
             }
             $this->waitUnlock($action);
-            $this->driver()->set($this->lock, time());
+            $this->driver()->lock($this->lock, time());
             return $this;
         }
 
@@ -1448,7 +1452,7 @@
             if (true === $this->debug) {
                 container()->log("unlock " . $action);
             }
-            $this->driver()->del($this->lock);
+            $this->driver()->unlock($this->lock);
             return $this;
         }
 
@@ -1457,14 +1461,14 @@
             if (true === $this->debug) {
                 container()->log("wait " . $action);
             }
-            $wait = strlen($this->driver()->get($this->lock)) ? true : false;
+            $wait = strlen($this->driver()->islock($this->lock)) ? true : false;
             $i = 1;
             while (true == $wait) {
                 if (1000 == $i) {
                     $this->unlock('forced ' . $action);
                 }
                 usleep(100);
-                $wait = strlen($this->driver()->get($this->lock)) ? true : false;
+                $wait = strlen($this->driver()->islock($this->lock)) ? true : false;
                 $i++;
             }
             return $this;
