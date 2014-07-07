@@ -22,11 +22,32 @@
     use Thin\Forever;
     use Thin\Memorydb;
     use Thin\Context;
+    use Thin\App;
+    use Thin\Facade;
 
     if (!function_exists('context')) {
         function context($context = 'core')
         {
             return Context::instance($context);
+        }
+    }
+
+    if (!function_exists('facade')) {
+        function facade($name)
+        {
+            $name = ucfirst(strtolower($name));
+            $code = 'class ' . $name . ' extends Thin\\Facade {protected static function factory(){ return ' . strtolower($name) . ';}}';
+            eval($code);
+            return new $name();
+        }
+
+        function di()
+        {
+            static $i;
+            if (is_null($i)) {
+                $i = new App;
+            }
+            return $i;
         }
     }
 
