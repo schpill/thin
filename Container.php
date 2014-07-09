@@ -20,8 +20,26 @@
             if (is_object($values)) {
                 $values = $values->assoc();
             }
-            $this->values = $values;
+            if (count($values)) {
+                $this->values = $this->make($values);
+            } else {
+                $this->values = $values;
+            }
             $this->_token = Utils::token();
+        }
+
+        public function make(array $array)
+        {
+            $return = array();
+            foreach ($array as $k => $v) {
+                if (Arrays::is($v)) {
+                    $o = new self;
+                    $return[$k] = $o->populate($v);
+                } else {
+                    $return[$k] = $v;
+                }
+            }
+            return $return;
         }
 
         public function offsetSet($id, $value)

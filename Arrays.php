@@ -724,6 +724,26 @@
             return array_key_exists($key, $search);
         }
 
+        public static function indexReverse(array $tab, $index = 1)
+        {
+            if (count($tab)) {
+                if (isset($tab[count($tab) - $index])) {
+                    return $tab[count($tab) - $index];
+                }
+            }
+            return null;
+        }
+
+        public static function index(array $tab, $index = 1)
+        {
+            if (count($tab)) {
+                if (isset($tab[$index])) {
+                    return $tab[$index];
+                }
+            }
+            return null;
+        }
+
         public static function __callStatic($method, $args)
         {
             if (is_callable($method)) {

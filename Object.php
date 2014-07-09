@@ -143,7 +143,7 @@
                             return call_user_func_array($this->$var, $argv);
                         }
                     }
-                    return $this->$var;
+                    return count($argv) && is_null($this->$var) ? Arrays::first($argv) : $this->$var;
                 } else {
                     if (isset($this->db_instance)) {
                         return $this->db_instance->getValue($this, $var);
@@ -287,6 +287,7 @@
             }
 
             if (true === hasEvent($func)) {
+                array_push($argv, $this);
                 return fire($func, $argv);
             }
 

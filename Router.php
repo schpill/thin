@@ -403,10 +403,19 @@
         {
             if (empty($path)) {
                 $path = trim(urldecode(static::$_uri), static::URI_DELIMITER);
-                $path = empty($path) ? trim(urldecode($_SERVER['REQUEST_URI']), static::URI_DELIMITER) : $path;
+                $path = empty($path)
+                ? trim(urldecode($_SERVER['REQUEST_URI']), static::URI_DELIMITER)
+                : trim(urldecode($path), static::URI_DELIMITER);
             }
-            $regex  = '#^' . $pathComp . '$#';
-            $res = preg_match($regex, $path, $values);
+
+            // $application = Bootstrap::$bag['config']->application;
+            // $path        = strReplaceFirst($application->base_uri, '', $path);
+
+            $path        = '/' == $path[0] ? substr($path, 1) : $path;
+            $pathComp    = '/' == $pathComp[0] ? substr($pathComp, 1) : $pathComp;
+            $pathComp    = rtrim($pathComp, '/');
+            $regex       = '#^' . $pathComp . '$#';
+            $res         = preg_match($regex, $path, $values);
 
             if ($res === 0) {
                 return false;
@@ -417,6 +426,7 @@
                     unset($values[$i]);
                 }
             }
+
             if (!empty($route) && count($values)) {
                 foreach ($values as $key => $value) {
                     $getter = 'settings' . $key;
@@ -467,7 +477,7 @@
             }
         }
 
-        private static function is404()
+        public static function is404()
         {
             header('HTTP/1.0 404 Not Found');
             die(config('html_not_found'));

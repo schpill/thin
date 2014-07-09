@@ -379,6 +379,14 @@
         }
     }
 
+    if (!function_exists('route')) {
+        function route()
+        {
+            $o = new Container;
+            return $o->setIsRoute(true);
+        }
+    }
+
     if (!function_exists('o')) {
         function o($name)
         {
@@ -1637,7 +1645,7 @@ $(document).ready(function() {
             {
                 $closure = registry('events.' . $name);
                 if (!empty($closure)) {
-                    if ($closure instanceof Closure) {
+                    if (is_callable($closure)) {
                         return call_user_func_array($closure, $args);
                     }
                 }
@@ -2092,8 +2100,9 @@ $(document).ready(function() {
     }
 
     if (!function_exists('hr')) {
-        function hr($str)
+        function hr($str = null)
         {
+            $str = is_null($str) ? '&nbsp;' : $str;
             echo $str . '<hr />';
         }
     }
@@ -3250,6 +3259,19 @@ $(document).ready(function() {
             if (true === $exit) {
                 exit;
             }
+        }
+
+        function dd()
+        {
+            array_map(
+                function($str) {
+                    echo '<pre style="background: #ffffdd; padding: 5px; color: #aa4400; font-family: Ubuntu; font-weight: bold; font-size: 22px; border: solid 2px #444400">';
+                    print_r($str);
+                    echo '</pre>';
+                    hr();
+                }, func_get_args()
+            );
+            die;
         }
     }
 

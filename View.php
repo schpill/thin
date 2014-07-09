@@ -292,9 +292,9 @@
             $content = repl('[/endswitch]', 'endswitch;', $content);
             $content = repl('<lang>', '<?php echo __("', $content);
             $content = repl('</lang>', '"); ?>', $content);
-            $content = repl('$this->partial(', 'displays(', $content);
-            $content = repl('$this->tpl(', 'tpl(', $content);
-            $content = repl('includes(', 'echo $this->partial(', $content);
+            $content = repl('$this->partial(', 'context("view")->partial(', $content);
+            $content = repl('$this->tpl(', 'context("view")->partial(', $content);
+            $content = repl('includes(', 'context("view")->partial(', $content);
             return $content;
         }
 
@@ -324,9 +324,9 @@
             $content = repl('[/endforeach]', 'endforeach;', $content);
             $content = repl('[/endwhile]', 'endwhile;', $content);
             $content = repl('[/endswitch]', 'endswitch;', $content);
-            $content = repl('$this->partial(', 'displays(', $content);
-            $content = repl('$this->tpl(', 'tpl(', $content);
-            $content = repl('includes(', 'echo $this->partial(', $content);
+            $content = repl('$this->partial(', 'context("view")->partial(', $content);
+            $content = repl('$this->tpl(', 'context("view")->partial(', $content);
+            $content = repl('includes(', 'context("view")->partial(', $content);
             if (count($this->_grammar)) {
                 foreach ($this->_grammar as $grammar => $replace) {
                     $content = repl($grammar, $replace, $content);
