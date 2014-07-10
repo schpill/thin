@@ -49,6 +49,11 @@
             }
             return $i;
         }
+
+        function db()
+        {
+            return context('db');
+        }
     }
 
     if (!function_exists('infosIP')) {
@@ -444,6 +449,12 @@
                 }
             }
             return null;
+        }
+
+        function view()
+        {
+            $view = container()->getView();
+            return !is_null($view) ? $view : new View();
         }
     }
 
@@ -1890,15 +1901,22 @@ $(document).ready(function() {
     }
 
     if (!function_exists('helper')) {
+
+        function getClass()
+        {
+            return repl('Thin\\', '', get_class());
+        }
+
         function helper($helper)
         {
             $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(Inflector::lower($helper)) . '.php';
-            if (file_exists($file)) {
+            if (File::exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Helper\\' . ucfirst(Inflector::lower($helper));
-                return new $class;
+                $class = 'Thin\\' . ucfirst(Inflector::lower($helper));
+                $instance = new $class;
+                $instance->init();
             }
-            return null;
+            return context('helper');
         }
     }
 
@@ -1906,12 +1924,13 @@ $(document).ready(function() {
         function service($service)
         {
             $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(Inflector::lower($service)) . '.php';
-            if (file_exists($file)) {
+            if (File::exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Service\\' . ucfirst(Inflector::lower($service));
-                return new $class;
+                $class = 'Thin\\' . ucfirst(Inflector::lower($service));
+                $instance = new $class;
+                $instance->init();
             }
-            return null;
+            return context('service');
         }
     }
 
@@ -1919,12 +1938,27 @@ $(document).ready(function() {
         function plugin($plugin)
         {
             $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(Inflector::lower($plugin)) . '.php';
-            if (file_exists($file)) {
+            if (File::exists($file)) {
                 require_once $file;
-                $class = 'Thin\\Plugin\\' . ucfirst(Inflector::lower($plugin));
-                return new $class;
+                $class = 'Thin\\' . ucfirst(Inflector::lower($plugin));
+                $instance = new $class;
+                $instance->init();
             }
-            return null;
+            return context('plugin');
+        }
+    }
+
+    if (!function_exists('model')) {
+        function model($model)
+        {
+            $file = APPLICATION_PATH . DS . 'models' . DS . ucfirst(Inflector::lower($model)) . '.php';
+            if (File::exists($file)) {
+                require_once $file;
+                $class = 'Thin\\' . ucfirst(Inflector::lower($model));
+                $instance = new $class;
+                $instance->init();
+            }
+            return db()->model(Inflector::lower($model));
         }
     }
 
@@ -2285,6 +2319,11 @@ $(document).ready(function() {
     }
 
     if (!function_exists('cache')) {
+        function appCache()
+        {
+            return context('cache');
+        }
+
         function cache($key, $value, $duration = 60, array $params = array())
         {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
@@ -2448,14 +2487,6 @@ $(document).ready(function() {
         function getClassStaticVars($object)
         {
             return array_diff(get_class_vars(get_class($object)), get_object_vars($object));
-        }
-    }
-
-    if (!function_exists('model')) {
-        function model($entity, $table)
-        {
-            $classModel = 'ThinModel_' . ucfirst(Inflector::lower($entity)) . '_' . ucfirst(Inflector::lower($table));
-            return Utils::newInstance($classModel);
         }
     }
 

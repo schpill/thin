@@ -52,7 +52,7 @@
             return $collection;
         }
 
-        public function get($key)
+        public function get($key, $default = null)
         {
             if (!strstr($key, $this->dir)) {
                 $files = $this->glob($this->dir . DS . $key . '#*');
@@ -63,7 +63,7 @@
             if (File::exists($key)) {
                 return $this->load($key);
             }
-            return null;
+            return $default;
         }
 
         public function set($key, $value, $expire = 0)
@@ -80,9 +80,9 @@
             return $this;
         }
 
-        public function expire($key, $ttl = 3600)
+        public function expire($key, $value = null, $ttl = 3600)
         {
-            $val = $this->get($key);
+            $val = is_null($value) ? $this->get($key) : $value;
             return $this->set($key, $val, time() + $ttl);
         }
 
@@ -145,10 +145,12 @@
         {
             $key = sha1($pattern . 'list');
             $file = $this->dir . DS . $key;
-            if (!File::exists($file)) {
-                $data = glob($pattern, GLOB_NOSORT);
-                File::put($file, json_encode($data));
+            if (File::exists($file)) {
+                File::delete($file);
             }
+            $data = glob($pattern, GLOB_NOSORT);
+            File::put($file, json_encode($data));
+
             return json_decode($this->load($file), true);
         }
 

@@ -501,4 +501,18 @@
             }
             return $obj;
         }
+
+        public function extend($name, $callable)
+        {
+            $params = $this->args;
+            list($db, $table, $host, $username, $password) = $params;
+
+            $settings   = isAke(self::$config, "$db.$table");
+            $functions  = isAke($settings, 'functions');
+
+            $functions[$name] = $callable;
+
+            self::$config["$db.$table"]['functions'] = $functions;
+            return $this;
+        }
     }

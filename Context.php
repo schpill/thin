@@ -19,17 +19,19 @@
 
         public function __call($event, $args)
         {
-            if (substr($event, 0, 3) == 'get') {
+            if (substr($event, 0, 3) == 'get' && strlen($event) > 3) {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($event, 3)));
                 $key = Inflector::lower($uncamelizeMethod);
                 return $this->get($key);
-            } elseif(substr($event, 0, 3) == 'set') {
+            } elseif(substr($event, 0, 3) == 'set' && strlen($event) > 3) {
                 $value = Arrays::first($args);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($event, 3)));
                 $key = Inflector::lower($uncamelizeMethod);
                 return $this->set($key, $value);
             }
+
             if (true === $this->__has($event)) {
+                array_push($args, $this);
                 return $this->__fire($event, $args);
             } else {
                 if (method_exists($this, $event)) {

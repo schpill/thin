@@ -122,6 +122,10 @@
                 }
             }
 
+            $viewFile = !File::exists($viewFile)
+            ? APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'partials' . DS . $partial
+            : $viewFile;
+
             if (File::exists($viewFile)) {
                 $this->render($viewFile, $echo);
             } else {
