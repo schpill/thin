@@ -2124,6 +2124,11 @@ $(document).ready(function() {
             }
             return null;
         }
+
+        function conf()
+        {
+            return context('config');
+        }
     }
 
     if (!function_exists('hook')) {
