@@ -52,9 +52,8 @@
 
         private function save()
         {
-            if (!Arrays::exists('__Thin__', $_SESSION)) {
-                $_SESSION['__Thin__'] = array();
-            }
+            $_SESSION['__Thin__'] = isAke($_SESSION, '__Thin__');
+
             if (!Arrays::exists($this->_sessionName, $_SESSION['__Thin__'])) {
                 $_SESSION['__Thin__'][$this->_sessionName] = array();
                 $_SESSION['__Thin__'][$this->_sessionName]['__timeout__'] = time() + $this->_duration;

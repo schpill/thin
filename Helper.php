@@ -24,6 +24,15 @@
     use Thin\Context;
     use Thin\App;
     use Thin\Facade;
+    use Thin\Smtp;
+    use Thin\Entitydb;
+
+    if (!function_exists('action')) {
+        function action($tag, $closure)
+        {
+            return context('actions');
+        }
+    }
 
     if (!function_exists('context')) {
         function context($context = 'core')
@@ -2092,7 +2101,7 @@ $(document).ready(function() {
 
         function smtp($to, $from, $subject, $body, $html = true)
         {
-            $mail = new Thin\Smtp();
+            $mail = new Smtp();
             $mail->to($to)->from($from)->subject($subject);
             if (true === $html) {
                 $result = $mail->body($body)->send();
@@ -2125,16 +2134,31 @@ $(document).ready(function() {
             return null;
         }
 
-        function conf()
+        function conf($conf = null)
         {
+            if (!is_null($conf)) {
+                $file = APPLICATION_PATH . DS . 'config' . DS . Inflector::lower($conf) . '.php';
+                if (File::exists($file)) {
+                    return include $file;
+                }
+            }
             return context('config');
         }
     }
 
     if (!function_exists('hook')) {
-        function hook()
+        function hook($hook = null)
         {
-            return new Hook;
+            if (!is_null($hook)) {
+                $file = APPLICATION_PATH . DS . 'hooks' . DS . ucfirst(Inflector::lower($hook)) . '.php';
+                if (File::exists($file)) {
+                    require_once $file;
+                    $class = 'Thin\\' . ucfirst(Inflector::lower($hook));
+                    $instance = new $class;
+                    $instance->init();
+                }
+            }
+            return context('hooks');
         }
     }
 
@@ -2310,16 +2334,7 @@ $(document).ready(function() {
     if (!function_exists('em')) {
         function em($entity, $table)
         {
-            $ems        = container()->getEms();
-            $ems        = empty($ems) ? array() : $ems;
-            $className  = $entity . '_' . $table;
-            if (!ake($className, $ems)) {
-                eval("class $className extends Thin\\Orm {public function __construct(\$id = null) { list(\$this->_entity, \$this->_table) = explode('_', strtolower(get_class(\$this)), 2); \$this->factory(); if (null === \$id) {\$this->foreign(); return \$this;} else {return \$this->find(\$id);}}}");
-                $ems[$className] = true;
-                container()->setEms($ems);
-            }
-            $em = new $className;
-            return $em;
+            return new Entitydb($entity, $table);
         }
     }
 
@@ -3308,6 +3323,18 @@ $(document).ready(function() {
                 }, func_get_args()
             );
             die;
+        }
+
+        function vd()
+        {
+            array_map(
+                function($str) {
+                    echo '<pre style="background: #ffffdd; padding: 5px; color: #aa4400; font-family: Ubuntu; font-weight: bold; font-size: 22px; border: solid 2px #444400">';
+                    print_r($str);
+                    echo '</pre>';
+                    hr();
+                }, func_get_args()
+            );
         }
     }
 

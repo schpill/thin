@@ -17,9 +17,11 @@
         private $ttl            = 3600;
         private static $configs = array();
         private static $queries = 0;
+        public static $driver;
 
-        public function __construct($entity)
+        public function __construct($ns, $table)
         {
+            $entity         = "$ns::$table";
             $this->entity   = $entity;
             $this->db       = 'db_' . $entity;
             $this->lock     = Inflector::camelize('entity_db');
@@ -290,10 +292,9 @@
             return array();
         }
 
-        private function driver()
+        public function driver()
         {
-            $drivers = isAke(isAke(self::$configs, $this->entity), 'drivers');
-            return count($drivers) ? Arrays::first($drivers) : container()->kvs();
+            return self::$driver;
         }
 
         private function indexes()
@@ -521,6 +522,109 @@
             return $collection;
         }
 
+        private static function structure($ns, $table, $fields)
+        {
+            $dbt = container()->ebm('ema_table');
+            $dbf = container()->ebm('ema_field');
+            $dbs = container()->ebm('ema_structure');
+
+            $t = $dbt->where('name = ' . $table)->where('ns = ' . $ns)->first(true);
+            if (is_null($t)) {
+                $t = $dbt->create()->setName($table)->setNs($ns)->save();
+            }
+            if (!is_null($t)) {
+                if (count($fields)) {
+                    foreach ($fields as $field) {
+                        if ('id' != $field) {
+                            $f = $dbf->where('name = ' . $field)->first(true);
+                            if (is_null($f)) {
+                                $f = $dbf->create()->setName($field)->save();
+                            }
+                            $s = $dbs
+                            ->where('table = ' . $t->getId())
+                            ->where('field = ' . $f->getId())
+                            ->first(true);
+                            if (is_null($s)) {
+                                $s = $dbs->create()
+                                ->setTable($t->getId())
+                                ->setField($f->getId())
+                                ->setType('varchar')
+                                ->setLength(255)
+                                ->setIsIndex(false)
+                                ->setCanBeNull(true)
+                                ->setDefault(null)
+                                ->save();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public static function tables()
+        {
+            $dbt = container()->ebm('ema_table');
+            $rows = $dbt->driver()->keys('*_count');
+            $tables = array();
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $db = $index = repl('_count', '', $row);
+                    list($ns, $index) = explode('::', $index, 2);
+                    if (!strstr($index, 'ema_')) {
+                        $t = $dbt->where('name = ' . $index)->where('ns = ' . $ns)->first(true);
+                        if (is_null($t)) {
+                            $tableName                  = 'db_' . $db . '::*';
+                            $tables[$index]['count']    = $dbt->driver()->get($row);
+                            $data                       = $dbt->driver()->keys($tableName);
+                            if (count($data)) {
+                                $first = Arrays::first($data);
+                                $first = json_decode($dbt->driver()->get($first), true);
+                                $fields = array_keys($first);
+                                $tables[$index]['fields'] = $fields;
+                            } else {
+                                $fields = array();
+                            }
+                            self::structure($ns, $index, $fields);
+                        }
+                    }
+                }
+            }
+            return $tables;
+        }
+
+        public function createTable()
+        {
+            $check = $this->driver()->get($this->entity . '_count');
+            if (!strlen($check)) {
+                $this->driver()->set($this->entity . '_count', 0);
+                return $this;
+            }
+            return false;
+        }
+
+        public function dropTable()
+        {
+            $this->emptyTable();
+            $this->driver()->del($this->entity . '_count');
+            return $this;
+        }
+
+        public function emptyTable()
+        {
+            $rows = $this->fetch()->exec();
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $r = $row['id'];
+                    unset($row['id']);
+                    $key = sha1(serialize($row) . $this->entity);
+                    $this->driver()->del($this->db . '::' . $r);
+                    $this->driver()->del($key);
+                }
+            }
+            $this->driver()->del($this->entity . '_count');
+            return $this;
+        }
+
         public function all($force = false)
         {
             $cached = false === $force
@@ -529,9 +633,11 @@
             if (empty($cached)) {
                 $rows = $this->driver()->keys($this->db . '::*');
                 $collection = array();
-                foreach ($rows as $k => $row) {
-                    $tab = json_decode($this->driver()->get($row), true);
-                    array_push($collection, $tab);
+                if (count($rows)) {
+                    foreach ($rows as $k => $row) {
+                        $tab = json_decode($this->driver()->get($row), true);
+                        array_push($collection, $tab);
+                    }
                 }
                 $this->cached('RDB_allDb_' . $this->entity, $collection);
                 return $collection;
@@ -605,7 +711,8 @@
 
         public function avg($field, $results = array())
         {
-            return ($this->sum($field, $results) / count($res));
+            $res = count($results) ? $results : $this->results;
+            return ($this->sum($field, $res) / count($res));
         }
 
         public function min($field, $results = array())
@@ -651,89 +758,42 @@
         public function order($fieldOrder, $orderDirection = 'ASC', $results = array())
         {
             $res = count($results) ? $results : $this->results;
+
             if (empty($res)) {
                 return $this;
             }
 
-            $keyCache = sha1(
-                'RDB_order_' .
-                serialize($fieldOrder) .
-                serialize($orderDirection) .
-                serialize($res) .
-                $this->entity
-            );
-            $cached = $this->cached($keyCache);
-
-            if (empty($cached)) {
-                $settings   = isAke(self::$configs, $this->entity);
-                $_fields    = isAke($settings, 'fields');
-                $fields     = empty($_fields) ? array_keys(Arrays::first($res)) : $_fields;
-
-                $sort = array();
-                foreach($res as $i => $tab) {
-                    foreach ($fields as $k) {
-                        $value = isAke($tab, $k, null);
-                        $sort[$k][] = $value;
-                    }
-                }
-
-                $asort = array();
-                foreach ($sort as $key => $rows) {
-                    for ($i = 0 ; $i < count($rows) ; $i++) {
-                        if (empty($$key) || is_string($$key)) {
-                            $$key = array();
-                        }
-                        $asort[$i][$key] = $rows[$i];
-                        array_push($$key, $rows[$i]);
-                    }
-                }
-
-                if (Arrays::is($fieldOrder) && !Arrays::is($orderDirection)) {
-                    $t = array();
-                    foreach ($fieldOrder as $tmpField) {
-                        array_push($t, $orderDirection);
-                    }
-                    $orderDirection = $t;
-                }
-
-                if (Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
-                    if (count($orderDirection) < count($fieldOrder)) {
-                        throw new Exception('You must provide the same arguments number of fields sorting and directions sorting.');
-                    }
-                    if (count($fieldOrder) == 1) {
-                        $fieldOrder = Arrays::first($fieldOrder);
-                        if ('ASC' == Inflector::upper(Arrays::first($orderDirection))) {
-                            array_multisort($$fieldOrder, SORT_ASC, $asort);
-                        } else {
-                            array_multisort($$fieldOrder, SORT_DESC, $asort);
-                        }
-                    } elseif(count($fieldOrder) > 1) {
-                        $params = array();
-                        foreach ($fieldOrder as $k => $tmpField) {
-                            $tmpSort    = isset($orderDirection[$k]) ? $orderDirection[$k] : 'ASC';
-                            $params[]   = $$tmpField;
-                            $params[]   = 'ASC' == $tmpSort ? SORT_ASC : SORT_DESC;
-                        }
-                        $params[] = $asort;
-                        call_user_func_array('array_multisort', $params);
-                    }
-                } else {
-                    if ('ASC' == Inflector::upper($orderDirection)) {
-                        array_multisort($$fieldOrder, SORT_ASC, $asort);
+            $sortFunc = function($key, $direction) {
+                return function ($a, $b) use ($key, $direction) {
+                    if ('ASC' == $direction) {
+                        return $a[$key] > $b[$key];
                     } else {
-                        array_multisort($$fieldOrder, SORT_DESC, $asort);
+                        return $a[$key] < $b[$key];
                     }
+                };
+            };
+
+            if (Arrays::is($fieldOrder) && !Arrays::is($orderDirection)) {
+                $t = array();
+                foreach ($fieldOrder as $tmpField) {
+                    array_push($t, $orderDirection);
                 }
-                $collection = array();
-                foreach ($asort as $key => $row) {
-                    array_push($collection, $row);
-                }
-                $this->cached($keyCache, $collection);
-            } else {
-                $collection = $cached;
+                $orderDirection = $t;
             }
 
-            $this->results = $collection;
+            if (!Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
+                $orderDirection = Arrays::first($orderDirection);
+            }
+
+            if (Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
+                for ($i = 0 ; $i < count($fieldOrder) ; $i++) {
+                    usort($res, $sortFunc($fieldOrder[$i], $orderDirection[$i]));
+                }
+            } else {
+                usort($res, $sortFunc($fieldOrder, $orderDirection));
+            }
+
+            $this->results = $res;
             return $this;
         }
 
@@ -1128,9 +1188,17 @@
                 return date('Y-m-d H:i:s', $obj->$f);
             };
 
-            $hydrate = function ($data) use ($obj) {
+            $hydrate = function ($data = array()) use ($obj) {
+                $data = empty($data) ? $_POST : $data;
                 if (Arrays::isAssoc($data)) {
                     foreach ($data as $k => $v) {
+                        if ("true" == $v) {
+                            $v = true;
+                        } elseif ("false" == $v) {
+                            $v = false;
+                        } elseif ("null" == $v) {
+                            $v = null;
+                        }
                         $obj->$k = $v;
                     }
                 }
@@ -1144,14 +1212,6 @@
                 } else {
                     return $val;
                 }
-            };
-
-            $tab = function () use ($obj) {
-                return $obj->assoc();
-            };
-
-            $asset = function ($field) use ($obj) {
-                return '/storage/img/' . $obj->$field;
             };
 
             $extend = function ($n, \Closure $f) use ($obj) {
@@ -1170,7 +1230,6 @@
             ->event('extend', $extend)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
-            ->event('tab', $tab)
             ->event('export', $export)
             ->event('display', $display);
 
@@ -1179,13 +1238,11 @@
             if (count($functions)) {
                 foreach ($functions as $closureName => $callable) {
                     $closureName = lcfirst(Inflector::camelize($closureName));
-                    if (version_compare(PHP_VERSION, '5.4.0', "<")) {
-                        $share = function () use ($obj, $callable) {
-                            return $callable($obj);
-                        };
-                    } else {
-                        $share = $callable->bindTo($obj);
-                    }
+                    $share = function () use ($obj, $callable) {
+                        $args = func_get_args();
+                        $args[] = $obj;
+                        return call_user_func_array($callable , $args);
+                    };
                     $obj->event($closureName, $share);
                 }
             }
@@ -1263,7 +1320,7 @@
             if ('s' == $last) {
                 self::$configs[$entity][$key] = $value;
             } else {
-                if (!Arrays::is(self::$configs[$entity][$key . 's'])) {
+                if (!Arrays::exists($key . 's', self::$configs[$entity])) {
                     self::$configs[$entity][$key . 's'] = array();
                 }
                 array_push(self::$configs[$entity][$key . 's'], $value);
@@ -1584,5 +1641,27 @@
         private function queryParamsCallback($matches)
         {
             return preg_replace('/./Uui', '*', Arrays::first($matches));
+        }
+
+        public function query($sql)
+        {
+            if (strstr($sql, ' && ')) {
+                $segs = explode(' && ', $sql);
+                foreach ($segs as $seg) {
+                    $this->where($seg);
+                    $sql = str_replace($seg . ' && ', '', $sql);
+                }
+            }
+            if (strstr($sql, ' || ')) {
+                $segs = explode(' || ', $sql);
+                foreach ($segs as $seg) {
+                    $this->where($seg, 'OR');
+                    $sql = str_replace($seg . ' || ', '', $sql);
+                }
+            }
+            if (!empty($sql)) {
+                $this->where($sql);
+            }
+            return $this;
         }
     }

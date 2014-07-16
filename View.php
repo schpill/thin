@@ -114,7 +114,8 @@
             if (File::exists($partial)) {
                 $viewFile = $partial;
             } else {
-                $module = (null === $module) ? $this->_module : $module;
+                $route = container()->getRoute();
+                $module = (null === $module) ? $route->getModule() : $module;
                 if (true === container()->getMultiSite()) {
                     $viewFile = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
                 } else {

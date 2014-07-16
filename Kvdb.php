@@ -6,10 +6,11 @@
     {
         private $db;
         private $result;
+        private static $instance;
 
-        public function __construct($config = array())
+        public function __construct($config = null)
         {
-            if (empty($config)) {
+            if (is_null($config)) {
                 $configs        = container()->getConfig()->getDb();
                 $config         = isAke($configs, 'db');
                 if (empty($config)) {
@@ -19,6 +20,14 @@
             $this->config = $config;
             $this->connect();
             $this->check();
+        }
+
+        public static function instance($config = null)
+        {
+            if (is_null(static::$instance)) {
+                static::$instance = new self($config);
+            }
+            return static::$instance;
         }
 
         public function db()
@@ -46,7 +55,7 @@
             return $collection;
         }
 
-        public function get($key)
+        public function get($key, $default = null)
         {
             $q = "SELECT UNCOMPRESS(value) AS value FROM kvs_db WHERE kvs_db_id = " . $this->quote($key);
             $res = $this->execute($q);
@@ -56,7 +65,7 @@
                 $count = $res->rowCount();
             }
             if ($count < 1) {
-                return null;
+                return $default;
             }
             foreach ($res as $row) {
                 return $row['value'];
