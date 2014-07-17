@@ -7,4 +7,19 @@
         {
             return Inflector::uncamelize(repl('Thin\\', '', get_called_class()));
         }
+
+        public static function set($key, $value = null)
+        {
+            context('thin')->set($key, $value);
+        }
+
+        public static function get($key, $default = null)
+        {
+            return context('thin')->get($key, $value);
+        }
+
+        public static function has($key, $default = null)
+        {
+            return context('thin')->has($key);
+        }
     }
