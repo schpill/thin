@@ -2225,7 +2225,7 @@ $(document).ready(function() {
     }
 
     if (!function_exists('session')) {
-        function session($name)
+        function session($name = 'core')
         {
             return Session::instance($name);
         }
