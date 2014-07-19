@@ -319,7 +319,7 @@
          */
         protected function beginning()
         {
-            return $this->range(1, 2).' '.$this->dots;
+            return $this->range(1, 2) . ' ' . $this->dots;
         }
 
         /**

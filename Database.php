@@ -5,8 +5,8 @@
 
     class Database
     {
-        private $db, $database, $table, $query, $offset, $limit, $map = array(), $args = array(), $results = array(), $wheres = array(), $groupBys = array(), $orders = array();
-        private static $instances   = array();
+        public $db, $database, $table, $query, $offset, $limit, $map = array(), $args = array(), $results = array(), $wheres = array(), $groupBys = array(), $orders = array();
+        public static $instances   = array();
         public static $config       = array();
 
         public function __construct($db, $table, $host = 'localhost', $username = 'root', $password = '')
@@ -148,6 +148,11 @@
         public function post()
         {
             return $this->create($_POST);
+        }
+
+        public function sql()
+        {
+            return new Query($this);
         }
 
         public function save(Container $row)
@@ -469,6 +474,16 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 return $db->save($obj);
+            };
+
+            $db = function () use ($params) {
+                list($db, $table, $host, $username, $password) = $params;
+                return Database::instance($db, $table, $host, $username, $password);
+            };
+
+            $query = function () use ($params) {
+                list($db, $table, $host, $username, $password) = $params;
+                return new Query(Database::instance($db, $table, $host, $username, $password));
             };
 
             $delete = function () use ($obj, $params) {

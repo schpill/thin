@@ -26,11 +26,24 @@
     use Thin\Facade;
     use Thin\Smtp;
     use Thin\Entitydb;
+    use Thin\Filesystem;
+    use Thin\Dispatcher;
+    use Thin\Eventable;
 
     if (!function_exists('action')) {
         function action($tag, $closure)
         {
             return context('actions');
+        }
+
+        function events()
+        {
+            $events = container()->getEvents();
+            if (is_null($events)) {
+                $events = new Dispatcher(new Eventable);
+                container()->setEvents($events);
+            }
+            return $events;
         }
     }
 
@@ -1923,9 +1936,59 @@ $(document).ready(function() {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($helper));
                 $instance = new $class;
-                $instance->init();
+                $methods = get_class_methods($class);
+                if (Arrays::in('init', $methods)) {
+                    $instance->init();
+                }
             }
             return context('helper');
+        }
+    }
+
+    if (!function_exists('cron')) {
+        function cron($args)
+        {
+            if (php_sapi_name() == 'cli') {
+                $script     = array_shift($args);
+                $cronName   = array_shift($args);
+                $cron       = ucfirst(Inflector::lower($cronName));
+                $file       = APPLICATION_PATH . DS . 'crons' . DS . $cron . DS . $cron . 'Cron.php';
+                if (File::exists($file)) {
+                    require_once $file;
+                    $class      = 'Thin\\' . $cron . 'Cron';
+                    $instance   = new $class;
+                    $methods    = get_class_methods($class);
+                    if (Arrays::in('init', $methods)) {
+                        $instance->init($args);
+                    }
+                    return $instance;
+                } else {
+                    throw new Exception("Cron File $file does not exist.");
+                }
+            } else {
+                throw new Exception("You must call this method in CLI mode.");
+            }
+        }
+    }
+
+    if (!function_exists('bundle')) {
+        function bundle($bundle, $namespace = 'Thin')
+        {
+            $bundle = ucfirst(Inflector::lower($bundle));
+            $path   = realpath(APPLICATION_PATH . '/../');
+            $file   = $path . DS . 'bundles' . DS . $bundle . DS . $bundle . 'Bundle.php';
+            if (File::exists($file)) {
+                require_once $file;
+                $class = $namespace . '\\' . $bundle . 'Bundle';
+                $instance = new $class;
+                $methods = get_class_methods($class);
+                if (Arrays::in('init', $methods)) {
+                    $instance->init();
+                }
+                return $instance;
+            } else {
+                throw new Exception("Bundle File $file does not exist.");
+            }
         }
     }
 
@@ -1937,7 +2000,10 @@ $(document).ready(function() {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($service));
                 $instance = new $class;
-                $instance->init();
+                $methods = get_class_methods($class);
+                if (Arrays::in('init', $methods)) {
+                    $instance->init();
+                }
             }
             return context('service');
         }
@@ -1951,7 +2017,10 @@ $(document).ready(function() {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($plugin));
                 $instance = new $class;
-                $instance->init();
+                $methods = get_class_methods($class);
+                if (Arrays::in('init', $methods)) {
+                    $instance->init();
+                }
             }
             return context('plugin');
         }
@@ -1965,7 +2034,10 @@ $(document).ready(function() {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($model));
                 $instance = new $class;
-                $instance->init();
+                $methods = get_class_methods($class);
+                if (Arrays::in('init', $methods)) {
+                    $instance->init();
+                }
             }
             return db()->model(Inflector::lower($model));
         }
@@ -3532,6 +3604,16 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('fs')) {
+        function fs()
+        {
+            static $i;
+            if (is_null($i)) {
+                $i = new Filesystem;
+            }
+            return $i;
+        }
+    }
     if (!function_exists('ThinLog')) {
         function ThinLog($message, $logFile = null, $type = 'info')
         {
