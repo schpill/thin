@@ -1,0 +1,281 @@
+<?php
+    namespace Thin\Load;
+    use Thin\Loadini;
+    use Thin\Arrays;
+    use Thin\Inflector;
+    use Thin\Exception;
+
+    class Ini extends Loadini
+    {
+        /**
+         * String that separates nesting levels of configuration data identifiers
+         *
+         * @var string
+         */
+        protected $_nestSeparator = '.';
+
+        /**
+         * String that separates the parent section name
+         *
+         * @var string
+         */
+        protected $_sectionSeparator = ':';
+
+        /**
+         * Whether to skip extends or not
+         *
+         * @var boolean
+         */
+        protected $_skipExtends = false;
+
+        /**
+         * Loads the section $section from the config file $filename for
+         * access facilitated by nested object properties.
+         *
+         * If the section name contains a ":" then the section name to the right
+         * is loaded and included into the properties. Note that the keys in
+         * this $section will override any keys of the same
+         * name in the sections that have been included via ":".
+         *
+         * If the $section is null, then all sections in the ini file are loaded.
+         *
+         * If any key includes a ".", then this will act as a separator to
+         * create a sub-property.
+         *
+         * example ini file:
+         *      [all]
+         *      db.connection = database
+         *      hostname = live
+         *
+         *      [staging : all]
+         *      hostname = staging
+         *
+         * after calling $data = new Ini($file, 'staging'); then
+         *      $data->hostname === "staging"
+         *      $data->db->connection === "database"
+         *
+         * The $options parameter may be provided as either a boolean or an array.
+         * If provided as a boolean, this sets the $allowModifications option of
+         * Loadini. If provided as an array, there are two configuration
+         * directives that may be set. For example:
+         *
+         * $options = array(
+         *     'allowModifications' => false,
+         *     'nestSeparator'      => '->'
+         *      );
+         *
+         * @param  string        $filename
+         * @param  string|null   $section
+         * @param  boolean|array $options
+         * @throws Exception
+         * @return void
+         */
+        public function __construct($filename, $section = null, $options = false)
+        {
+            if (empty($filename) || !is_readable($filename)) {
+                throw new Exception("Filename '$filename' is not readable");
+            }
+
+            $allowModifications = false;
+            if (is_bool($options)) {
+                $allowModifications = $options;
+            } elseif (Arrays::is($options)) {
+                if (isset($options['allowModifications'])) {
+                    $allowModifications = (bool) $options['allowModifications'];
+                }
+                if (isset($options['nestSeparator'])) {
+                    $this->_nestSeparator = (string) $options['nestSeparator'];
+                }
+                if (isset($options['skipExtends'])) {
+                    $this->_skipExtends = (bool) $options['skipExtends'];
+                }
+            }
+
+            $iniArray = $this->_loadIniFile($filename);
+
+            if (null === $section) {
+                // Load entire file
+                $dataArray = array();
+                foreach ($iniArray as $sectionName => $sectionData) {
+                    if(!Arrays::is($sectionData)) {
+                        $dataArray = $this->_arrayMergeRecursive(
+                            $dataArray,
+                            $this->_processKey(
+                                array(),
+                                $sectionName,
+                                $sectionData
+                            )
+                        );
+                    } else {
+                        $dataArray[$sectionName] = $this->_processSection($iniArray, $sectionName);
+                    }
+                }
+                parent::__construct($dataArray, $allowModifications);
+            } else {
+                // Load one or more sections
+                if (!Arrays::is($section)) {
+                    $section = array($section);
+                }
+                $dataArray = array();
+                foreach ($section as $sectionName) {
+                    if (!isset($iniArray[$sectionName])) {
+                        throw new Exception("Section '$sectionName' cannot be found in $filename");
+                    }
+                    $dataArray = $this->_arrayMergeRecursive(
+                        $this->_processSection(
+                            $iniArray,
+                            $sectionName
+                        ),
+                        $dataArray
+                    );
+
+                }
+                parent::__construct($dataArray, $allowModifications);
+            }
+
+            $this->_loadedSection = $section;
+        }
+
+        /**
+         * Load the INI file from disk using parse_ini_file(). Use a private error
+         * handler to convert any loading errors into a Exception
+         *
+         * @param string $filename
+         * @throws Exception
+         * @return array
+         */
+        protected function _parseIniFile($filename)
+        {
+            set_error_handler(array($this, '_loadFileErrorHandler'));
+            $iniArray = parse_ini_file($filename, true); // Warnings and errors are suppressed
+            restore_error_handler();
+
+            // Check if there was a error while loading file
+            if ($this->_loadFileErrorStr !== null) {
+                throw new Exception($this->_loadFileErrorStr);
+            }
+
+            return $iniArray;
+        }
+
+        /**
+         * Load the ini file and preprocess the section separator (':' in the
+         * section name (that is used for section extension) so that the resultant
+         * array has the correct section names and the extension information is
+         * stored in a sub-key called ';extends'. We use ';extends' as this can
+         * never be a valid key name in an INI file that has been loaded using
+         * parse_ini_file().
+         *
+         * @param string $filename
+         * @throws Exception
+         * @return array
+         */
+        protected function _loadIniFile($filename)
+        {
+            $loaded = $this->_parseIniFile($filename);
+            $iniArray = array();
+            foreach ($loaded as $key => $data)
+            {
+                $parts = explode($this->_sectionSeparator, $key);
+                $thisSection = trim(Arrays::first($parts));
+                switch (count($parts)) {
+                    case 1:
+                        $iniArray[$thisSection] = $data;
+                        break;
+                    case 2:
+                        $extendedSection = trim(Arrays::last($parts));
+                        $iniArray[$thisSection] = array_merge(
+                            array(
+                                ';extends' => $extendedSection
+                            ),
+                            $data
+                        );
+                        break;
+                    default:
+                        throw new Exception("Section '$thisSection' may not extend multiple sections in $filename");
+                }
+            }
+
+            return $iniArray;
+        }
+
+        /**
+         * Process each element in the section and handle the ";extends" inheritance
+         * key. Passes control to _processKey() to handle the nest separator
+         * sub-property syntax that may be used within the key name.
+         *
+         * @param  array  $iniArray
+         * @param  string $section
+         * @param  array  $config
+         * @throws Exception
+         * @return array
+         */
+        protected function _processSection($iniArray, $section, $config = array())
+        {
+            $thisSection = $iniArray[$section];
+
+            foreach ($thisSection as $key => $value) {
+                if (Inflector::lower($key) == ';extends') {
+                    if (isset($iniArray[$value])) {
+                        $this->_assertValidExtend($section, $value);
+
+                        if (!$this->_skipExtends) {
+                            $config = $this->_processSection(
+                                $iniArray,
+                                $value,
+                                $config
+                            );
+                        }
+                    } else {
+                        throw new Exception("Parent section '$section' cannot be found");
+                    }
+                } else {
+                    $config = $this->_processKey(
+                        $config,
+                        $key,
+                        $value
+                    );
+                }
+            }
+            return $config;
+        }
+
+        /**
+         * Assign the key's value to the property list. Handles the
+         * nest separator for sub-properties.
+         *
+         * @param  array  $config
+         * @param  string $key
+         * @param  string $value
+         * @throws Exception
+         * @return array
+         */
+        protected function _processKey($config, $key, $value)
+        {
+            if (strpos($key, $this->_nestSeparator) !== false) {
+                $parts = explode($this->_nestSeparator, $key, 2);
+                if (strlen(Arrays::first($parts)) && strlen(Arrays::last($parts))) {
+                    if (!isset($config[Arrays::first($parts)])) {
+                        if (Arrays::first($parts) === '0' && !empty($config)) {
+                            // convert the current values in $config into an array
+                            $config = array(Arrays::first($parts) => $config);
+                        } else {
+                            $config[Arrays::first($parts)] = array();
+                        }
+                    } elseif (!Arrays::is($config[Arrays::first($parts)])) {
+                        throw new Exception("Cannot create sub-key for '{Arrays::first($parts)}' as key already exists");
+                    }
+                    $config[Arrays::first($parts)] = $this->_processKey(
+                        $config[Arrays::first($parts)],
+                        Arrays::last($parts),
+                        $value
+                    );
+                } else {
+                    throw new Exception("Invalid key '$key'");
+                }
+            } else {
+                $config[$key] = $value;
+            }
+            return $config;
+        }
+    }

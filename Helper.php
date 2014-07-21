@@ -1,5 +1,4 @@
 <?php
-
     use Thin\Data;
     use Thin\Activerecord;
     use Thin\Querydata;
@@ -29,7 +28,18 @@
     use Thin\Filesystem;
     use Thin\Dispatcher;
     use Thin\Eventable;
+    use Thin\Load\Ini as IniLoad;
 
+    if (!function_exists('iniLoad')) {
+        function iniLoad($filename, $section = null, $options = false)
+        {
+            if (!strstr($filename, DS)) {
+                $tab = explode('.', $filename);
+                $filename = path('config') . DS . implode(DS, $tab) . '.ini';
+            }
+            return new IniLoad($filename, $section, $options);
+        }
+    }
     if (!function_exists('action')) {
         function action($tag, $closure)
         {
@@ -1657,8 +1667,8 @@ $(document).ready(function() {
             function registry()
             {
                 static $tab = array();
-                $args = func_get_args();
-                $nb = count($args);
+                $args       = func_get_args();
+                $nb         = count($args);
 
                 if ($nb == 1) {
                     return arrayGet($tab, Arrays::first($args));
@@ -1989,6 +1999,116 @@ $(document).ready(function() {
             } else {
                 throw new Exception("Bundle File $file does not exist.");
             }
+        }
+
+        function loadIni($filename, $section = null)
+        {
+            if (empty($filename) || !is_readable($filename)) {
+                throw new Exception('Filename is not readable');
+            }
+
+            $allowModifications = false;
+            $iniArray           = parse_ini_file($filename, true);
+
+            if (null === $section) {
+                // Load entire file
+                $dataArray = array();
+                foreach ($iniArray as $sectionName => $sectionData) {
+                    if(!Arrays::is($sectionData)) {
+                        $dataArray = arrayMergeRecursive(
+                            $dataArray,
+                            processKey(
+                                array(),
+                                $sectionName,
+                                $sectionData
+                            )
+                        );
+                    } else {
+                        $dataArray[$sectionName] = processSection($iniArray, $sectionName);
+                    }
+                }
+            } else {
+                // Load one or more sections
+                if (!Arrays::is($section)) {
+                    $section = array($section);
+                }
+                $dataArray = array();
+                foreach ($section as $sectionName) {
+                    if (!isset($iniArray[$sectionName])) {
+                        throw new Exception("Section '$sectionName' cannot be found in $filename");
+                    }
+                    $dataArray = arrayMergeRecursive(
+                        processSection(
+                            $iniArray,
+                            $sectionName
+                        ),
+                        $dataArray
+                    );
+                }
+            }
+            return $dataArray;
+        }
+
+        function processSection($iniArray, $section, $config = array())
+        {
+            $thisSection = $iniArray[$section];
+            foreach ($thisSection as $key => $value) {
+                $config = processKey($config, $key, $value);
+            }
+            return $config;
+        }
+
+        function processKey($config, $key, $value)
+        {
+            if (strpos($key, '.') !== false) {
+                $parts = explode('.', $key, 2);
+                if (strlen(Arrays::first($parts)) && strlen(Arrays::last($parts))) {
+                    if (!isset($config[Arrays::first($parts)])) {
+                        if (Arrays::first($parts) === '0' && !empty($config)) {
+                            $config = array(Arrays::first($parts) => $config);
+                        } else {
+                            $config[Arrays::first($parts)] = array();
+                        }
+                    } elseif (!Arrays::is($config[Arrays::first($parts)])) {
+                        throw new Exception("Cannot create sub-key for '{Arrays::first($parts)}' as key already exists");
+                    }
+                    $config[Arrays::first($parts)] = processKey(
+                        $config[Arrays::first($parts)],
+                        Arrays::last($parts),
+                        $value
+                    );
+                } else {
+                    throw new Exception("Invalid key '$key'");
+                }
+            } else {
+                $config[$key] = $value;
+            }
+            return $config;
+        }
+
+        function arrayMergeRecursive($firstArray, $secondArray)
+        {
+            if (Arrays::is($firstArray) && Arrays::is($secondArray)) {
+                foreach ($secondArray as $key => $value) {
+                    if (isset($firstArray[$key])) {
+                        $firstArray[$key] = arrayMergeRecursive($firstArray[$key], $value);
+                    } else {
+                        if($key === 0) {
+                            $firstArray = array(
+                                0 => arrayMergeRecursive(
+                                    $firstArray,
+                                    $value
+                                )
+                            );
+                        } else {
+                            $firstArray[$key] = $value;
+                        }
+                    }
+                }
+            } else {
+                $firstArray = $secondArray;
+            }
+            return $firstArray;
         }
     }
 
@@ -2676,11 +2796,28 @@ $(document).ready(function() {
     if (!function_exists('path')) {
         function path($path)
         {
-            $paths = Utils::get('ThinPaths');
-            if (ake($path, $paths)) {
-                return $paths[$path];
+            if ($path == 'app') {
+                return APPLICATION_PATH;
+            } elseif ($path == 'bundles') {
+                return realpath(APPLICATION_PATH . '/../') . DS . 'bundles';
+            } elseif ($path == 'views') {
+                $route = Utils::get('appDispatch');
+                if (!is_null($route)) {
+                    return APPLICATION_PATH .
+                    DS .
+                    'modules' .
+                    DS .
+                    $route->getModule() .
+                    DS .
+                    'views' .
+                    DS .
+                    $route->getController();
+                } else {
+                    throw new Exception('A route must be exist to have views path.');
+                }
             } else {
-                throw new Exception("This path '$path' is not defined.");
+                $tab = explode('.', $path);
+                return APPLICATION_PATH . DS . implode(DS, $tab);
             }
         }
     }
