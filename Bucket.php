@@ -184,6 +184,19 @@
             return $res;
         }
 
+        public function backup($file)
+        {
+            if (File::exists($file)) {
+                $tab    = explode(DS, $file);
+                $name   = date("Y_m_d_H_i_s") . '_' . Arrays::last($tab);
+                $this->call('upload', array("data" => fgc($file), "name" => $name));
+                $tab    = json_decode($this->response, true);
+                $res    = isAke($tab, 'message');
+                return $res;
+            }
+            return false;
+        }
+
         private function call($action, $params = array())
         {
             $params['bucket'] = $this->bucket;
