@@ -251,4 +251,110 @@
 
             return (Arrays::isArray($mimes[$extension])) ? Arrays::first($mimes[$extension]) : $mimes[$extension];
         }
+
+        public static function download($fileLocation, $maxSpeed = 5120)
+        {
+            if (connection_status() != 0) return false;
+
+            $tab = explode(DS, $fileLocation);
+            $fileName = Arrays::last($tab);
+
+            $extension = Inflector::lower(substr($fileName, strrpos($fileName, '.') + 1));
+
+            /* List of File Types */
+            $fileTypes['swf'] = 'application/x-shockwave-flash';
+            $fileTypes['pdf'] = 'application/pdf';
+            $fileTypes['exe'] = 'application/octet-stream';
+            $fileTypes['zip'] = 'application/zip';
+            $fileTypes['doc'] = 'application/msword';
+            $fileTypes['docx'] = 'application/msword';
+            $fileTypes['xls'] = 'application/vnd.ms-excel';
+            $fileTypes['xlsx'] = 'application/vnd.ms-excel';
+            $fileTypes['ppt'] = 'application/vnd.ms-powerpoint';
+            $fileTypes['pptx'] = 'application/vnd.ms-powerpoint';
+            $fileTypes['gif'] = 'image/gif';
+            $fileTypes['png'] = 'image/png';
+            $fileTypes['jpeg'] = 'image/jpg';
+            $fileTypes['bmp'] = 'image/bmp';
+            $fileTypes['jpg'] = 'image/jpg';
+            $fileTypes['rar'] = 'application/rar';
+            $fileTypes['ace'] = 'application/ace';
+
+            $fileTypes['ra'] = 'audio/x-pn-realaudio';
+            $fileTypes['ram'] = 'audio/x-pn-realaudio';
+            $fileTypes['ogg'] = 'audio/x-pn-realaudio';
+
+            $fileTypes['wav'] = 'video/x-msvideo';
+            $fileTypes['wmv'] = 'video/x-msvideo';
+            $fileTypes['avi'] = 'video/x-msvideo';
+            $fileTypes['asf'] = 'video/x-msvideo';
+            $fileTypes['divx'] = 'video/x-msvideo';
+
+            $fileTypes['mp3'] = 'audio/mpeg';
+            $fileTypes['mp4'] = 'audio/mpeg';
+            $fileTypes['mpeg'] = 'video/mpeg';
+            $fileTypes['mpg'] = 'video/mpeg';
+            $fileTypes['mpe'] = 'video/mpeg';
+            $fileTypes['mov'] = 'video/quicktime';
+            $fileTypes['swf'] = 'video/quicktime';
+            $fileTypes['3gp'] = 'video/quicktime';
+            $fileTypes['m4a'] = 'video/quicktime';
+            $fileTypes['aac'] = 'video/quicktime';
+            $fileTypes['m3u'] = 'video/quicktime';
+
+            $contentType = isAke($fileTypes, $extension, 'application/octet-stream');
+
+            header("Cache-Control: public");
+            header("Content-Transfer-Encoding: binary\n");
+            header("Content-Type: $contentType");
+
+            $contentDisposition = 'attachment';
+
+            if (strstr($_SERVER['HTTP_USER_AGENT'], "MSIE")) {
+                $fileName = preg_replace('/\./', '%2e', $fileName, substr_count($fileName, '.') - 1);
+                header("Content-Disposition: $contentDisposition;filename=\"$fileName\"");
+            } else {
+                header("Content-Disposition: $contentDisposition;filename=\"$fileName\"");
+            }
+
+            header("Accept-Ranges: bytes");
+            $range = 0;
+            $size = filesize($fileLocation);
+            $range = isAke($_SERVER, 'HTTP_RANGE', null);
+
+            if (!is_null($range)) {
+                list($a, $range) = explode("=", $range);
+                $range = repl($range, "-", $range);
+                $size2 = $size - 1;
+                $new_length = $size - $range;
+                header("HTTP/1.1 206 Partial Content");
+                header("Content-Length: $new_length");
+                header('Content-Range: bytes ' . $range . $size2 . '/' . $size);
+            } else {
+                $size2 = $size - 1;
+                header("Content-Range: bytes 0-$size2/$size");
+                header("Content-Length: " . $size);
+            }
+
+            if ($size < 1) {
+                die('Zero byte file! Aborting download');
+            }
+
+            $fp = fopen($fileLocation, "rb");
+
+            fseek($fp, $range);
+
+            while (!feof($fp) && (connection_status() == 0)) {
+                set_time_limit(0);
+                print (fread($fp, 1024 * $maxSpeed));
+                flush();
+                ob_flush();
+                sleep(1);
+            }
+            fclose($fp);
+
+            exit;
+
+            return ((connection_status() == 0) && !connection_aborted());
+        }
     }

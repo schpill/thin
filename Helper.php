@@ -28,6 +28,7 @@
     use Thin\Filesystem;
     use Thin\Dispatcher;
     use Thin\Eventable;
+    use Thin\Doctrine;
     use Thin\Load\Ini as IniLoad;
 
     if (!function_exists('iniLoad')) {
@@ -327,48 +328,6 @@
         }
     }
 
-    if (!function_exists('infosIP')) {
-        function infosIP($array = false, $localhost = false)
-        {
-            $session = session('web');
-            $infosIP = $session->getInfosIp();
-            if (empty($infosIP)) {
-                $ip = $_SERVER["REMOTE_ADDR"];
-                if (true === $localhost) {
-                    $url = "http://ip-api.com/json";
-                } else {
-                    $url = "http://ip-api.com/json/$ip";
-                }
-                $json = dwn($url);
-                $json = str_replace(
-                    array(
-                        'query',
-                        'countryCode',
-                        'regionName'
-                    ),
-                    array(
-                        'ip',
-                        'country_code',
-                        'region_name'
-                    ),
-                    $json
-                );
-                $infos = json_decode($json, true);
-                if (Arrays::isArray($infos)) {
-                    if (ake('status', $infos)) {
-                        if ($infos['status'] == 'fail') {
-                            return infosIP($array, true);
-                        }
-                    }
-                    $InfosIp = o("IP");
-                    $InfosIp->populate($infos);
-                    $session->setInfosIp($InfosIp);
-                }
-            }
-            return false === $array ? $infosIP : $infos;
-        }
-    }
-
     if (!function_exists('unstatic')) {
         function unstatic($class)
         {
@@ -466,7 +425,13 @@
     if (!function_exists('isAke')) {
         function isAke($tab, $key, $default = array())
         {
-            return array_key_exists($key, $tab) ? $tab[$key] : $default;
+            return Arrays::is($tab) ?
+                Arrays::isAssoc($tab) ?
+                    Arrays::exists($key, $tab) ?
+                        $tab[$key] :
+                    $default :
+                $default :
+            $default;
         }
     }
 
@@ -1449,7 +1414,7 @@ $(document).ready(function() {
             $dbs = container()->getLites();
             $dbs = !Arrays::is($dbs) ? array() : $dbs;
             if (!Arrays::exists($name, $dbs)) {
-                $dbFile = STORAGE_PATH . DS . Inflector::lower($name) . '.db';
+                $dbFile = STORAGE_PATH . DS . Inflector::lower($name) . '.dbLite';
                 $db = new SQLite3($dbFile);
                 $dbs[$name] = $db;
                 container()->setLites($dbs);
@@ -1607,16 +1572,17 @@ $(document).ready(function() {
     if (!function_exists('thinVar')) {
         function thinVar()
         {
-            static $vars = array();
-            $args = func_get_args();
-            $numArgs = func_num_args();
+            static $vars    = array();
+            $args           = func_get_args();
+            $numArgs        = func_num_args();
+
             if (1 == $numArgs) {
-                if (ake(current($args), $vars)) {
-                    return $vars[current($args)];
+                if (ake(Arrays::first($args), $vars)) {
+                    return $vars[Arrays::first($args)];
                 }
             } else if (2 == $numArgs) {
-                $vars[current($args)] = end($args);
-                return end($args);
+                $vars[Arrays::first($args)] = Arrays::last($args);
+                return Arrays::last($args);
             }
             return null;
         }
@@ -1934,9 +1900,26 @@ $(document).ready(function() {
 
     if (!function_exists('helper')) {
 
-        function getClass()
+        function repo($entity)
         {
-            return repl('Thin\\', '', get_class());
+            $em = Doctrine::em();
+            $class = ucfirst(Inflector::uncamelize($entity));
+            $file = APPLICATION_PATH . DS . 'models' . DS . 'Doctrine' . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $class) . '.php';
+            if (File::exists($file)) {
+                require_once $file;
+                return $em->getRepository('\\Thin\\Doctrine' . ucfirst($entity) . 'Entity');
+            }
+            return null;
+        }
+
+        function doctrine($entity)
+        {
+            return '\\Thin\\Doctrine' . ucfirst($entity) . 'Entity';
+        }
+
+        function entity()
+        {
+            return Doctrine::em();
         }
 
         function helper($helper)
@@ -2118,7 +2101,7 @@ $(document).ready(function() {
             $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(Inflector::lower($service)) . '.php';
             if (File::exists($file)) {
                 require_once $file;
-                $class = 'Thin\\' . ucfirst(Inflector::lower($service));
+                $class = 'Thin\\' . ucfirst(Inflector::lower($service)) . 'Service';
                 $instance = new $class;
                 $methods = get_class_methods($class);
                 if (Arrays::in('init', $methods)) {
@@ -2129,13 +2112,20 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('arrayCollection')) {
+        function collection()
+        {
+            return with(new \Doctrine\Common\Collections\ArrayCollection);
+        }
+    }
+
     if (!function_exists('plugin')) {
         function plugin($plugin)
         {
             $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(Inflector::lower($plugin)) . '.php';
             if (File::exists($file)) {
                 require_once $file;
-                $class = 'Thin\\' . ucfirst(Inflector::lower($plugin));
+                $class = 'Thin\\' . ucfirst(Inflector::lower($plugin)) . 'Plugin';
                 $instance = new $class;
                 $methods = get_class_methods($class);
                 if (Arrays::in('init', $methods)) {
@@ -2152,7 +2142,7 @@ $(document).ready(function() {
             $file = APPLICATION_PATH . DS . 'models' . DS . ucfirst(Inflector::lower($model)) . '.php';
             if (File::exists($file)) {
                 require_once $file;
-                $class = 'Thin\\' . ucfirst(Inflector::lower($model));
+                $class = 'Thin\\' . ucfirst(Inflector::lower($model)) . 'Model';
                 $instance = new $class;
                 $methods = get_class_methods($class);
                 if (Arrays::in('init', $methods)) {

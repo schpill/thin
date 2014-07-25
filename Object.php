@@ -317,7 +317,7 @@
                     return $this->db_instance->$func($this, $var, $value);
                     call_user_func_array(array($this->db_instance, $func), array_merge(array($this), $argv));
                 }
-                throw new \BadMethodCallException(__class__ . ' => ' . $func);
+                return null;
             }
             return call_user_func_array($func, array_merge(array($this->getArrayCopy()), $argv));
         }

@@ -67,10 +67,12 @@
             $query = is_null($query) ? "SELECT $this->database.$this->table.* FROM $this->database.$this->table" : $query;
             $collection = array();
             $res = $this->db->query($query);
-            while ($row = $res->fetch_assoc()) {
-                array_push($collection, $row);
+            if (is_object($res)) {
+                while ($row = $res->fetch_assoc()) {
+                    array_push($collection, $row);
+                }
+                $res->close();
             }
-            $res->close();
             return $collection;
         }
 
@@ -90,8 +92,29 @@
             $query  = "SHOW COLUMNS FROM $this->database.$this->table";
             $res    = $this->fetch($query);
 
+            $settings   = isAke(self::$config, "$this->database.$this->table");
+            $relations  = isAke($settings, 'relations', false);
+
+            if (false === $relations) {
+                $relations = array();
+                $relationsQuery = "SELECT
+                REFERENCED_TABLE_NAME as foreignTable
+                FROM information_schema.REFERENTIAL_CONSTRAINTS
+                WHERE
+                UNIQUE_CONSTRAINT_SCHEMA = '$this->database'
+                AND TABLE_NAME = '$this->table'";
+                $resRel = $this->fetch($relationsQuery);
+                if (count($resRel)) {
+                    foreach ($resRel as $rowRel) {
+                        array_push($relations, $rowRel['foreignTable']);
+                    }
+                }
+                self::$config["$this->database.$this->table"]['relations'] = $relations;
+            }
+
             $fields = array();
             $keys   = array();
+            $pk     = null;
 
             if (count($res)) {
                 foreach ($res as $row) {
@@ -113,6 +136,18 @@
                 'pk'        => $pk,
                 'keys'      => $keys
             );
+
+            if (false === $relations) {
+                $relations = array();
+                if (count($keys)) {
+                    foreach ($keys as $key) {
+                        if (strstr($key, '_id')) {
+                            array_push($relations, repl('_id', '', $key));
+                        }
+                    }
+                }
+                self::$config["$this->database.$this->table"]['relations'] = $relations;
+            }
             return $this;
         }
 
@@ -512,6 +547,46 @@
                         return call_user_func_array($callable , $args);
                     };
                     $obj->event($closureName, $share);
+                }
+            }
+            return $this->related($obj);
+        }
+
+        private function related($obj)
+        {
+            $settings   = isAke(self::$config, "$this->database.$this->table");
+            $relations  = isAke($settings, 'relations');
+            $params     = $this->args;
+            if (count($relations)) {
+                foreach ($relations as $relation) {
+                    $field = $relation . '_id';
+                    if (isset($obj->$field)) {
+                        $value = $obj->$field;
+                        if (!is_callable($value)) {
+                            $fk = $tableFk = $relation;
+                            $cb = function () use ($value, $tableFk, $params) {
+                                list($database, $table, $host, $username, $password) = $params;
+                                $db = Database::instance($database, $tableFk, $host, $username, $password);
+                                if ($db) {
+                                    return $db->find($value);
+                                }
+                                return null;
+                            };
+                            $obj->event($fk, $cb);
+
+                            $setter = lcfirst(Inflector::camelize("link_$fk"));
+
+                            $cb = function(Container $fkObject) use ($obj, $field, $fk) {
+                                $obj->$field = $fkObject->getId();
+                                $newCb = function () use ($fkObject) {
+                                    return $fkObject;
+                                };
+                                $obj->event($fk, $newCb);
+                                return $obj;
+                            };
+                            $obj->event($setter, $cb);
+                        }
+                    }
                 }
             }
             return $obj;

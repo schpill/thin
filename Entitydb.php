@@ -1214,20 +1214,35 @@
                 }
             };
 
-            $extend = function ($n, \Closure $f) use ($obj) {
-            if (version_compare(PHP_VERSION, '5.4.0', "<")) {
-                    $share = function () use ($obj, $f) {
-                        return $f($obj);
-                    };
-                } else {
-                    $share = $f->bindTo($obj);
+            $hook = function ($callable, $primary, $when = 'before') use ($obj) {
+                if (!is_callable($obj->$primary)) {
+                    throw new Exception("Hook method does not exist.");
                 }
-                $obj->event($n, $share);
+                $args = func_get_args();
+                array_shift($args);
+                array_shift($args);
+                $newName = '_' . $primary;
+                $obj->$newName = $obj->$primary;
+
+                $share = function() use ($callable, $primary, $when, $obj, $args, $newName) {
+                    if ($when == 'before') {
+                        array_push($args, $obj);
+                        $obj = call_user_func_array($callable, $args);
+                        array_pop($args);
+                        return call_user_func_array($obj->$newName, $args);
+                    } elseif ($when == 'after') {
+                        $obj = call_user_func_array($obj->$newName, $args);
+                        array_push($args, $obj);
+                        return call_user_func_array($callable, $args);
+                    }
+                };
+                $obj->event($primary, $share);
+                return $obj;
             };
 
             $obj->event('save', $save)
             ->event('delete', $delete)
-            ->event('extend', $extend)
+            ->event('hook', $hook)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('export', $export)
@@ -1247,6 +1262,40 @@
                 }
             }
 
+            return $this->related($obj);
+        }
+
+        private function related(Container $obj)
+        {
+            $fields = array_keys($obj->assoc());
+            foreach ($fields as $field) {
+                if (strstr($field, '_id')) {
+                    if (isset($obj->$field)) {
+                        $value = $obj->$field;
+                        list($ns, $table) = explode('::', $this->entity, 2);
+                        if (!is_callable($value)) {
+                            $fk = repl('_id', '', $field);
+                            $cb = function() use ($value, $fk, $ns) {
+                                $db = em($ns, $fk);
+                                return $db->find($value);
+                            };
+                            $obj->event($fk, $cb);
+
+                            $setter = lcfirst(Inflector::camelize("link_$fk"));
+
+                            $cb = function(Container $fkObject) use ($obj, $field, $fk) {
+                                $obj->$field = $fkObject->getId();
+                                $newCb = function () use ($fkObject) {
+                                    return $fkObject;
+                                };
+                                $obj->event($fk, $newCb);
+                                return $obj;
+                            };
+                            $obj->event($setter, $cb);
+                        }
+                    }
+                }
+            }
             return $obj;
         }
 
