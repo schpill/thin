@@ -1974,9 +1974,9 @@ $(document).ready(function() {
             $file   = $path . DS . 'bundles' . DS . $bundle . DS . $bundle . 'Bundle.php';
             if (File::exists($file)) {
                 require_once $file;
-                $class = $namespace . '\\' . $bundle . 'Bundle';
-                $instance = new $class;
-                $methods = get_class_methods($class);
+                $class      = $namespace . '\\' . $bundle . 'Bundle';
+                $instance   = new $class;
+                $methods    = get_class_methods($class);
                 if (Arrays::in('init', $methods)) {
                     $instance->init();
                 }
