@@ -1914,7 +1914,9 @@ $(document).ready(function() {
 
         function doctrine($entity)
         {
-            return '\\Thin\\Doctrine' . ucfirst($entity) . 'Entity';
+            $repo = repo($entity);
+            $class = '\\Thin\\Doctrine' . ucfirst($entity) . 'Entity';
+            return $class;
         }
 
         function entity()
