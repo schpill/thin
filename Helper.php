@@ -29,6 +29,7 @@
     use Thin\Dispatcher;
     use Thin\Eventable;
     use Thin\Doctrine;
+    use Thin\Autoloader;
     use Thin\Load\Ini as IniLoad;
 
     if (!function_exists('iniLoad')) {
@@ -1967,15 +1968,37 @@ $(document).ready(function() {
     }
 
     if (!function_exists('bundle')) {
-        function bundle($bundle, $namespace = 'Thin')
+        function bundle($bundle, $args = array(), $namespace = 'ThinBundle')
         {
             $bundle = ucfirst(Inflector::lower($bundle));
             $path   = realpath(APPLICATION_PATH . '/../');
-            $file   = $path . DS . 'bundles' . DS . $bundle . DS . $bundle . 'Bundle.php';
+            $file   = $path . DS . 'bundles' . DS . $bundle . DS . $bundle . '.php';
             if (File::exists($file)) {
+                Autoloader::registerNamespace($namespace, $path . DS . 'bundles' . DS . $bundle);
                 require_once $file;
-                $class      = $namespace . '\\' . $bundle . 'Bundle';
-                $instance   = new $class;
+                $class      = $namespace . '\\' . $bundle;
+                $nbArgs     = count($args);
+                if ($nbArgs == 0) {
+                    $instance   = new $class;
+                } else {
+                    if ($nbArgs == 1) {
+                        $instance = new $class(Arrays::first($args));
+                    } elseif ($nbArgs == 2) {
+                        $instance = new $class(Arrays::first($args), Arrays::last($args));
+                    } elseif ($nbArgs == 3) {
+                        $instance = new $class(Arrays::first($args), $args[1], Arrays::last($args));
+                    } elseif ($nbArgs == 4) {
+                        $instance = new $class(Arrays::first($args), $args[1], $args[2], Arrays::last($args));
+                    } elseif ($nbArgs == 5) {
+                        $instance = new $class(Arrays::first($args), $args[1], $args[2], $args[3], Arrays::last($args));
+                    } elseif ($nbArgs == 6) {
+                        $instance = new $class(Arrays::first($args), $args[1], $args[2], $args[3], $args[4], Arrays::last($args));
+                    } else {
+                        $refClass = new \ReflectionClass($class);
+                        $instance = $refClass->newInstanceArgs($args);
+                    }
+                }
+
                 $methods    = get_class_methods($class);
                 if (Arrays::in('init', $methods)) {
                     $instance->init();

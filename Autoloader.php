@@ -88,7 +88,7 @@
                         }
                     }
                     foreach (static::$_paths as $ns => $path) {
-                        $file = $path . str_replace('\\', DS, str_replace($ns, '', $className)) . '.php';
+                        $file = $path . preg_replace('#\\\|_(?!.+\\\)#', DS, str_replace($ns, '', $className)) . '.php';
                         if(is_readable($file)) {
                             require_once $file;
                             static::$_classes[$className] = true;
