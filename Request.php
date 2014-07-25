@@ -125,7 +125,7 @@
          */
         public static function accepts($type)
         {
-            return inArray($type, static::accept());
+            return Arrays::in($type, static::accept());
         }
 
         /**
@@ -249,7 +249,7 @@
          */
         public static function route()
         {
-            return static::$route;
+            return container()->getRoute();
         }
 
         /**
