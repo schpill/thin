@@ -494,9 +494,9 @@
             $extend = function ($name, $callable) use ($obj, $params) {
                 if (is_callable($callable)) {
                     list($db, $table, $host, $username, $password) = $params;
-                    $db = Database::instance($db, $table, $host, $username, $password);
-                    $share = function () use ($obj, $callable) {
-                        $args = func_get_args();
+                    $db         = Database::instance($db, $table, $host, $username, $password);
+                    $share      = function () use ($obj, $callable) {
+                        $args   = func_get_args();
                         $args[] = $obj;
                         $args[] = $db;
                         return call_user_func_array($callable , $args);
@@ -528,8 +528,16 @@
                 return $db->delete($obj->$pk);
             };
 
+            $id = function () use ($obj, $params) {
+                list($db, $table, $host, $username, $password) = $params;
+                $db = Database::instance($db, $table, $host, $username, $password);
+                $pk = $db->pk();
+                return $obj->$pk;
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
+            ->event('id', $id)
             ->event('extend', $extend);
 
             list($db, $table, $host, $username, $password) = $params;
@@ -538,12 +546,12 @@
 
             if (count($functions)) {
                 foreach ($functions as $closureName => $callable) {
-                    $closureName = lcfirst(Inflector::camelize($closureName));
-                    $share = function () use ($obj, $params, $callable) {
+                    $closureName    = lcfirst(Inflector::camelize($closureName));
+                    $share          = function () use ($obj, $params, $callable) {
                         list($db, $table, $host, $username, $password) = $params;
-                        $args = func_get_args();
-                        $args[] = $obj;
-                        $args[] = Database::instance($db, $table, $host, $username, $password);
+                        $args       = func_get_args();
+                        $args[]     = $obj;
+                        $args[]     = Database::instance($db, $table, $host, $username, $password);
                         return call_user_func_array($callable , $args);
                     };
                     $obj->event($closureName, $share);
@@ -577,7 +585,7 @@
                             $setter = lcfirst(Inflector::camelize("link_$fk"));
 
                             $cb = function(Container $fkObject) use ($obj, $field, $fk) {
-                                $obj->$field = $fkObject->getId();
+                                $obj->$field = $fkObject->id();
                                 $newCb = function () use ($fkObject) {
                                     return $fkObject;
                                 };
