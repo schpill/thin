@@ -1968,42 +1968,68 @@ $(document).ready(function() {
     }
 
     if (!function_exists('bundle')) {
-        function bundle($bundle, $args = array(), $namespace = 'ThinBundle')
+
+        function getNamespaceAndClassNameFromCode($src)
+        {
+            $class      = false;
+            $namespace  = false;
+            $tokens     = token_get_all($src);
+
+            for ($i = 0, $count = count($tokens); $i < $count; $i++) {
+                $token = $tokens[$i];
+
+                if (!Arrays::is($token)) {
+                    continue;
+                }
+
+                if (true === $class && T_STRING === $token[0]) {
+                    return array($namespace, $token[1]);
+                }
+
+                if (true === $namespace && T_STRING === $token[0]) {
+                    $namespace = '';
+                    do {
+                        $namespace .= $token[1];
+                        $token = $tokens[++$i];
+                    } while (
+                        $i < $count
+                        && Arrays::is($token)
+                        && Arrays::in(
+                            $token[0],
+                            array(
+                                T_NS_SEPARATOR,
+                                T_STRING
+                            )
+                        )
+                    );
+                }
+
+                if (T_CLASS === $token[0]) {
+                    $class = true;
+                }
+
+                if (T_NAMESPACE === $token[0]) {
+                    $namespace = true;
+                }
+            }
+            return null;
+        }
+
+        function bundle($bundle)
         {
             $bundle = ucfirst(Inflector::lower($bundle));
             $path   = realpath(APPLICATION_PATH . '/../');
             $file   = $path . DS . 'bundles' . DS . $bundle . DS . $bundle . '.php';
             if (File::exists($file)) {
-                Autoloader::registerNamespace($namespace, $path . DS . 'bundles' . DS . $bundle);
-                require_once $file;
-                $class      = $namespace . '\\' . $bundle;
-                $nbArgs     = count($args);
-                if ($nbArgs == 0) {
-                    $instance   = new $class;
+                $getNamespaceAndClassNameFromCode = getNamespaceAndClassNameFromCode(fgc($file));
+                if (!is_null($getNamespaceAndClassNameFromCode) && Arrays::is($getNamespaceAndClassNameFromCode)) {
+                    list($namespace, $class) = $getNamespaceAndClassNameFromCode;
+                    Autoloader::registerNamespace($namespace, $path . DS . 'bundles' . DS . $bundle);
+                    require_once $file;
+                    return true;
                 } else {
-                    if ($nbArgs == 1) {
-                        $instance = new $class(Arrays::first($args));
-                    } elseif ($nbArgs == 2) {
-                        $instance = new $class(Arrays::first($args), Arrays::last($args));
-                    } elseif ($nbArgs == 3) {
-                        $instance = new $class(Arrays::first($args), $args[1], Arrays::last($args));
-                    } elseif ($nbArgs == 4) {
-                        $instance = new $class(Arrays::first($args), $args[1], $args[2], Arrays::last($args));
-                    } elseif ($nbArgs == 5) {
-                        $instance = new $class(Arrays::first($args), $args[1], $args[2], $args[3], Arrays::last($args));
-                    } elseif ($nbArgs == 6) {
-                        $instance = new $class(Arrays::first($args), $args[1], $args[2], $args[3], $args[4], Arrays::last($args));
-                    } else {
-                        $refClass = new \ReflectionClass($class);
-                        $instance = $refClass->newInstanceArgs($args);
-                    }
+                    throw new Exception("No namespace found in $file.");
                 }
-
-                $methods    = get_class_methods($class);
-                if (Arrays::in('init', $methods)) {
-                    $instance->init();
-                }
-                return $instance;
             } else {
                 throw new Exception("Bundle File $file does not exist.");
             }
@@ -2175,6 +2201,23 @@ $(document).ready(function() {
                 }
             }
             return db()->model(Inflector::lower($model));
+        }
+    }
+
+    if (!function_exists('eloquent')) {
+        function eloquent($model)
+        {
+            $file = APPLICATION_PATH . DS . 'models' .DS . 'Eloquent' . DS . ucfirst(Inflector::lower($model)) . '.php';
+            if (File::exists($file)) {
+                require_once $file;
+                $class = 'Thin\\' . ucfirst(Inflector::lower($model)) . 'Eloquent';
+                $instance = new $class;
+                $methods = get_class_methods($class);
+                if (Arrays::in('init', $methods)) {
+                    $instance->init();
+                }
+            }
+            return $instance;
         }
     }
 
@@ -2369,6 +2412,13 @@ $(document).ready(function() {
         }
     }
 
+    if (!function_exists('auth')) {
+        function auth($id = null)
+        {
+            return new \AuthBundle\Auth($id);
+        }
+    }
+
     if (!function_exists('hr')) {
         function hr($str = null)
         {
@@ -2376,6 +2426,7 @@ $(document).ready(function() {
             echo $str . '<hr />';
         }
     }
+
     if (!function_exists('addEav')) {
         function addEav($entity, array $attributes)
         {

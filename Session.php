@@ -176,8 +176,7 @@
                     unset($_SESSION['__Thin__'][$this->_sessionName][$key]);
                     return $this;
                 } else {
-                    $logger = Utils::get('ThinLog');
-                    $logger->notice("The key $key does not exist in this session.");
+                    container()->log("The key $key does not exist in this session.");
                 }
             }
         }

@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+    use Thin\Database\Collection;
 
     class Mongonode extends Customize
     {
@@ -448,6 +449,9 @@
         public function select($fields, $object = false)
         {
             $data = $this->exec($object);
+            if ($data instanceof Collection) {
+                $data = $data->toArray();
+            }
             if (count($data)) {
                 if (is_string($fields)) {
                     $fields = array($fields);
@@ -527,6 +531,9 @@
             $this->reset();
             if (!count($collection) && true === $object) {
                 return null;
+            }
+            if (true === $object) {
+                $collection = new Collection($collection);
             }
             return $collection;
         }
@@ -1209,17 +1216,6 @@
             $class->joins           = null;
             $class->transactions    = null;
 
-            $extend = function ($name, $callable) use ($obj) {
-                if (is_callable($callable)) {
-                    $share = function () use ($obj, $callable) {
-                        $args = func_get_args();
-                        $args[] = $obj;
-                        return call_user_func_array($callable , $args);
-                    };
-                    $obj->event($name, $share);
-                }
-            };
-
             $export = function () use ($class, $obj) {
                 if (isset($obj->id)) {
                     $class->where("id = " . $obj->id)->export();
@@ -1276,14 +1272,24 @@
                 return $obj->id;
             };
 
+            $id = function () use ($obj) {
+                return $obj->getId();
+            };
+
+            $exists = function () use ($obj) {
+                $id = $obj->getId();
+                return !is_null($id);
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
-            ->event('extend', $extend)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('tab', $tab)
             ->event('string', $string)
             ->event('export', $export)
+            ->event('id', $id)
+            ->event('exists', $exists)
             ->event('display', $display);
 
             $functions = isAke($settings, 'functions');
@@ -1297,6 +1303,40 @@
                         return call_user_func_array($callable , $args);
                     };
                     $obj->event($closureName, $share);
+                }
+            }
+            return $this->related($obj);
+        }
+
+        private function related(Container $obj)
+        {
+            $fields = array_keys($obj->assoc());
+            foreach ($fields as $field) {
+                if (endsWith($field, '_id')) {
+                    if (isset($obj->$field)) {
+                        $value = $obj->$field;
+                        if (!is_callable($value)) {
+                            $fk = repl('_id', '', $field);
+                            $ns = $this->ns;
+                            $cb = function() use ($value, $fk, $ns) {
+                                $db = container()->nbm($fk, $ns);
+                                return $db->find($value);
+                            };
+                            $obj->event($fk, $cb);
+
+                            $setter = lcfirst(Inflector::camelize("link_$fk"));
+
+                            $cb = function(Container $fkObject) use ($obj, $field, $fk) {
+                                $obj->$field = $fkObject->getId();
+                                $newCb = function () use ($fkObject) {
+                                    return $fkObject;
+                                };
+                                $obj->event($fk, $newCb);
+                                return $obj;
+                            };
+                            $obj->event($setter, $cb);
+                        }
+                    }
                 }
             }
             return $obj;

@@ -1,6 +1,7 @@
 <?php
     namespace Thin;
     use Thin\Nodedb\Driver;
+    use Thin\Database\Collection;
 
     class Nodedb
     {
@@ -441,6 +442,9 @@
         public function select($fields, $object = false)
         {
             $data = $this->exec($object);
+            if ($data instanceof Collection) {
+                $data = $data->toArray();
+            }
             if (count($data)) {
                 if (is_string($fields)) {
                     $fields = array($fields);
@@ -520,6 +524,9 @@
             $this->reset();
             if (!count($collection) && true === $object) {
                 return null;
+            }
+            if (true === $object) {
+                $collection = new Collection($collection);
             }
             return $collection;
         }
@@ -1216,23 +1223,22 @@
                 }
             };
 
-            $extend = function ($n, \Closure $f) use ($obj) {
-            if (version_compare(PHP_VERSION, '5.4.0', "<")) {
-                    $share = function () use ($obj, $f) {
-                        return $f($obj);
-                    };
-                } else {
-                    $share = $f->bindTo($obj);
-                }
-                $obj->event($n, $share);
+            $id = function () use ($obj) {
+                return $obj->getId();
+            };
+
+            $exists = function () use ($obj) {
+                $id = $obj->getId();
+                return !is_null($id);
             };
 
             $obj->event('save', $save)
             ->event('delete', $delete)
-            ->event('extend', $extend)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('export', $export)
+            ->event('id', $id)
+            ->event('exists', $exists)
             ->event('display', $display);
 
             $functions = isAke($settings, 'functions');
@@ -1248,7 +1254,40 @@
                     $obj->event($closureName, $share);
                 }
             }
+            return $this->related($obj);
+        }
 
+        private function related(Container $obj)
+        {
+            $fields = array_keys($obj->assoc());
+            foreach ($fields as $field) {
+                if (endsWith($field, '_id')) {
+                    if (isset($obj->$field)) {
+                        $value = $obj->$field;
+                        list($ns, $table) = explode('::', $this->entity, 2);
+                        if (!is_callable($value)) {
+                            $fk = repl('_id', '', $field);
+                            $cb = function() use ($value, $fk, $ns) {
+                                $db = container()->tbm($fk, $ns);
+                                return $db->find($value);
+                            };
+                            $obj->event($fk, $cb);
+
+                            $setter = lcfirst(Inflector::camelize("link_$fk"));
+
+                            $cb = function(Container $fkObject) use ($obj, $field, $fk) {
+                                $obj->$field = $fkObject->getId();
+                                $newCb = function () use ($fkObject) {
+                                    return $fkObject;
+                                };
+                                $obj->event($fk, $newCb);
+                                return $obj;
+                            };
+                            $obj->event($setter, $cb);
+                        }
+                    }
+                }
+            }
             return $obj;
         }
 

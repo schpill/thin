@@ -2,11 +2,23 @@
     namespace Thin;
     use mysqli;
     use mysqli_result;
+    use Thin\Database\Collection;
 
     class Database
     {
-        public $db, $database, $table, $query, $offset, $limit, $map = array(), $args = array(), $results = array(), $wheres = array(), $groupBys = array(), $orders = array();
-        public static $instances   = array();
+        public $db,
+        $database,
+        $table,
+        $query,
+        $offset,
+        $limit,
+        $map        = array(),
+        $args       = array(),
+        $results    = array(),
+        $wheres     = array(),
+        $groupBys   = array(),
+        $orders     = array();
+        public static $instances    = array();
         public static $config       = array();
 
         public function __construct($db, $table, $host = 'localhost', $username = 'root', $password = '')
@@ -43,10 +55,10 @@
 
         public static function instance($db, $table, $host = 'localhost', $username = 'root', $password = '')
         {
-            $key = sha1(serialize(func_get_args()));
-            $i = isAke(static::$instances, $key, null);
+            $key    = sha1(serialize(func_get_args()));
+            $i      = isAke(static::$instances, $key, null);
             if (is_null($i)) {
-                $i = new self($db, $table, $host, $username, $password);
+                $i  = new self($db, $table, $host, $username, $password);
                 static::$instances[$key] = $i;
             }
             return $i;
@@ -62,7 +74,7 @@
             return $this->db->query($query);
         }
 
-        public function fetch($query = null)
+        public function fetch($query = null, $object = false)
         {
             $query = is_null($query) ? "SELECT $this->database.$this->table.* FROM $this->database.$this->table" : $query;
             $collection = array();
@@ -72,6 +84,9 @@
                     array_push($collection, $row);
                 }
                 $res->close();
+            }
+            if (true === $object) {
+                $collection = new Collection($collection);
             }
             return $collection;
         }
@@ -89,14 +104,14 @@
 
         public function map()
         {
-            $query  = "SHOW COLUMNS FROM $this->database.$this->table";
-            $res    = $this->fetch($query);
+            $query      = "SHOW COLUMNS FROM $this->database.$this->table";
+            $res        = $this->fetch($query);
 
             $settings   = isAke(self::$config, "$this->database.$this->table");
             $relations  = isAke($settings, 'relations', false);
 
             if (false === $relations) {
-                $relations = array();
+                $relations      = array();
                 $relationsQuery = "SELECT
                 REFERENCED_TABLE_NAME as foreignTable
                 FROM information_schema.REFERENTIAL_CONSTRAINTS
@@ -151,9 +166,9 @@
             return $this;
         }
 
-        public function all()
+        public function all($object = false)
         {
-            return $this->fetch();
+            return $this->fetch(null, $object);
         }
 
         public function countAll()
@@ -349,6 +364,9 @@
             if (!count($collection) && true === $object) {
                 return null;
             }
+            if (true === $object) {
+                $collection = new Collection($collection);
+            }
             return $collection;
         }
 
@@ -535,8 +553,16 @@
                 return $obj->$pk;
             };
 
+            $exists = function () use ($obj, $params) {
+                list($db, $table, $host, $username, $password) = $params;
+                $db = Database::instance($db, $table, $host, $username, $password);
+                $pk = $db->pk();
+                return isset($obj->$pk);
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
+            ->event('exists', $exists)
             ->event('id', $id)
             ->event('extend', $extend);
 

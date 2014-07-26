@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+    use Thin\Database\Collection;
 
     class Entitydb
     {
@@ -439,6 +440,9 @@
         public function select($fields, $object = false)
         {
             $data = $this->exec($object);
+            if ($data instanceof Collection) {
+                $data = $data->toArray();
+            }
             if (count($data)) {
                 if (is_string($fields)) {
                     $fields = array($fields);
@@ -518,6 +522,9 @@
             $this->reset();
             if (!count($collection) && true === $object) {
                 return null;
+            }
+            if (true === $object) {
+                $collection = new Collection($collection);
             }
             return $collection;
         }
@@ -1240,12 +1247,23 @@
                 return $obj;
             };
 
+            $id = function () use ($obj) {
+                return $obj->getId();
+            };
+
+            $exists = function () use ($obj) {
+                $id = $obj->getId();
+                return !is_null($id);
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
             ->event('hook', $hook)
             ->event('date', $date)
             ->event('hydrate', $hydrate)
             ->event('export', $export)
+            ->event('id', $id)
+            ->event('exists', $exists)
             ->event('display', $display);
 
             $functions = isAke($settings, 'functions');
@@ -1269,7 +1287,7 @@
         {
             $fields = array_keys($obj->assoc());
             foreach ($fields as $field) {
-                if (strstr($field, '_id')) {
+                if (endsWith($field, '_id')) {
                     if (isset($obj->$field)) {
                         $value = $obj->$field;
                         list($ns, $table) = explode('::', $this->entity, 2);

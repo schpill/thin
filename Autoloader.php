@@ -24,6 +24,9 @@
 
         public static function autoload($className)
         {
+            if (strstr(strtolower($className), 'laravel')) {
+                $className = strtolower($className);
+            }
             if (strstr(strtolower($className), 'predis')) {
                 $className2 = str_replace('Predis\\', '', $className);
                 $className2 = str_replace('Predis', '', $className2);
@@ -75,35 +78,43 @@
                 require_once $check;
                 $classes[$className] = true;
             } else {
-                if (!array_key_exists($className, static::$_classes)) {
-                    if (strstr($className, 'Model_')) {
-                        eval("class $className extends Thin\\Orm {public function __construct(\$id = null) { list(\$this->_entity, \$this->_table) = explode('_', str_replace('model_', '', strtolower(get_class(\$this))), 2); \$this->factory(); if (null === \$id) {\$this->foreign(); return \$this;} else {return \$this->find(\$id);}}}");
-                        static::$_classes[$className] = true;
-                    }
-                    if (strstr($className, 'ResultModelCollection')) {
-                        if (!class_exists($className)) {
-                            $addLoadMethod = 'public function first() {return $this->cursor(1);} public function last() {return $this->cursor(count($this));} public function cursor($key) {$val = $key - 1; return $this[$val];} public function load(){$coll = $this->_args[0][0];$pk = $coll->pk();$objId = $coll->$pk;return $coll->find($objId);}';
-                            eval("class $className extends Thin\\Object {public static function getNew() {return new self(func_get_args());}public static function getInstance() {return \\Thin\\Utils::getInstance($className, func_get_args());} public function getArg(\$key){if (isset(\$this->_args[0][\$key])) {return \$this->_args[0][\$key];} return null;}$addLoadMethod}");
-                            static::$_classes[$className] = true;
-                        }
-                    }
-                    foreach (static::$_paths as $ns => $path) {
-                        $file = $path . preg_replace('#\\\|_(?!.+\\\)#', DS, str_replace($ns, '', $className)) . '.php';
-                        if(is_readable($file)) {
-                            require_once $file;
-                            static::$_classes[$className] = true;
-                        }
-                    }
+                $tab = explode(DS, $check);
+                $last = end($tab);
+                $check = str_replace(DS . $last, DS . strtolower($last), $check);
+                if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                    require_once $check;
+                    $classes[$className] = true;
+                } else {
                     if (!array_key_exists($className, static::$_classes)) {
-                        $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, 'Thin\\' . $className) . '.php';
-                        if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
-                            require_once $check;
-                            $classes[$className] = true;
+                        if (strstr($className, 'Model_')) {
+                            eval("class $className extends Thin\\Orm {public function __construct(\$id = null) { list(\$this->_entity, \$this->_table) = explode('_', str_replace('model_', '', strtolower(get_class(\$this))), 2); \$this->factory(); if (null === \$id) {\$this->foreign(); return \$this;} else {return \$this->find(\$id);}}}");
+                            static::$_classes[$className] = true;
                         }
-                    }
-                    if (!array_key_exists($className, static::$_classes) && !strstr($className, 'this_')) {
-                        class_alias('Thin\\Container', $className);
-                        static::$_classes[$className] = true;
+                        if (strstr($className, 'ResultModelCollection')) {
+                            if (!class_exists($className)) {
+                                $addLoadMethod = 'public function first() {return $this->cursor(1);} public function last() {return $this->cursor(count($this));} public function cursor($key) {$val = $key - 1; return $this[$val];} public function load(){$coll = $this->_args[0][0];$pk = $coll->pk();$objId = $coll->$pk;return $coll->find($objId);}';
+                                eval("class $className extends Thin\\Object {public static function getNew() {return new self(func_get_args());}public static function getInstance() {return \\Thin\\Utils::getInstance($className, func_get_args());} public function getArg(\$key){if (isset(\$this->_args[0][\$key])) {return \$this->_args[0][\$key];} return null;}$addLoadMethod}");
+                                static::$_classes[$className] = true;
+                            }
+                        }
+                        foreach (static::$_paths as $ns => $path) {
+                            $file = $path . preg_replace('#\\\|_(?!.+\\\)#', DS, str_replace($ns, '', $className)) . '.php';
+                            if(is_readable($file)) {
+                                require_once $file;
+                                static::$_classes[$className] = true;
+                            }
+                        }
+                        if (!array_key_exists($className, static::$_classes)) {
+                            $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, 'Thin\\' . $className) . '.php';
+                            if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                                require_once $check;
+                                $classes[$className] = true;
+                            }
+                        }
+                        if (!array_key_exists($className, static::$_classes) && !strstr($className, 'this_')) {
+                            class_alias('Thin\\Container', $className);
+                            static::$_classes[$className] = true;
+                        }
                     }
                 }
             }
