@@ -324,6 +324,26 @@
             return $array;
         }
 
+
+        /**
+         * Export all items to a json string
+         *
+         * @param boolean $is_numeric_index is numeric index
+         * @param boolean $itemToArray      item to array
+         *
+         * @return string
+         */
+        public function toJson($render = false)
+        {
+            $json = json_encode($this->toArray(true, true));
+            if (false === $render) {
+                return $json;
+            } else {
+                header('content-type: application/json; charset=utf-8');
+                die($json);
+            }
+        }
+
         /**
          *
          * @return array

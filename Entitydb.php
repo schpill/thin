@@ -1280,6 +1280,15 @@
                 }
             }
 
+            $hidden = isAke($settings, 'hidden');
+            if (count($hidden)) {
+                foreach ($hidden as $hiddenField) {
+                    if (isset($obj->$hiddenField) && !is_callable($obj->$hiddenField)) {
+                        unset($obj->$hiddenField);
+                    }
+                }
+            }
+
             return $this->related($obj);
         }
 
