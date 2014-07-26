@@ -5,12 +5,13 @@
     {
         private $bucket;
         private $response;
-        private $url = 'http://bucket.gpluscloud.com/';
+        private $url;
 
         public function __construct($bucket)
         {
             $this->bucket = $bucket;
-            $this->session = session('datad_bucket_' . $bucket);
+            $this->session = session('data_bucket_' . $bucket);
+            $this->url = URLSITE . 'bucket/';
         }
 
         public function all($pattern)
