@@ -26,7 +26,7 @@
             if (!$role instanceof $class) {
                 throw new Exception('The role is not in correct format.');
             }
-            if (!in_array($role->getId(), $this->_datas['canRoles'])) {
+            if (!Arrays::in($role->getId(), $this->_datas['canRoles'])) {
                 $this->_datas['canRoles'][] = $role->getId();
             }
             return $this;
@@ -38,7 +38,7 @@
             if (!$role instanceof $class) {
                 throw new Exception('The role is not in correct format.');
             }
-            if (!in_array($role->getId(), $this->_datas['cannotRoles'])) {
+            if (!Arrays::in($role->getId(), $this->_datas['cannotRoles'])) {
                 $this->_datas['cannotRoles'][] = $role->getId();
             }
             return $this;
@@ -47,7 +47,7 @@
         public function canByUser()
         {
             $user = Utils::get('ThinUser');
-            if (!in_array($user->getId(), $this->_datas['canUsers'])) {
+            if (!Arrays::in($user->getId(), $this->_datas['canUsers'])) {
                 $this->_datas['canUsers'][] = $user->getId();
             }
             return $this;
@@ -56,7 +56,7 @@
         public function cannotByUser()
         {
             $user = Utils::get('ThinUser');
-            if (!in_array($user->getId(), $this->_datas['cannotUsers'])) {
+            if (!Arrays::in($user->getId(), $this->_datas['cannotUsers'])) {
                 $this->_datas['cannotUsers'][] = $user->getId();
             }
             return $this;
@@ -82,7 +82,7 @@
                         foreach ($aclRoles as $aclRole) {
                             foreach ($userRoles as $userRole) {
                                 $role  = $this->_datas['roleModel']->find($userRole->getRoleId())->getRoleName();
-                                if (!in_array($role, $aclRules[$module]['cannotByRole']) && in_array($role, $aclRoles)) {
+                                if (!Arrays::in($role, $aclRules[$module]['cannotByRole']) && in_array($role, $aclRoles)) {
                                     $access = true;
                                 }
                             }
@@ -110,7 +110,7 @@
             $continue = false;
             foreach ($userRoles as $uRole) {
                 $roleName = em($this->_datas['config']['roles']['entity'], $this->_datas['config']['roles']['table'])->find($uRole->getRoleId())->getRoleName();
-                $continue = in_array($roleName, $aclRoles);
+                $continue = Arrays::in($roleName, $aclRoles);
                 if (true === $continue) {
                     break;
                 }
@@ -124,7 +124,7 @@
 
             // check by user cannot
             if (count($this->_datas['cannotUsers'])) {
-                if (in_array($user->getId(), $this->_datas['cannotUsers'])) {
+                if (Arrays::in($user->getId(), $this->_datas['cannotUsers'])) {
                     Utils::go($this->_datas['noRight']);
                     exit;
                 }
@@ -145,7 +145,7 @@
 
             // check by user can
             if (count($this->_datas['canUsers'])) {
-                if (in_array($user->getId(), $this->_datas['canUsers'])) {
+                if (Arrays::in($user->getId(), $this->_datas['canUsers'])) {
                     return $this;
                 }
             }
