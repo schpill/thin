@@ -91,10 +91,10 @@
             return $collection;
         }
 
-        public function get()
+        public function get($object = false)
         {
-            $this->results = $this->fetch();
-            return $this;
+            $this->results = empty($this->results) ? $this->fetch() : $this->results;
+            return $this->exec($object);
         }
 
         public function pk()
@@ -154,15 +154,18 @@
 
             if (false === $relations) {
                 $relations = array();
-                if (count($keys)) {
-                    foreach ($keys as $key) {
-                        if (strstr($key, '_id')) {
-                            array_push($relations, repl('_id', '', $key));
+            }
+            if (count($keys)) {
+                foreach ($keys as $key) {
+                    if (strstr($key, '_id')) {
+                        $fkField = repl('_id', '', $key);
+                        if (!Arrays::in($fkField, $relations)) {
+                            array_push($relations, $fkField);
                         }
                     }
                 }
-                self::$config["$this->database.$this->table"]['relations'] = $relations;
             }
+            self::$config["$this->database.$this->table"]['relations'] = $relations;
             return $this;
         }
 
