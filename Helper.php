@@ -32,6 +32,12 @@
     use Thin\Autoloader;
     use Thin\Load\Ini as IniLoad;
 
+    if (!function_exists('jdb')) {
+        function jdb($db, $table)
+        {
+            return new \Dbjson\Dbjson($db, $table);
+        }
+    }
     if (!function_exists('iniLoad')) {
         function iniLoad($filename, $section = null, $options = false)
         {

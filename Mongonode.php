@@ -751,6 +751,11 @@
             return $min;
         }
 
+        public function between($field, $min, $max, $object = false)
+        {
+            return $this->where($field . ' >= ' . $min)->where($field . ' <= ' . $max)->exec($object);
+        }
+
         public function max($field, $results = array())
         {
             $res = count($results) ? $results : $this->results;

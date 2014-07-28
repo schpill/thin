@@ -528,6 +528,11 @@
             return $this->operand('MAX', $field);
         }
 
+        public function between($field, $min, $max, $object = false)
+        {
+            return $this->where($field . ' >= ' . $min)->where($field . ' <= ' . $max)->exec($object);
+        }
+
         public function row($tab = array())
         {
             $o = new Container;
@@ -596,11 +601,21 @@
                 return $obj;
             };
 
+            $duplicate = function () use ($obj, $params) {
+                list($db, $table, $host, $username, $password) = $params;
+                $db = Database::instance($db, $table, $host, $username, $password);
+                $pk = $db->pk();
+                if (isset($obj->$pk)) unset($obj->$pk);
+                if (isset($obj->created_at)) unset($obj->created_at);
+                return $obj->save();
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
             ->event('exists', $exists)
             ->event('id', $id)
             ->event('touch', $touch)
+            ->event('duplicate', $duplicate)
             ->event('extend', $extend);
 
             list($db, $table, $host, $username, $password) = $params;
