@@ -107,6 +107,17 @@
             $query      = "SHOW COLUMNS FROM $this->database.$this->table";
             $res        = $this->fetch($query);
 
+            if (!count($res)) {
+                $sql = "CREATE TABLE $this->database.$this->table (
+                  `id` int(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  `created_at` datetime NOT NULL,
+                  `updated_at` datetime NOT NULL
+                ) COMMENT='Auto generated table $this->table' ENGINE='InnoDB' COLLATE 'utf8_general_ci';";
+                $this->db->query($sql);
+                $query      = "SHOW COLUMNS FROM $this->database.$this->table";
+                $res        = $this->fetch($query);
+            }
+
             $settings   = isAke(self::$config, "$this->database.$this->table");
             $relations  = isAke($settings, 'relations', false);
 
