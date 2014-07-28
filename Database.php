@@ -81,7 +81,11 @@
             $res = $this->db->query($query);
             if (is_object($res)) {
                 while ($row = $res->fetch_assoc()) {
-                    array_push($collection, $row);
+                    if (true === $object) {
+                        array_push($collection, $this->row($row));
+                    } else {
+                        array_push($collection, $row);
+                    }
                 }
                 $res->close();
             }
@@ -270,23 +274,26 @@
             return $this->row($data);
         }
 
-        public function delete($id)
+        public function deleteRow($id)
         {
             $q = "DELETE FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
             $this->db->query($q);
             return $this;
         }
 
-        public function update($update, $where = null)
+        public function update(array $updates, $where = null)
         {
             $res = !empty($where) ? $this->where($where)->exec() : $this->all();
             if (count($res)) {
-                list($field, $newValue) = explode(' = ', $update, 2);
-                foreach ($res as $row) {
-                    $val = isAke($row, $field, null);
-                    if ($val != $newValue) {
-                        $row[$field] = $newValue;
-                        $this->edit($row[$this->map['pk']], $row);
+                if (count($updates)) {
+                    foreach ($updates as $key => $newValue) {
+                        foreach ($res as $row) {
+                            $val = isAke($row, $field, null);
+                            if ($val != $newValue) {
+                                $row[$field] = $newValue;
+                                $this->edit($row[$this->map['pk']], $row);
+                            }
+                        }
                     }
                 }
             }
@@ -308,7 +315,7 @@
             $res = !empty($where) ? $this->where($where)->exec() : $this->all();
             if (count($res)) {
                 foreach ($res as $row) {
-                    $this->delete($row[$this->map['pk']]);
+                    $this->deleteRow($row[$this->map['pk']]);
                 }
             }
             return $this;
@@ -382,6 +389,15 @@
                 $collection = new Collection($collection);
             }
             return $collection;
+        }
+
+        public function delete($where = null)
+        {
+            if (is_null($where)) {
+                return $this->exec(true)->delete();
+            } else {
+                return $this->where($where)->exec(true)->delete();
+            }
         }
 
         private function makeResults()
@@ -557,7 +573,7 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 $pk = $db->pk();
-                return $db->delete($obj->$pk);
+                return $db->deleteRow($obj->$pk);
             };
 
             $id = function () use ($obj, $params) {
@@ -574,10 +590,17 @@
                 return isset($obj->$pk);
             };
 
+            $touch = function () use ($obj) {
+                if (!isset($obj->created_at))  $obj->created_at = time();
+                $obj->updated_at = time();
+                return $obj;
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
             ->event('exists', $exists)
             ->event('id', $id)
+            ->event('touch', $touch)
             ->event('extend', $extend);
 
             list($db, $table, $host, $username, $password) = $params;
