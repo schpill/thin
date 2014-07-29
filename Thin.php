@@ -15,7 +15,7 @@
 
         public static function get($key, $default = null)
         {
-            return context('thin')->get($key, $value);
+            return context('thin')->get($key, $default);
         }
 
         public static function has($key, $default = null)
