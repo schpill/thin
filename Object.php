@@ -116,7 +116,16 @@
 
         public function __call($func, $argv)
         {
-            if (substr($func, 0, 3) == 'get') {
+            if (substr($func, 0, 4) == 'link') {
+                $value = Arrays::first($argv);
+                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 4)));
+                $var = Inflector::lower($uncamelizeMethod);
+                if (!empty($var)) {
+                    $var = setter($var . '_id');
+                    $this->$var($value->id());
+                    return $this;
+                }
+            } elseif (substr($func, 0, 3) == 'get') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 if (isset($this->$var)) {
@@ -480,7 +489,9 @@
             if (count($this->_fields)) {
                 foreach ($this->_fields as $field) {
                     if ($field != 'values' && $field != '_nameClass') {
-                        $collection[$field] = $this->$field;
+                        if (!is_callable($this->$field)) {
+                            $collection[$field] = $this->$field;
+                        }
                     }
                 }
             }

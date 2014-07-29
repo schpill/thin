@@ -16,8 +16,10 @@
             } else {
                 static::$_logFile = $logFile;
             }
-            if (false === File::exists(static::$_logFile)) {
-                File::append(static::$_logFile, '');
+            if (!File::exists(static::$_logFile)) {
+                File::create(static::$_logFile);
+                umask(0000);
+                chmod(static::$_logFile, 0777);
             }
         }
 
@@ -65,16 +67,20 @@
          */
         public static function write($type, $message, $prettyPrint = false)
         {
+            if (!isset(static::$_logFile)) {
+                static::$_logFile = LOGS_PATH . DS . date('Y-m-d') . '.log';
+            }
+            if (!File::exists(static::$_logFile)) {
+                File::create(static::$_logFile);
+            }
             $message = (false !== $prettyPrint) ? print_r($message, true) : $message;
-
             $message = static::format($type, $message);
-
             File::append(static::$_logFile, $message);
         }
 
         protected static function format($type, $message)
         {
-            return date('Y-m-d H:i:s') . ' ' . \i::upper($type) . " - {$message}". PHP_EOL;
+            return date('Y-m-d H:i:s') . ' ' . Inflector::upper($type) . " - {$message}". PHP_EOL;
         }
 
         /**
@@ -82,22 +88,21 @@
          *
          * <code>
          *      // Write an "error" message to the log file
-         *      FTV_Log::error('This is an error!');
+         *      Log::error('This is an error!');
          *
          *      // Write a "warning" message to the log file
-         *      FTV_Log::warning('This is a warning!');
+         *      Log::warning('This is a warning!');
          *
          *      // Log an arrays data
-         *      FTV_Log::info(array('name' => 'Sawny', 'passwd' => '1234', array(1337, 21, 0)), true);
+         *      Log::info(array('name' => 'Sawny', 'passwd' => '1234', array(1337, 21, 0)), true);
          *      //Result: Array ( [name] => Sawny [passwd] => 1234 [0] => Array ( [0] => 1337 [1] => 21 [2] => 0 ) )
          *      //If we had omit the second parameter the result had been: Array
          * </code>
          */
         public static function __callStatic($method, $parameters)
         {
-            $parameters[1] = (empty($parameters[1])) ? false : $parameters[1];
-
-            static::write($method, $parameters[0], $parameters[1]);
+            $prettyPrint = count($parameters) == 2 ? Arrays::last($parameters) : false;
+            static::write($method, Arrays::first($parameters), $prettyPrint);
         }
 
     }

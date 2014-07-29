@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+    use Closure;
     use mysqli;
     use mysqli_result;
     use Thin\Database\Collection;
@@ -142,16 +143,16 @@
                 self::$config["$this->database.$this->table"]['relations'] = $relations;
             }
 
-            $fields = array();
-            $keys   = array();
-            $pk     = null;
+            $fields = $nullable = $keys = $default = array();
+            $pk = null;
 
             if (count($res)) {
                 foreach ($res as $row) {
                     $fields[$row['Field']] = array(
-                        'type' => typeSql($row['Type']),
-                        'nullable' => ('yes' == Inflector::lower($row['Null'])) ? true : false
+                        'type' => typeSql($row['Type'])
                     );
+                    $nullable[$row['Field']] = 'yes' == Inflector::lower($row['Null']) ? true : false;
+                    $default[$row['Field']] = is_null($row['Default']) ? 'null' : $row['Default'];
                     if ($row['Key'] == 'PRI') {
                         $pk = $row['Field'];
                     }
@@ -163,6 +164,8 @@
 
             $this->map = array(
                 'fields'    => $fields,
+                'nullable'  => $nullable,
+                'default'   => $default,
                 'pk'        => $pk,
                 'keys'      => $keys
             );
@@ -240,12 +243,32 @@
         private function add($data)
         {
             $q = "INSERT INTO $this->database.$this->table SET ";
+            $fields = array_keys($this->map['fields']);
             foreach ($data as $k => $v) {
+
+                if (is_callable($v)) {
+                    continue;
+                }
+
+                if (!Arrays::in($k, $fields)) {
+                    throw new Exception("Field '$k' is unknown in the table '$this->table'.");
+                }
+
+                if (!strlen($v)) {
+                    $nullable   = $this->map['nullable'][$k];
+                    $default    = $this->map['default'][$k];
+                    if (true !== $nullable && 'null' === $default) {
+                        throw new Exception("Field '$k' must not be nulled in the table '$this->table'.");
+                    }
+                }
                 $q .= "$this->database.$this->table.$k = '" . addslashes($v) . "', ";
             }
             $q = substr($q, 0, -2);
 
             $insert = $this->db->prepare($q);
+            if (false === $update) {
+                throw new Exception("The query '$q' is uncorrect. Please check it.");
+            }
             $insert->execute();
             $insert->close();
 
@@ -259,14 +282,40 @@
             if (!is_null($idData)) {
                 unset($data[$this->map['pk']]);
             }
-            $q = "UPDATE $this->database.$this->table SET ";
+            $old = $this->find($id)->assoc();
+            $idData = isAke($old, $this->map['pk'], null);
+            if (!is_null($idData)) {
+                unset($old[$this->map['pk']]);
+            }
+            $data   = array_merge($old, $data);
+            $fields = array_keys($this->map['fields']);
+            $q      = "UPDATE $this->database.$this->table SET ";
             foreach ($data as $k => $v) {
+                if (is_callable($v)) {
+                    continue;
+                }
+
+                if (!Arrays::in($k, $fields)) {
+                    throw new Exception("Field '$k' is unknown in the table '$this->table'.");
+                }
+
+                if (!strlen($v)) {
+                    $nullable   = $this->map['nullable'][$k];
+                    $default    = $this->map['default'][$k];
+                    if (true !== $nullable && 'null' === $default) {
+                        throw new Exception("Field '$k' must not be nulled in the table '$this->table'.");
+                    }
+                }
+
                 $q .= "$this->database.$this->table.$k = '" . addslashes($v) . "', ";
             }
             $q = substr($q, 0, -2);
             $q .= " WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
 
             $update = $this->db->prepare($q);
+            if (false === $update) {
+                throw new Exception("The query '$q' is uncorrect. Please check it.");
+            }
             $update->execute();
             $update->close();
 
@@ -347,6 +396,7 @@
 
         public function first($object = false)
         {
+            $this->makeResults();
             $res = $this->results;
             $this->reset();
             if (true === $object) {
@@ -356,8 +406,49 @@
             }
         }
 
+        public function only($field)
+        {
+            $row = $this->first(true);
+            return $row instanceof Container
+            ? !is_string($row->$field)
+                ? $row->$field()
+                : $row->$field
+            : null;
+        }
+
+        public function select($fields, $object = false)
+        {
+            $collection = array();
+            $fields = Arrays::is($fields) ? $fields : array($fields);
+            $rows = $this->exec($object);
+            if (true === $object) {
+                $rows = $rows->rows();
+            }
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $record = true === $object
+                    ? $this->row(
+                        array(
+                            'id' => $row->id
+                        )
+                    )
+                    : array();
+                    foreach ($fields as $field) {
+                        if (true === $object) {
+                            $record->$field = !is_string($row->$field) ? $row->$field() : $row->$field;
+                        } else {
+                            $record[$field] = ake($field, $row) ? $row[$field] : null;
+                        }
+                    }
+                    array_push($collection, $record);
+                }
+            }
+            return true === $object ? new Collection($collection) : $collection;
+        }
+
         public function last($object = false)
         {
+            $this->makeResults();
             $res = $this->results;
             $this->reset();
             if (true === $object) {
@@ -646,7 +737,7 @@
             if (count($relations)) {
                 foreach ($relations as $relation) {
                     $field = $relation . '_id';
-                    if (isset($obj->$field)) {
+                    if (is_string($field)) {
                         $value = $obj->$field;
                         if (!is_callable($value)) {
                             $fk = $tableFk = $relation;

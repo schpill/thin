@@ -15,7 +15,7 @@
         register_shutdown_function(function() {
             $error = error_get_last();
             if (null !== $error) {
-                var_dump($error, true);
+                vd($error);
             }
         });
     }

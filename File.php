@@ -9,17 +9,23 @@
         public static function create($file, $content = null)
         {
             static::delete($file);
-            @touch($file);
+            $create = @touch($file);
             if (null !== $content) {
                 $fp = fopen($file, 'a');
                 fwrite($fp, $content);
                 fclose($fp);
             }
+            umask(0000);
+            chmod($file, 0777);
+            return $create;
         }
 
         public static function append($file, $data)
         {
-            return file_put_contents($file, $data, LOCK_EX | FILE_APPEND);
+            $append = file_put_contents($file, $data, LOCK_EX | FILE_APPEND);
+            umask(0000);
+            chmod($file, 0777);
+            return $append;
         }
 
         public static function exists($file)
@@ -34,11 +40,17 @@
 
         public static function put($file, $data, $chmod = 0777)
         {
-            $file = file_put_contents($file, $data, LOCK_EX);
+            $put = file_put_contents($file, $data, LOCK_EX);
+            umask(0000);
+            chmod($file, 0777);
+            return $put;
         }
 
         public static function delete($file)
         {
+            if (is_dir($file)) {
+                return static::rmdir($file);
+            }
             if (true === static::exists($file)) {
                 return @unlink($file);
             }
@@ -51,7 +63,10 @@
 
         public static function copy($file, $target)
         {
-            return copy($file, $target);
+            $copy = copy($file, $target);
+            umask(0000);
+            chmod($target, 0777);
+            return $copy;
         }
 
         public static function extension($file)
@@ -84,8 +99,14 @@
             return filemtime($file);
         }
 
+        public static function age($file)
+        {
+            return filemtime($file);
+        }
+
         public static function mkdir($path, $chmod = 0777)
         {
+            umask(0000);
             return (!is_dir($path)) ? mkdir($path, $chmod, true) : true;
         }
 
@@ -96,12 +117,13 @@
 
         public static function cpdir($source, $destination, $delete = false, $options = \FilesystemIterator::SKIP_DOTS)
         {
+            umask(0000);
             if (!is_dir($source)) {
                 return false;
             }
 
             if (!is_dir($destination)) {
-                mkdir($destination, 0777, true);
+                static::mkdir($destination, 0777);
             }
 
             $items = new \FilesystemIterator($source, $options);
@@ -111,20 +133,17 @@
 
                 if ($item->isDir()) {
                     $path = $item->getRealPath();
-
                     if (!static::cpdir($path, $location, $delete, $options)) {
                         return false;
                     }
-
-                    if ($delete) {
+                    if (true === $delete) {
                         @rmdir($item->getRealPath());
                     }
                 } else  {
                     if(!copy($item->getRealPath(), $location)) {
                         return false;
                     }
-
-                    if ($delete) {
+                    if (true === $delete) {
                         @unlink($item->getRealPath());
                     }
                 }
@@ -138,16 +157,36 @@
             return true;
         }
 
+        public static function chmodDir($directory, $chmod = 0777)
+        {
+            umask(0000);
+            if (!is_dir($directory)) {
+                return false;
+            }
+
+            exec("chmod $chmod $directory");
+
+            $items = new \FilesystemIterator($directory);
+
+            foreach ($items as $item) {
+                if (true === $item->isDir()) {
+                    static::chmodDir($item->getRealPath(), $chmod);
+                } else {
+                    @chmod($item->getRealPath(), $chmod);
+                }
+            }
+        }
+
         public static function rmdir($directory, $preserve = false)
         {
             if (!is_dir($directory)) {
-                return;
+                return false;
             }
 
             $items = new \FilesystemIterator($directory);
 
             foreach ($items as $item) {
-                if ($item->isDir()) {
+                if (true === $item->isDir()) {
                     static::rmdir($item->getRealPath());
                 } else {
                     @unlink($item->getRealPath());
@@ -155,9 +194,10 @@
             }
 
             unset($items);
-            if (!$preserve) {
+            if (false === $preserve) {
                 @rmdir($directory);
             }
+            return true;
         }
 
         public static function cleandir($directory)
@@ -168,10 +208,8 @@
         public static function latest($directory, $options = \FilesystemIterator::SKIP_DOTS)
         {
             $latest = null;
-
-            $time = 0;
-
-            $items = new \FilesystemIterator($directory, $options);
+            $time   = 0;
+            $items  = new \FilesystemIterator($directory, $options);
 
             foreach ($items as $item) {
                 if ($item->getMTime() > $time) {
@@ -184,7 +222,7 @@
         }
 
 
-        public static function isFileComplete($path, $waitTime)
+        public static function isFileComplete($path, $waitTime = 2)
         {
             // récupération de la taille du fichier
             $sizeBefore = static::size($path);
@@ -224,7 +262,7 @@
                 if($dir = opendir($path)) {
                     // on parcours le répertoire
                     while(false !== ($dirElt = readdir($dir))) {
-                        $ret[] = $path.$dirElt;
+                        $ret[] = $path . $dirElt;
                     }
 
                     // fermeture du répertoire

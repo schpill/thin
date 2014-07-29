@@ -15,7 +15,7 @@
             return container();
         }
 
-        public function __construct ($values = array())
+        public function __construct($values = array())
         {
             if (is_object($values)) {
                 $values = $values->assoc();

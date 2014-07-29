@@ -99,64 +99,26 @@
                 $data = $data->assoc();
             }
 
-            $id = isAke($data, 'id', null);
-
-            if (strlen($id)) {
-                return $this->edit($id, $data);
-            } else {
-                return $this->add($data);
+            $this->lock('write');
+            if (!Arrays::is($data)) {
+                return $data;
             }
-        }
-
-        private function add($data)
-        {
-            $this->lock('add');
-            $data = $this->checkValues($data);
-            $key = sha1(serialize($data) . $this->ns . $this->entity);
-            $exists = container()->redis()->hget($this->keys, $key);
-            if (!strlen($exists)) {
-                if (!Arrays::is($data)) {
-                    return $data;
-                }
+            $id = isAke($data, 'id', false);
+            if (false === $id) {
                 $this->lastInsertId = $id = container()->redis()->incr($this->ns . '_' . $this->entity . '_nodeCount');
                 $data['id'] = $id;
                 $data['created_at'] = $data['updated_at'] = time();
-                $add = container()->redis()->hset($this->table, $id, json_encode($data));
-                $this->all(true);
-                container()->redis()->hset($this->keys, $key, $id);
-                $this->unlock('add');
-                $this->makeIndexes($data, $id);
-                return $this->find($id);
-            }
-            $this->unlock('add');
-            $this->lastInsertId = $exists;
-            return $this->find($exists);
-        }
-
-        private function edit($id, $data)
-        {
-            $this->delete($id);
-            $this->lock('edit');
-            $clone = $data;
-            unset($clone['id']);
-            unset($clone['updated_at']);
-            unset($clone['created_at']);
-            $key = sha1(serialize($clone) . $this->ns . $this->entity);
-            $exists = container()->redis()->hget($this->keys, $key);
-            if (!strlen($exists)) {
-                $data = $this->checkValues($data);
-                if (!Arrays::is($data)) {
-                    return $data;
-                }
+            } else {
+                $old = $this->find($id)->assoc();
+                $this->delete($id);
                 $data['updated_at'] = time();
-                $edit = container()->redis()->hset($this->table, $id, json_encode($data));
-                $this->all(true);
-                container()->redis()->hset($this->keys, $key, $id);
-                $this->unlock('edit');
-                $this->makeIndexes($data, $id);
-                return $this->find($id);
+                $data = array_merge($old, $data);
             }
-            return $this->find($exists);
+            $add = container()->redis()->hset($this->table, $id, json_encode($data));
+            $this->all(true);
+            $this->unlock('write');
+            $this->makeIndexes($data, $id);
+            return $this->find($id);
         }
 
         private function makeIndexes($data, $id)
@@ -197,13 +159,8 @@
         public function delete($id)
         {
             $row = $this->find($id, false);
-            unset($row['id']);
-            unset($row['updated_at']);
-            unset($row['created_at']);
-            $key = sha1(serialize($row) . $this->ns . $this->entity);
             $this->lock('delete');
             container()->redis()->hdel($this->table, $id);
-            container()->redis()->hdel($this->keys, $key);
             $indexes = $this->indexes();
             $fulltextes = $this->fulltextes();
             if (count($fulltextes)) {
@@ -399,6 +356,11 @@
                     }
                 }
             }
+            foreach ($data as $k => $v) {
+                if (is_callable($v)) {
+                    unset($data[$k]);
+                }
+            }
             return $data;
         }
 
@@ -424,6 +386,46 @@
             return $this->exec($object);
         }
 
+        public function only($field)
+        {
+            $row = $this->first(true);
+            return $row instanceof Container
+            ? !is_string($row->$field)
+                ? $row->$field()
+                : $row->$field
+            : null;
+        }
+
+        public function select($fields, $object = false)
+        {
+            $collection = array();
+            $fields = Arrays::is($fields) ? $fields : array($fields);
+            $rows = $this->exec($object);
+            if (true === $object) {
+                $rows = $rows->rows();
+            }
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $record = true === $object
+                    ? $this->toObject(
+                        array(
+                            'id' => $row->id
+                        )
+                    )
+                    : array();
+                    foreach ($fields as $field) {
+                        if (true === $object) {
+                            $record->$field = !is_string($row->$field) ? $row->$field() : $row->$field;
+                        } else {
+                            $record[$field] = ake($field, $row) ? $row[$field] : null;
+                        }
+                    }
+                    array_push($collection, $record);
+                }
+            }
+            return true === $object ? new Collection($collection) : $collection;
+        }
+
         public function first($object = false)
         {
             $res = $this->results;
@@ -443,79 +445,6 @@
                 return count($res) ? $this->toObject(Arrays::last($res)) : null;
             } else {
                 return count($res) ? Arrays::last($res) : array();
-            }
-        }
-
-        public function select($fields, $object = false)
-        {
-            $data = $this->exec($object);
-            if ($data instanceof Collection) {
-                $data = $data->toArray();
-            }
-            if (count($data)) {
-                if (is_string($fields)) {
-                    $fields = array($fields);
-                }
-                $collection = array();
-                foreach ($data as $row) {
-                    if ($row instanceof Container) {
-                        $row = $row->assoc();
-                    }
-                    $addRow = array();
-                    foreach ($fields as $field) {
-                        if (strstr($field, '.')) {
-                            list($table, $field) = explode('.', $field, 2);
-                            if ($table != $this->entity) {
-                                $fkFields = isAke($this->joins, $table);
-                                if (empty($fkFields)) {
-                                    $fkFields = array(array($table, null));
-                                }
-                                if (!empty($fkFields)) {
-                                    $db = new self($table);
-                                    list($entityField, $fkField) = Arrays::first($fkFields);
-                                    $fkField = empty($fkField) ? 'id' : $fkField;
-                                    $joinVal = isAke($row, $entityField, null);
-                                    if (strlen($joinVal)) {
-                                        $foreignDatas = $db->where("$fkField = $joinVal")->exec();
-                                        foreach ($foreignDatas as $foreignTab) {
-                                            if (!empty($foreignTab)) {
-                                                $val = isAke($foreignTab, $field, null);
-
-                                                /* Relation has one */
-                                                if (1 == count($foreignDatas)) {
-                                                    $addRow[$table . '_' . $field] = $val;
-                                                } else {
-                                                    /* Relation has many */
-                                                    if (!Arrays::exists($table . '_' . $field, $addRow)) {
-                                                        $addRow[$table . '_' . $field] = array();
-                                                    }
-                                                    array_push($addRow[$table . '_' . $field], $val);
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    throw new Exception("You must join the table $table.");
-                                }
-                            } else {
-                                $val = isAke($row, $field, null);
-                                $addRow[$field] = $val;
-                            }
-                        } else {
-                            $val = isAke($row, $field, null);
-                            $addRow[$field] = $val;
-                        }
-                    }
-                    // $addRow['id'] = $row['id'];
-                    if (true === $object) {
-                        array_push($collection, $this->toObject($addRow));
-                    } else {
-                        array_push($collection, $addRow);
-                    }
-                }
-                return $collection;
-            } else {
-                return $data;
             }
         }
 
@@ -1202,6 +1131,8 @@
 
         public function create($tab = array())
         {
+            $tab['created_at'] = isAke($tab, 'created_at', time());
+            $tab['updated_at'] = isAke($tab, 'updated_at', time());
             return $this->toObject($tab);
         }
 
@@ -1318,7 +1249,7 @@
             $fields = array_keys($obj->assoc());
             foreach ($fields as $field) {
                 if (endsWith($field, '_id')) {
-                    if (isset($obj->$field)) {
+                    if (is_string($field)) {
                         $value = $obj->$field;
                         if (!is_callable($value)) {
                             $fk = repl('_id', '', $field);
