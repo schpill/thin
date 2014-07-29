@@ -15,6 +15,11 @@
             return Arrays::exists($event, static::$events);
         }
 
+        public static function listen($event, $callback, $once = false)
+        {
+           return static::set($event, $callback, $once);
+        }
+
         public static function set($event, $callback, $once = false)
         {
             static::$events[$event][] = array($callback, $once);
@@ -53,8 +58,7 @@
 
         public static function flush($queue)
         {
-            foreach (static::$flushers[$queue] as $flusher)
-            {
+            foreach (static::$flushers[$queue] as $flusher) {
                 if (!Arrays::exists($queue, static::$queued)) {
                     continue;
                 }

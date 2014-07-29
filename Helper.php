@@ -3006,28 +3006,32 @@ $(document).ready(function() {
      * </code>
      */
     if (!function_exists('arraySet')) {
-        function arraySet($array, $key, $value, $separator = '.')
+        function arraySet(&$array, $key, $value, $separator = '.')
         {
-            if (strpos($key, $separator) !== false) {
-                $keys = explode($separator, $key, 2);
-                if (strlen(Arrays::first($keys)) && strlen($keys[1])) {
-                    if (!Arrays::exists(Arrays::first($keys), $array)) {
-                        if (Arrays::first($keys) === '0' && !empty($array)) {
-                            $array = array(Arrays::first($keys) => $array);
-                        } else {
-                            $array[Arrays::first($keys)] = array();
-                        }
-                    } elseif (!Arrays::is($array[Arrays::first($keys)])) {
-                        throw new Exception("Cannot create sub-key for '{$keys[0]}' as key already exists.");
-                    }
-                    $array[Arrays::first($keys)] = arraySet($array[Arrays::first($keys)], $keys[1], $value);
-                } else {
-                    throw new Exception("Invalid key '$key'");
-                }
-            } else {
-                $array[$key] = $value;
+            if (is_null($key)) {
+                return $array = $value;
             }
-            return $array;
+
+            $keys = explode($separator, $key);
+
+            // This loop allows us to dig down into the array to a dynamic depth by
+            // setting the array value for each level that we dig into. Once there
+            // is one key left, we can fall out of the loop and set the value as
+            // we should be at the proper depth.
+            while (count($keys) > 1) {
+                $key = array_shift($keys);
+
+                // If the key doesn't exist at this depth, we will just create an
+                // empty array to hold the next value, allowing us to create the
+                // arrays to hold the final value.
+                if ( ! isset($array[$key]) || !Arrays::is($array[$key])) {
+                    $array[$key] = array();
+                }
+
+                $array =& $array[$key];
+            }
+
+            $array[array_shift($keys)] = $value;
         }
     }
 
@@ -3424,6 +3428,14 @@ $(document).ready(function() {
         function head($array)
         {
             return reset($array);
+        }
+    }
+
+    if (!function_exists('getFileSize')) {
+        function getFileSize($size)
+        {
+            $units = array('Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB');
+            return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . ' ' . $units[$i];
         }
     }
 
