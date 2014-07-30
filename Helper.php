@@ -83,16 +83,12 @@
 
         function di()
         {
-            static $i;
-            if (is_null($i)) {
-                $i = new App;
-            }
-            return $i;
+            return phalcon()->getDI();
         }
 
-        function db()
+        function db($db = 'db')
         {
-            return context('db');
+            return context($db);
         }
     }
 
@@ -2236,7 +2232,7 @@ $(document).ready(function() {
     }
 
     if (!function_exists('model')) {
-        function model($model)
+        function model($model, $database = 'db')
         {
             $file = APPLICATION_PATH . DS . 'models' . DS . ucfirst(Inflector::lower($model)) . '.php';
             if (File::exists($file)) {
@@ -2248,7 +2244,7 @@ $(document).ready(function() {
                     $instance->init();
                 }
             }
-            return db()->model(Inflector::lower($model));
+            return db($database)->model(Inflector::lower($model));
         }
     }
 
@@ -3465,6 +3461,80 @@ $(document).ready(function() {
                 }
             }
             return false;
+        }
+    }
+
+    if (!function_exists('phalcon')) {
+        function phalconModel($model)
+        {
+            $file = APPLICATION_PATH . DS . 'phalcon' . DS . 'models' . DS . ucfirst(Inflector::lower($model)) . '.php';
+            if (is_readable($file)) {
+                require_once $file;
+            }
+        }
+
+        function phalcon()
+        {
+            static $application = null;
+            if (is_null($application)) {
+                $loader = new \Phalcon\Loader();
+
+                $loader->registerDirs(
+                    array(
+                        APPLICATION_PATH . DS . 'phalcon/controllers/',
+                        APPLICATION_PATH . DS . 'phalcon/models/'
+                    )
+                );
+
+                $loader->register();
+                $di = new \Phalcon\DI();
+
+                //Registering a router
+                $di->set('router', 'Phalcon\Mvc\Router');
+
+                //Registering a dispatcher
+                $di->set('dispatcher', 'Phalcon\Mvc\Dispatcher');
+
+                //Registering a Http\Response
+                $di->set('response', 'Phalcon\Http\Response');
+
+                //Registering a Http\Request
+                $di->set('request', 'Phalcon\Http\Request');
+
+                //Registering the view component
+                $di->set('view', function(){
+                    $view = new \Phalcon\Mvc\View();
+                    $view->setViewsDir(APPLICATION_PATH . DS . 'phalcon/views/');
+                    return $view;
+                });
+
+                $params = \Thin\Bootstrap::$bag['config']->getDatabase();
+
+                $di->set('db', function() use($params) {
+                    return new \Phalcon\Db\Adapter\Pdo\Mysql(
+                        array(
+                            "host"      => $params->getHost(),
+                            "username"  => $params->getUsername(),
+                            "password"  => $params->getPassword(),
+                            "dbname"    => $params->getDbname()
+                        )
+                    );
+                });
+
+                //Registering the Models-Metadata
+                $di->set('modelsMetadata', 'Phalcon\Mvc\Model\Metadata\Memory');
+
+                //Registering the Models Manager
+                $di->set('modelsManager', 'Phalcon\Mvc\Model\Manager');
+                $application = new \Phalcon\Mvc\Application();
+                $application->setDI($di);
+            }
+            return $application;
+        }
+
+        function tag()
+        {
+            return new \Phalcon\Tag;
         }
     }
 

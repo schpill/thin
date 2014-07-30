@@ -17,7 +17,10 @@
         $args       = array(),
         $results    = array(),
         $wheres     = array(),
+        $fields     = array(),
+        $as         = array(),
         $joins      = array(),
+        $havings    = array(),
         $groupBys   = array(),
         $orders     = array();
         public static $instances    = array();
@@ -68,7 +71,7 @@
                 $field = Inflector::uncamelize($object);
                 return $this->where($field . ' ' . Arrays::first($args));
             }
-            return null;
+            throw new Exception("Method '$fn' is unknown.");
         }
 
         public function __destruct()
@@ -232,7 +235,10 @@
         {
             $this->results  = array();
             $this->wheres   = array();
+            $this->fields   = array();
+            $this->as       = array();
             $this->joins    = array();
+            $this->havings  = array();
             $this->groupBys = array();
             $this->orders   = array();
             $this->limit    = null;
@@ -251,21 +257,34 @@
             return new Query($this);
         }
 
-        public function save(Container $row)
+        public function save(Container $row, $object)
         {
-            $data = $row->assoc();
+            $this->foreign = $row->foreign();
+            $data = $this->clean($row->assoc());
 
             $id = isAke($data, $this->map['pk'], null);
 
             if (strlen($id)) {
                 unset($data[$this->map['pk']]);
-                return $this->edit($id, $data);
+                $row = $this->edit($id, $data, $object);
             } else {
-                return $this->add($data);
+                $row = $this->add($data, $object);
             }
+            $this->foreign = null;
+            return $row;
         }
 
-        private function add($data)
+        private function clean($data)
+        {
+            foreach ($data as $key => $value) {
+                if (startsWith($key, 'join_')) {
+                    unset($data[$key]);
+                }
+            }
+            return $data;
+        }
+
+        private function add($data, $object)
         {
             $q = "INSERT INTO $this->database.$this->table SET ";
             $fields = array_keys($this->map['fields']);
@@ -275,8 +294,33 @@
                     continue;
                 }
 
+                $skip = false;
+
                 if (!Arrays::in($k, $fields)) {
-                    throw new Exception("Field '$k' is unknown in the table '$this->table'.");
+                    if (count($this->foreign)) {
+                        $skipException = false;
+                        foreach ($this->foreign as $originalField => $renamed) {
+                            if ($renamed == $k) {
+                                list($db, $table, $field) = explode('.', $originalField);
+                                if ($db != $this->database || $table != $this->table) {
+                                    $skip           = true;
+                                    $skipException  = true;
+                                    break;
+                                } else {
+                                    $k              = $field;
+                                    $skipException  = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (false === $skipException) {
+                        throw new Exception("Field '$k' is unknown in the table '$this->table'.");
+                    }
+                }
+
+                if (true === $skip) {
+                    continue;
                 }
 
                 if (!strlen($v)) {
@@ -298,10 +342,10 @@
             $insert->close();
 
             $data[$this->map['pk']] = $this->db->insert_id;
-            return $this->row($data);
+            return true === $object ? $this->row($data) : $data;
         }
 
-        private function edit($id, $data)
+        private function edit($id, $data, $object)
         {
             $idData = isAke($data, $this->map['pk'], null);
             if (!is_null($idData)) {
@@ -320,8 +364,33 @@
                     continue;
                 }
 
+                $skip = false;
+
                 if (!Arrays::in($k, $fields)) {
-                    throw new Exception("Field '$k' is unknown in the table '$this->table'.");
+                    if (count($this->foreign)) {
+                        $skipException = false;
+                        foreach ($this->foreign as $originalField => $renamed) {
+                            if ($renamed == $k) {
+                                list($db, $table, $field) = explode('.', $originalField);
+                                if ($db != $this->database || $table != $this->table) {
+                                    $skip           = true;
+                                    $skipException  = true;
+                                    break;
+                                } else {
+                                    $k              = $field;
+                                    $skipException  = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (false === $skipException) {
+                        throw new Exception("Field '$k' is unknown in the table '$this->table'.");
+                    }
+                }
+
+                if (true === $skip) {
+                    continue;
                 }
 
                 if (!strlen($v)) {
@@ -345,7 +414,7 @@
             $update->close();
 
             $data[$this->map['pk']] = $id;
-            return $this->row($data);
+            return true === $object ? $this->row($data) : $data;
         }
 
         public function deleteRow($id)
@@ -423,12 +492,13 @@
         {
             $this->makeResults();
             $res = $this->results;
-            $this->reset();
             if (true === $object) {
-                return count($res) ? $this->row(Arrays::first($res)) : null;
+                $row = count($res) ? $this->row(Arrays::first($res)) : null;
             } else {
-                return count($res) ? Arrays::first($res) : array();
+                $row = count($res) ? Arrays::first($res) : array();
             }
+            $this->reset();
+            return $row;
         }
 
         public function only($field, $default = null)
@@ -526,18 +596,124 @@
             }
         }
 
-        public function join(Database $model, $type = 'LEFT')
+        public function join(Database $model, $condition = null, $type = 'LEFT')
         {
-            array_push($this->joins, array($model, $type));
+            array_push($this->joins, array($model, $condition, $type));
+            return $this;
+        }
+
+        public function leftJoin(Database $model, $condition = null)
+        {
+            return $this->join($model, $condition, 'LEFT');
+        }
+
+        public function rightJoin(Database $model, $condition = null)
+        {
+            return $this->join($model, $condition, 'RIGHT');
+        }
+
+        public function innerJoin(Database $model, $condition = null)
+        {
+            return $this->join($model, $condition, 'INNER');
+        }
+
+        public function outerJoin(Database $model, $condition = null)
+        {
+            return $this->join($model, $condition, 'OUTER');
+        }
+
+        public function field($field)
+        {
+            $fields = array_keys($this->map['fields']);
+            if (!strstr($field, '.')) {
+                if (!Arrays::in($field, $fields)) {
+                    throw new Exception("The field '$field' does not exist in table '$this->table'.");
+                }
+                $field = "$this->database.$this->table.$field";
+                array_push($this->fields, $field);
+            } else {
+                $tab = explode('.', $field);
+                if (count($tab) == 2) {
+                    $model = model(Inflector::lower(Arrays::first($tab)));
+                    $field = Inflector::lower(Arrays::last($tab));
+                    $database = $model->database;
+                    $table = $model->table;
+                } elseif (count($tab) == 3) {
+                    $database = Inflector::lower(Arrays::first($tab));
+                    $table = Inflector::lower($tab[1]);
+                    $field = Inflector::lower(Arrays::last($tab));
+                }
+                if (isset($database) && isset($table) && isset($field)) {
+                    $field = "$database.$table.$field";
+                    array_push($this->fields, $field);
+                }
+            }
+            return $this;
+        }
+
+        public function named($name)
+        {
+            if (count($this->fields)) {
+                $field = Arrays::last($this->fields);
+                $this->as[$field] = $name;
+            }
+            return $this;
+        }
+
+        public function fields($fields)
+        {
+            if (is_string($fields)) {
+                $fields = repl(' ', '', $fields);
+                if (strstr($fields, ',')) {
+                    $fields = explode(',', $fields);
+                } else {
+                    $fields = array($fields);
+                }
+            }
+            if (!Arrays::is($fields)) {
+                throw new Exception("You must provide an array as first argument.");
+            }
+            foreach ($fields as $field) {
+                $this->field($field);
+            }
             return $this;
         }
 
         private function makeResults()
         {
-            $fields = array_keys($this->map['fields']);
-            $select = '';
-            foreach ($fields as $field) {
-                $select .= "$this->database.$this->table.$field, ";
+            if (count($this->fields)) {
+                $pk = "$this->database.$this->table." . $this->pk();
+                $hasPk = false;
+                $select = '';
+                foreach ($this->fields as $field) {
+                    if (false === $hasPk) {
+                        $hasPk = $field == $pk;
+                    }
+                    list($db, $table, $tmpField) = explode('.', $field, 3);
+                    $as = isAke($this->as, $field, null);
+                    if ($db == $this->database && $table == $this->table) {
+                        if (is_null($as)) {
+                            $select .= "$field, ";
+                        } else {
+                            $select .= "$field AS $as, ";
+                        }
+                    } else {
+                        if (is_null($as)) {
+                            $select .= "$field AS " . 'join_' . str_replace('.', '_', Inflector::lower($field)) . ", ";
+                        } else {
+                            $select .= "$field AS $as, ";
+                        }
+                    }
+                }
+                if (false === $hasPk) {
+                    $select .= "$pk, ";
+                }
+            } else {
+                $fields = array_keys($this->map['fields']);
+                $select = '';
+                foreach ($fields as $field) {
+                    $select .= "$this->database.$this->table.$field, ";
+                }
             }
 
             $select = substr($select, 0, -2);
@@ -547,10 +723,14 @@
             } else {
                 $query = "SELECT $select FROM $this->database.$this->table ";
                 foreach ($this->joins as $join) {
-                    list($model, $type) = $join;
+                    list($model, $condition, $type) = $join;
                     $joinKey = $model->table . '_id';
                     $fpk = $model->pk();
-                    $query .= "$type JOIN $model->database.$model->table ON $this->database.$this->table.$joinKey = $model->database.$model->table.$fpk\n";
+                    if (is_null($condition)) {
+                        $query .= "$type JOIN $model->database.$model->table ON $this->database.$this->table.$joinKey = $model->database.$model->table.$fpk\n";
+                    } else {
+                        $query .= "$type JOIN $model->database.$model->table ON $condition\n";
+                    }
                 }
                 $query .= "WHERE\n";
             }
@@ -599,6 +779,14 @@
                     }
                     $first = false;
                 }
+            }
+            if (count($this->havings)) {
+                $sql = array();
+                foreach ($query->havings as $having) {
+                    $sql[] = 'AND '. $having['column'] . ' ' . $having['operator'] . ' ' . $having['value'];
+                }
+
+                $query .= 'HAVING ' . preg_replace('/AND /', '', implode(' ', $sql), 1);
             }
 
             if (count($this->orders)) {
@@ -656,6 +844,11 @@
             $this->limit = $limit;
             $this->offset = $offset;
             return $this;
+        }
+
+        public function take($limit, $offset = 0)
+        {
+            return $this->limit($limit, $offset);
         }
 
         public function andWhere($condition)
@@ -736,10 +929,10 @@
                 }
             };
 
-            $save = function () use ($obj, $params) {
+            $save = function ($object = true) use ($obj, $params) {
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
-                return $db->save($obj);
+                return $db->save($obj, $object);
             };
 
             $db = function () use ($params) {
@@ -788,12 +981,19 @@
                 return $obj->save();
             };
 
+            $as = $this->as;
+
+            $foreign = function () use ($as) {
+                return $as;
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
             ->event('exists', $exists)
             ->event('id', $id)
             ->event('touch', $touch)
             ->event('duplicate', $duplicate)
+            ->event('foreign', $foreign)
             ->event('extend', $extend);
 
             list($db, $table, $host, $username, $password) = $params;
