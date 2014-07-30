@@ -79,6 +79,40 @@
             $this->db->close();
         }
 
+        private function foreign($model, Container $row, $many = false, $object = false)
+        {
+            if (strstr($model, '.')) {
+                list($db, $table) = explode('.', $model, 2);
+                $db = model($table, $db);
+            } else {
+                $db = model($model);
+            }
+            $pk = $db->pk();
+            $field = $db->table . '_id';
+
+            return true === $many ? $db->where($pk . ' = ' . $row->$field)->exec($object) : $db->where($pk . ' = ' . $row->$field)->first($object);
+        }
+
+        public function manyToMany($model, Container $row, $object = false)
+        {
+            return $this->foreign($model, $row, true, $object);
+        }
+
+        public function manyToOne($model, Container $row, $object = false)
+        {
+            return $this->foreign($model, $row, false, $object);
+        }
+
+        public function oneToMany($model, Container $row, $object = false)
+        {
+            return $this->foreign($model, $row, true, $object);
+        }
+
+        public function oneToOne($model, Container $row, $object = false)
+        {
+            return $this->foreign($model, $row, false, $object);
+        }
+
         public static function instance($db, $table, $host = 'localhost', $username = 'root', $password = '')
         {
             $key    = sha1(serialize(func_get_args()));
@@ -1028,15 +1062,26 @@
                         $value = $obj->$field;
                         if (!is_callable($value)) {
                             $fk = $tableFk = $relation;
-                            $cb = function () use ($value, $tableFk, $params) {
+                            $fks = $fk . 's';
+                            $cb = function ($object = true) use ($value, $tableFk, $params) {
                                 list($database, $table, $host, $username, $password) = $params;
                                 $db = Database::instance($database, $tableFk, $host, $username, $password);
                                 if ($db) {
-                                    return $db->find($value);
+                                    return $db->find($value, $object);
                                 }
                                 return null;
                             };
                             $obj->event($fk, $cb);
+
+                            $cb = function ($object = true) use ($value, $tableFk, $params) {
+                                list($database, $table, $host, $username, $password) = $params;
+                                $db = Database::instance($database, $tableFk, $host, $username, $password);
+                                if ($db) {
+                                    return $db->where($db->pk() . " = '" . addslashes($value) . "'")->exec($object);
+                                }
+                                return null;
+                            };
+                            $obj->event($fks, $cb);
 
                             $setter = lcfirst(Inflector::camelize("link_$fk"));
 
