@@ -53,7 +53,7 @@
          */
         protected function unique($key, $message)
         {
-            return !isset($this->messages[$key]) || !Arrays::inArray($message, $this->messages[$key]);
+            return !isset($this->messages[$key]) || !Arrays::in($message, $this->messages[$key]);
         }
 
         /**
@@ -136,7 +136,7 @@
         {
             $format = (null === $format) ? $this->format : $format;
 
-            if (ake($key, $this->messages)) {
+            if (Arrays::exists($key, $this->messages)) {
                 return $this->transform($this->messages[$key], $format);
             }
 

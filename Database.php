@@ -17,6 +17,7 @@
         $args       = array(),
         $results    = array(),
         $wheres     = array(),
+        $joins      = array(),
         $groupBys   = array(),
         $orders     = array();
         public static $instances    = array();
@@ -45,6 +46,27 @@
             } else if ('has' === $method) {
                 $object = Inflector::uncamelize($object);
                 return isset($this->$object);
+            }
+            $method = substr($fn, 0, 5);
+            $object = lcfirst(substr($fn, 5));
+            if ('where' == $method) {
+                $field = Inflector::uncamelize($object);
+                return $this->where($field . ' ' . Arrays::first($args));
+            }
+            $method = substr($fn, 0, 7);
+            $object = lcfirst(substr($fn, 7));
+            if ('orWhere' == $method) {
+                $field = Inflector::uncamelize($object);
+                return $this->where($field . ' ' . Arrays::first($args), 'OR');
+            }
+            $method = substr($fn, 0, 8);
+            $object = lcfirst(substr($fn, 8));
+            if ('xorWhere' == $method) {
+                $field = Inflector::uncamelize($object);
+                return $this->where($field . ' ' . Arrays::first($args), 'XOR');
+            } elseif('andWhere' == $method) {
+                $field = Inflector::uncamelize($object);
+                return $this->where($field . ' ' . Arrays::first($args));
             }
             return null;
         }
@@ -89,6 +111,8 @@
                     }
                 }
                 $res->close();
+            } else {
+                /* to do */
             }
             if (true === $object) {
                 $collection = new Collection($collection);
@@ -208,6 +232,7 @@
         {
             $this->results  = array();
             $this->wheres   = array();
+            $this->joins    = array();
             $this->groupBys = array();
             $this->orders   = array();
             $this->limit    = null;
@@ -406,14 +431,24 @@
             }
         }
 
-        public function only($field)
+        public function only($field, $default = null)
         {
-            $row = $this->first(true);
-            return $row instanceof Container
-            ? !is_string($row->$field)
-                ? $row->$field()
-                : $row->$field
-            : null;
+            $sql = strstr($field, ' ') ? true : false;
+            if (false === $sql) {
+                $row = $this->first(true);
+                return $row instanceof Container
+                ? !is_string($row->$field)
+                    ? $row->$field()
+                    : $row->$field
+                : $default;
+            } else {
+                $res = $this->fetch($field);
+                $row = count($res) ? Arrays::first($res) : null;
+                if (null !== $row) {
+                    return Arrays::first($row);
+                }
+                return $default;
+            }
         }
 
         public function select($fields, $object = false)
@@ -491,13 +526,49 @@
             }
         }
 
+        public function join(Database $model, $type = 'LEFT')
+        {
+            array_push($this->joins, array($model, $type));
+            return $this;
+        }
+
         private function makeResults()
         {
-            $query = "SELECT $this->database.$this->table.* FROM $this->database.$this->table WHERE ";
+            $fields = array_keys($this->map['fields']);
+            $select = '';
+            foreach ($fields as $field) {
+                $select .= "$this->database.$this->table.$field, ";
+            }
+
+            $select = substr($select, 0, -2);
+
+            if (!count($this->joins)) {
+                $query = "SELECT $select FROM $this->database.$this->table WHERE ";
+            } else {
+                $query = "SELECT $select FROM $this->database.$this->table ";
+                foreach ($this->joins as $join) {
+                    list($model, $type) = $join;
+                    $joinKey = $model->table . '_id';
+                    $fpk = $model->pk();
+                    $query .= "$type JOIN $model->database.$model->table ON $this->database.$this->table.$joinKey = $model->database.$model->table.$fpk\n";
+                }
+                $query .= "WHERE\n";
+            }
             if (count($this->wheres)) {
                 $first = true;
                 foreach ($this->wheres as $where) {
                     list($op, $condition) = $where;
+                    if (count($this->joins)) {
+                        $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
+                        $condition  = repl('NOT IN', 'NOTIN', $condition);
+                        list($field, $operator, $value) = explode(' ', $condition, 3);
+                        if (!strstr($field, '.')) {
+                            $field = "$this->database.$this->table.$field";
+                        }
+                        $condition = "$field $operator $value";
+                        $condition  = repl('NOTLIKE', 'NOT LIKE', $condition);
+                        $condition  = repl('NOTIN', 'NOT IN', $condition);
+                    }
                     if (false === $first) {
                         $query .= " $op $condition";
                     } else {
@@ -514,9 +585,17 @@
                 $first = true;
                 foreach ($this->groupBys as $groupBy) {
                     if (false === $first) {
-                        $query .= ", $this->database.$this->table.$groupBy";
+                        if (!strstr($groupBy, '.')) {
+                            $query .= ", $this->database.$this->table.$groupBy";
+                        } else {
+                            $query .= ", $groupBy";
+                        }
                     } else {
-                        $query .= $groupBy;
+                        if (!strstr($groupBy, '.')) {
+                            $query .= "$this->database.$this->table.$groupBy";
+                        } else {
+                            $query .= $groupBy;
+                        }
                     }
                     $first = false;
                 }
@@ -528,9 +607,17 @@
                 foreach ($this->orders as $order) {
                     list($field, $direction) = $order;
                     if (false === $first) {
-                        $query .= ", $this->database.$this->table.$field $direction";
+                        if (!strstr($field, '.')) {
+                            $query .= ", $this->database.$this->table.$field $direction";
+                        } else {
+                            $query .= ", $field $direction";
+                        }
                     } else {
-                        $query .= "$this->database.$this->table.$field $direction";
+                        if (!strstr($field, '.')) {
+                            $query .= "$this->database.$this->table.$field $direction";
+                        } else {
+                            $query .= "$field $direction";
+                        }
                     }
                     $first = false;
                 }
