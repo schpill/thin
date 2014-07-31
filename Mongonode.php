@@ -33,6 +33,17 @@
             $this->keys     = $ns . '::' . $entity . '_keys';
         }
 
+        public static function instance($namespace, $entity)
+        {
+            $key = sha1($namespace . $entity);
+            $has = Instance::has('mongonode', $key);
+            if (true === $has) {
+                return Instance::get('mongonode', $key);
+            } else {
+                return Instance::make('mongonode', $key, with(new self($entity, $namespace)));
+            }
+        }
+
         public function begin()
         {
             $key = 'begin::nodeDb_' . $this->ns . '_' . $this->entity;
@@ -98,7 +109,6 @@
             if (is_object($data)) {
                 $data = $data->assoc();
             }
-
             $this->lock('write');
             if (!Arrays::is($data)) {
                 return $data;
@@ -458,9 +468,6 @@
                 }
             }
             $this->reset();
-            if (!count($collection) && true === $object) {
-                return null;
-            }
             if (true === $object) {
                 $collection = new Collection($collection);
             }
@@ -474,8 +481,9 @@
             $dbs = container()->nbm('nma_structure');
 
             $t = $dbt->where('name = ' . $table)->where('ns = ' . $ns)->first(true);
+
             if (is_null($t)) {
-                $t = $dbt->create()->setName($table)->setNs($ns)->save();
+                $t = $dbt->create(array('name' => $table, 'ns' => $ns))->save();
             }
             if (!is_null($t)) {
                 if (count($fields)) {
@@ -508,6 +516,12 @@
 
         public static function tables()
         {
+            // $t = container()->nbm('nma_table')->fetch()->exec(true);
+            // $f = container()->nbm('nma_field')->fetch()->exec(true);
+            // $s = container()->nbm('nma_structure')->fetch()->exec(true);
+            // $s->delete();
+            // $f->delete();
+            // dd($t->delete());
             $dbt = container()->nbm('nma_table');
             $rows = container()->redis()->keys('*_nodeCount');
             $tables = array();
@@ -723,10 +737,12 @@
 
             $sortFunc = function($key, $direction) {
                 return function ($a, $b) use ($key, $direction) {
+                    $valA = isAke($a, $key, null);
+                    $valB = isAke($b, $key, null);
                     if ('ASC' == $direction) {
-                        return $a[$key] > $b[$key];
+                        return $valA > $valB;
                     } else {
-                        return $a[$key] < $b[$key];
+                        return $valA < $valB;
                     }
                 };
             };

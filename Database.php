@@ -23,7 +23,7 @@
         $havings    = array(),
         $groupBys   = array(),
         $orders     = array();
-        public static $instances    = array();
+
         public static $config       = array();
 
         public function __construct($db, $table, $host = 'localhost', $username = 'root', $password = '')
@@ -37,39 +37,181 @@
 
         public function __call($fn, $args)
         {
+            $fields = array_keys($this->map['fields']);
+
+            $method = substr($fn, 0, 2);
+            $object = lcfirst(substr($fn, 2));
+
+            if ('is' === $method && strlen($fn) > 2) {
+                $field = Inflector::uncamelize($object);
+                if (!Arrays::in($field, $fields)) {
+                    $field = $field . '_id';
+                    $model = Arrays::first($args);
+                    if ($model instanceof Container) {
+                        $idFk = $model->id();
+                    } else {
+                        $idFk = $model;
+                    }
+                    return $this->where("$field = $idFk");
+                } else {
+                    return $this->where($field . ' = ' . Arrays::first($args));
+                }
+            }
+
             $method = substr($fn, 0, 3);
             $object = lcfirst(substr($fn, 3));
-            if ('get' === $method) {
-                $object = Inflector::uncamelize($object);
-                return isset($this->$object) ? $this->$object : null;
-            } else if ('set' === $method) {
-                $object = Inflector::uncamelize($object);
-                $this->$object = Arrays::first($args);
-                return $this;
-            } else if ('has' === $method) {
-                $object = Inflector::uncamelize($object);
-                return isset($this->$object);
+
+            if (strlen($fn) > 3) {
+                if ('get' === $method) {
+                    $object = Inflector::uncamelize($object);
+                    return isset($this->$object) ? $this->$object : null;
+                } else if ('set' === $method) {
+                    $object = Inflector::uncamelize($object);
+                    $this->$object = Arrays::first($args);
+                    return $this;
+                } else if ('has' === $method) {
+                    $object = Inflector::uncamelize($object);
+                    return isset($this->$object);
+                }
             }
+
+            $method = substr($fn, 0, 4);
+            $object = lcfirst(substr($fn, 4));
+
+            if ('orIs' === $method && strlen($fn) > 4) {
+                $field = Inflector::uncamelize($object);
+                if (!Arrays::in($field, $fields)) {
+                    $field = $field . '_id';
+                    $model = Arrays::first($args);
+                    if ($model instanceof Container) {
+                        $idFk = $model->id();
+                    } else {
+                        $idFk = $model;
+                    }
+                    return $this->where("$field = $idFk", 'OR');
+                } else {
+                    return $this->where($field . ' = ' . Arrays::first($args), 'OR');
+                }
+            }
+
             $method = substr($fn, 0, 5);
             $object = lcfirst(substr($fn, 5));
-            if ('where' == $method) {
-                $field = Inflector::uncamelize($object);
-                return $this->where($field . ' ' . Arrays::first($args));
+
+            if (strlen($fn) > 5) {
+                if ('where' == $method) {
+                    $field = Inflector::uncamelize($object);
+                    if (!Arrays::in($field, $fields)) {
+                        $field = $field . '_id';
+                        $model = Arrays::first($args);
+                        if ($model instanceof Container) {
+                            $idFk = $model->id();
+                        } else {
+                            $idFk = $model;
+                        }
+                        return $this->where("$field = $idFk");
+                    } else {
+                        return $this->where($field . ' ' . Arrays::first($args));
+                    }
+                } elseif ('xorIs' === $method) {
+                    $field = Inflector::uncamelize($object);
+                    if (!Arrays::in($field, $fields)) {
+                        $field = $field . '_id';
+                        $model = Arrays::first($args);
+                        if ($model instanceof Container) {
+                            $idFk = $model->id();
+                        } else {
+                            $idFk = $model;
+                        }
+                        return $this->where("$field = $idFk", 'XOR');
+                    } else {
+                        return $this->where($field . ' = ' . Arrays::first($args), 'XOR');
+                    }
+                } elseif ('andIs' === $method) {
+                    $field = Inflector::uncamelize($object);
+                    if (!Arrays::in($field, $fields)) {
+                        $field = $field . '_id';
+                        $model = Arrays::first($args);
+                        if ($model instanceof Container) {
+                            $idFk = $model->id();
+                        } else {
+                            $idFk = $model;
+                        }
+                        return $this->where("$field = $idFk");
+                    } else {
+                        return $this->where($field . ' = ' . Arrays::first($args));
+                    }
+                }
             }
+
             $method = substr($fn, 0, 7);
             $object = lcfirst(substr($fn, 7));
-            if ('orWhere' == $method) {
-                $field = Inflector::uncamelize($object);
-                return $this->where($field . ' ' . Arrays::first($args), 'OR');
+
+            if (strlen($fn) > 7) {
+                if ('orWhere' == $method) {
+                    $field = Inflector::uncamelize($object);
+                    if (!Arrays::in($field, $fields)) {
+                        $field = $field . '_id';
+                        $model = Arrays::first($args);
+                        if ($model instanceof Container) {
+                            $idFk = $model->id();
+                        } else {
+                            $idFk = $model;
+                        }
+                        return $this->where("$field = $idFk", 'OR');
+                    } else {
+                        return $this->where($field . ' ' . Arrays::first($args), 'OR');
+                    }
+                }
             }
+
             $method = substr($fn, 0, 8);
             $object = lcfirst(substr($fn, 8));
-            if ('xorWhere' == $method) {
-                $field = Inflector::uncamelize($object);
-                return $this->where($field . ' ' . Arrays::first($args), 'XOR');
-            } elseif('andWhere' == $method) {
-                $field = Inflector::uncamelize($object);
-                return $this->where($field . ' ' . Arrays::first($args));
+
+            if (strlen($fn) > 8) {
+                if ('xorWhere' == $method) {
+                    $field = Inflector::uncamelize($object);
+                    if (!Arrays::in($field, $fields)) {
+                        $field = $field . '_id';
+                        $model = Arrays::first($args);
+                        if ($model instanceof Container) {
+                            $idFk = $model->id();
+                        } else {
+                            $idFk = $model;
+                        }
+                        return $this->where("$field = $idFk", 'XOR');
+                    } else {
+                        return $this->where($field . ' ' . Arrays::first($args), 'XOR');
+                    }
+                } elseif('andWhere' == $method) {
+                    $field = Inflector::uncamelize($object);
+                    if (!Arrays::in($field, $fields)) {
+                        $field = $field . '_id';
+                        $model = Arrays::first($args);
+                        if ($model instanceof Container) {
+                            $idFk = $model->id();
+                        } else {
+                            $idFk = $model;
+                        }
+                        return $this->where("$field = $idFk");
+                    } else {
+                        return $this->where($field . ' ' . Arrays::first($args));
+                    }
+                }
+            } else {
+                $field = $fn;
+                $fieldFk = $fn . '_id';
+                $op = count($args) == 2 ? Inflector::upper(Arrays::last($args)) : 'AND';
+                if (Arrays::in($field, $fields)) {
+                    return $this->where($field . ' = ' . Arrays::first($args), $op);
+                } else if (Arrays::in($fieldFk, $fields)) {
+                    $model = Arrays::first($args);
+                    if ($model instanceof Container) {
+                        $idFk = $model->id();
+                    } else {
+                        $idFk = $model;
+                    }
+                    return $this->where("$fieldFk = $idFk", $op);
+                }
             }
             throw new Exception("Method '$fn' is unknown.");
         }
@@ -116,12 +258,12 @@
         public static function instance($db, $table, $host = 'localhost', $username = 'root', $password = '')
         {
             $key    = sha1(serialize(func_get_args()));
-            $i      = isAke(static::$instances, $key, null);
-            if (is_null($i)) {
-                $i  = new self($db, $table, $host, $username, $password);
-                static::$instances[$key] = $i;
+            $has    = Instance::has('Database', $key);
+            if (true === $has) {
+                return Instance::get('Database', $key);
+            } else {
+                return Instance::make('Database', $key, with(new self($db, $table, $host, $username, $password)));
             }
-            return $i;
         }
 
         public function db()
@@ -597,6 +739,11 @@
             }
         }
 
+        public function execute($object = false, $results = null)
+        {
+            return $this->exec($object, $results);
+        }
+
         public function exec($object = false, $results = null)
         {
             if (is_null($results)) {
@@ -612,9 +759,6 @@
                 }
             }
             $this->reset();
-            if (!count($collection) && true === $object) {
-                return null;
-            }
             if (true === $object) {
                 $collection = new Collection($collection);
             }
@@ -860,6 +1004,16 @@
             return $this->query;
         }
 
+        public function isNull($field, $op = 'AND')
+        {
+            return $this->where("$field IS NULL", $op);
+        }
+
+        public function isNotNull($field, $op = 'AND')
+        {
+            return $this->where("$field IS NOT NULL", $op);
+        }
+
         public function order($field, $direction = 'ASC')
         {
             $direction = Inflector::upper($direction);
@@ -1006,13 +1160,18 @@
                 return $obj;
             };
 
-            $duplicate = function () use ($obj, $params) {
+            $duplicate = function ($object = true) use ($obj, $params) {
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 $pk = $db->pk();
                 if (isset($obj->$pk)) unset($obj->$pk);
                 if (isset($obj->created_at)) unset($obj->created_at);
-                return $obj->save();
+                return $obj->save($object);
+            };
+
+            $orm = function () use ($params) {
+                list($db, $table, $host, $username, $password) = $params;
+                return Database::instance($db, $table, $host, $username, $password);
             };
 
             $as = $this->as;
@@ -1028,6 +1187,7 @@
             ->event('touch', $touch)
             ->event('duplicate', $duplicate)
             ->event('foreign', $foreign)
+            ->event('orm', $orm)
             ->event('extend', $extend);
 
             list($db, $table, $host, $username, $password) = $params;
@@ -1103,15 +1263,14 @@
 
         public function extend($name, $callable)
         {
-            $params = $this->args;
-            list($db, $table, $host, $username, $password) = $params;
+            $key = $this->database . '.' . $this->table;
 
-            $settings   = isAke(self::$config, "$db.$table");
+            $settings   = isAke(self::$config, $key);
             $functions  = isAke($settings, 'functions');
 
             $functions[$name] = $callable;
 
-            self::$config["$db.$table"]['functions'] = $functions;
+            self::$config[$key]['functions'] = $functions;
             return $this;
         }
     }

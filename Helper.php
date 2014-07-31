@@ -30,7 +30,18 @@
     use Thin\Eventable;
     use Thin\Doctrine;
     use Thin\Autoloader;
+    use Thin\Database;
+    use Thin\Instance;
+    use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
+    use Thin\Session\Redis as RedisSession;
+
+    if (!function_exists('validator')) {
+        function validator(Database $model)
+        {
+            return DBValidator::instance($model);
+        }
+    }
 
     if (!function_exists('jdb')) {
         function jdb($db, $table)
@@ -38,6 +49,7 @@
             return new \Dbjson\Dbjson($db, $table);
         }
     }
+
     if (!function_exists('iniLoad')) {
         function iniLoad($filename, $section = null, $options = false)
         {
@@ -48,6 +60,7 @@
             return new IniLoad($filename, $section, $options);
         }
     }
+
     if (!function_exists('action')) {
         function action($tag, $closure)
         {
@@ -2534,9 +2547,12 @@ $(document).ready(function() {
     }
 
     if (!function_exists('session')) {
-        function session($name = 'core')
+        function session($name = 'core', $adapter = 'session', $ttl = 3600)
         {
-            return Session::instance($name);
+            switch ($adapter) {
+                case 'session': return Session::instance($name);
+                case 'redis': return RedisSession::instance($name, $ttl);
+            }
         }
     }
 
@@ -3560,9 +3576,15 @@ $(document).ready(function() {
     }
 
     if (!function_exists('instance')) {
-        function instance($class, array $params = array())
+        function instance($class, $params = array())
         {
-            return Utils::getInstance($class, $params);
+            $key = sha1($class . serialize($params));
+            $has = Instance::has('helper_' . $class, $key);
+            if (true === $has) {
+                return Instance::get('helper_' . $class, $key);
+            } else {
+                return Instance::make('helper_' . $class, $key, with(Utils::getInstance($class, $params)));
+            }
         }
     }
 

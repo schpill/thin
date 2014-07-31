@@ -13,30 +13,21 @@
             return request();
         }
 
-        public function forward($route, $alert = null)
+        public function forward($action = 'index', $controller = null, $module = null)
         {
-            $oldRoute   = container()->getRoute();
-            $module     = null !== $route->getModule()      ? $route->getModule()       : $oldRoute->getModule();
-            $controller = null !== $route->getController()  ? $route->getController()   : $oldRoute->getController();
-            $action     = null !== $route->getAction()      ? $route->getAction()       : $oldRoute->getAction();
-            $params     = null !== $route->getParams()      ? $route->getParams()       : array();
-
-            if (count($params)) {
-                foreach ($params as $key => $value) {
-                    $_REQUEST[$key] = $value;
-                }
+            $actualRoute = container()->getRoute();
+            if (null === $actualRoute && null === $controller && null === $module) {
+                throw new Exception('Invalid forward.');
             }
-
-            $dispatch = new Dispatch;
-            $dispatch->setModule($module);
-            $dispatch->setController($controller);
-            $dispatch->setAction($action);
-            $dispatch->setAlert($alert);
-            Utils::set('appDispatch', $dispatch);
-
-            Router::language();
-            Router::run();
-
+            if (null === $module) {
+                $module = $actualRoute->getModule();
+            }
+            if (null === $controller) {
+                $controller = $actualRoute->getController();
+            }
+            $route = new Container;
+            $route->setModule($module)->setController($controller)->setAction($action);
+            context()->dispatch($route);
             exit;
         }
 

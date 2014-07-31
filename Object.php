@@ -116,6 +116,9 @@
 
         public function __call($func, $argv)
         {
+            $key = sha1('orm' . $this->_token);
+            $orm = isAke($this->values, $key, false);
+
             if (substr($func, 0, 4) == 'link') {
                 $value = Arrays::first($argv);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 4)));
@@ -308,13 +311,13 @@
                 || substr($func, 0, 3) !== 'add'
                 || substr($func, 0, 6) !== 'remove'
             ) {
-                $callabke = strrev(repl('_', '', $func));
-                if (!is_callable($callabke)) {
-                    if(method_exists($this, $callabke)) {
-                        return call_user_func_array(array($this, $callabke), $argv);
+                $callable = strrev(repl('_', '', $func));
+                if (!is_callable($callable)) {
+                    if(method_exists($this, $callable)) {
+                        return call_user_func_array(array($this, $callable), $argv);
                     }
                 } else {
-                    return call_user_func_array($callabke, $argv);
+                    return call_user_func_array($callable, $argv);
                 }
                 if(isset($this->thin_litedb)) {
                     $closure = isAke($this->thin_litedb->closures, $func);
@@ -325,6 +328,24 @@
                 if(isset($this->db_instance)) {
                     return $this->db_instance->$func($this, $var, $value);
                     call_user_func_array(array($this->db_instance, $func), array_merge(array($this), $argv));
+                }
+
+                if (false !== $orm) {
+                    $db = call_user_func_array($orm, array());
+                    $tab = str_split($func);
+                    $many = false;
+                    if (Arrays::last($tab) == 's') {
+                        array_pop($tab);
+                        $table = implode('', $tab);
+                        $many = true;
+                    } else {
+                        $table = $func;
+                    }
+                    $object = count($argv) == 1 ? Arrays::first($args) : false;
+                    $model = model($table);
+                    return true === $many
+                    ? $model->where($db->table . '_id = ' . $this->id())->exec($object)
+                    : $model->where($db->table . '_id = ' . $this->id())->first($object);
                 }
                 return null;
             }
@@ -489,7 +510,7 @@
             if (count($this->_fields)) {
                 foreach ($this->_fields as $field) {
                     if ($field != 'values' && $field != '_nameClass') {
-                        if (!is_callable($this->$field)) {
+                        if (!$this->$field instanceof \Closure) {
                             $collection[$field] = $this->$field;
                         }
                     }
