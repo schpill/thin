@@ -273,12 +273,20 @@
 
         public function query($query)
         {
-            return $this->db->query($query);
+            $start  = $this->getTime();
+            $res    = $this->db->query($query);
+            $this->incQueries($start);
+            return $res;
         }
 
         public function fetch($query = null, $object = false)
         {
-            $query = is_null($query) ? "SELECT $this->database.$this->table.* FROM $this->database.$this->table" : $query;
+            $start = $this->getTime();
+
+            $query = is_null($query)
+            ? "SELECT $this->database.$this->table.* FROM $this->database.$this->table"
+            : $query;
+
             $collection = array();
             $res = $this->db->query($query);
             if (is_object($res)) {
@@ -296,6 +304,7 @@
             if (true === $object) {
                 $collection = new Collection($collection);
             }
+            $this->incQueries($start);
             return $collection;
         }
 
@@ -1185,6 +1194,16 @@
                 return $as;
             };
 
+            $many = function ($table, $field, $object = false) use ($obj) {
+                $db = model($table);
+                return $db->where("$field = $obj->$field")->exec($object);
+            };
+
+            $one = function ($table, $field, $object = false) use ($obj) {
+                $db = model($table);
+                return $db->where("$field = $obj->$field")->first($object);
+            };
+
             $obj->event('save', $save)
             ->event('delete', $delete)
             ->event('exists', $exists)
@@ -1193,6 +1212,8 @@
             ->event('duplicate', $duplicate)
             ->event('foreign', $foreign)
             ->event('orm', $orm)
+            ->event('many', $many)
+            ->event('one', $one)
             ->event('extend', $extend);
 
             list($db, $table, $host, $username, $password) = $params;
@@ -1264,6 +1285,26 @@
                 }
             }
             return $obj;
+        }
+
+        private function incQueries($start)
+        {
+            $numberOfQueries = container()->getNumberOfQueries();
+            $numberOfQueries = is_null($numberOfQueries) ? 0 : $numberOfQueries;
+            $numberOfQueries++;
+            $totalDuration = container()->getTotalDuration();
+            $totalDuration = is_null($totalDuration) ? 0 : $totalDuration;
+            $totalDuration += $this->getTime() - $start;
+
+            Utils::set('NbQueries', $numberOfQueries);
+            Utils::set('SQLTotalDuration', $totalDuration);
+        }
+
+        private function getTime()
+        {
+            $time = microtime();
+            $time = explode(' ', $time, 2);
+            return (Arrays::last($time) + Arrays::first($time));
         }
 
         public function extend($name, $callable)

@@ -331,18 +331,27 @@
                 }
 
                 if (false !== $orm) {
-                    $db = call_user_func_array($orm, array());
-                    $tab = str_split($func);
-                    $many = false;
+                    $db     = call_user_func_array($orm, array());
+                    $fields = array_keys($db->map['fields']);
+                    if (Arrays::in($func, $fields)) {
+                        if (!count($argv)) return $this->$func;
+                        else {
+                            $setter = setter($func);
+                            $this->$setter(Arrays::first($argv));
+                            return $this;
+                        }
+                    }
+                    $tab    = str_split($func);
+                    $many   = false;
                     if (Arrays::last($tab) == 's') {
                         array_pop($tab);
-                        $table = implode('', $tab);
-                        $many = true;
+                        $table  = implode('', $tab);
+                        $many   = true;
                     } else {
-                        $table = $func;
+                        $table  = $func;
                     }
                     $object = count($argv) == 1 ? Arrays::first($argv) : true;
-                    $model = model($table);
+                    $model  = model($table);
                     return true === $many
                     ? $model->where($db->table . '_id = ' . $this->id())->exec($object)
                     : $model->where($db->table . '_id = ' . $this->id())->first($object);

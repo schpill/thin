@@ -1557,8 +1557,9 @@
             return $html;
         }
 
-        public function _incQueries($start)
+        public function _incQueries($start = null)
         {
+            $start = is_null($start) ? $this->_getTime() : $start;
             $this->_numberOfQueries++;
             $this->_totalDuration += $this->_getTime() - $start;
             Utils::set('NbQueries', $this->_numberOfQueries);
@@ -1569,7 +1570,7 @@
         {
             $time = microtime();
             $time = explode(' ', $time, 2);
-            return ($time[1] + $time[0]);
+            return (Arrays::last($time) + Arrays::first($time));
         }
 
         public function eraseCache()
