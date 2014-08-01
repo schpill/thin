@@ -341,7 +341,7 @@
                     } else {
                         $table = $func;
                     }
-                    $object = count($argv) == 1 ? Arrays::first($args) : false;
+                    $object = count($argv) == 1 ? Arrays::first($argv) : true;
                     $model = model($table);
                     return true === $many
                     ? $model->where($db->table . '_id = ' . $this->id())->exec($object)

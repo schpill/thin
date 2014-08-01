@@ -1,11 +1,16 @@
 <?php
     namespace Thin\Database;
 
+    use IteratorAggregate;
+    use ArrayAccess;
+    use Countable;
+    use ArrayIterator;
     use Closure;
+    use Thin\Database;
     use Thin\Container;
     use Thin\Arrays;
 
-    class Collection  implements \IteratorAggregate, \ArrayAccess, \Countable
+    class Collection  implements IteratorAggregate, ArrayAccess, Countable
     {
 
         private $_items = array();
@@ -361,11 +366,11 @@
         /**
          * get iterator
          *
-         * @return \ArrayIterator
+         * @return ArrayIterator
          */
         public function getIterator()
         {
-            return new \ArrayIterator($this->_items);
+            return new ArrayIterator($this->_items);
         }
 
         /**
@@ -455,5 +460,41 @@
                 }
             }
             return $this;
+        }
+
+        // public function where($condition, $op = 'AND')
+        // {
+        //     if (count($this->_items)) {
+        //         $db = $this->first()->orm();
+        //         return $db->where($db->database . '.' . $db->table . '.id IN (' . implode(',', $this->getIds()) . ')')->where($condition, $op);
+        //     }
+        //     return $this;
+        // }
+
+        private function getIds()
+        {
+            $rows = $this->rows();
+            $ids = array();
+            foreach ($rows as $row) {
+                array_push($ids, $row->id());
+            }
+            return $ids;
+        }
+
+        public function __call($method, $args)
+        {
+            if (count($this->_items)) {
+                $first = $this->first();
+                $key = sha1('orm' . $first->_token);
+                $orm = isAke($first->values, $key, false);
+                if (false !== $orm) {
+                    $db = $first->orm();
+                    $methods = get_class_methods($db);
+                    if (Arrays::in($method, $methods)) {
+                        $instance = $db->where($db->database . '.' . $db->table . '.id IN (' . implode(',', $this->getIds()) . ')');
+                        return call_user_func_array(array($instance, $method), $args);
+                    }
+                }
+            }
         }
     }

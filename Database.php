@@ -774,28 +774,29 @@
             }
         }
 
-        public function join(Database $model, $condition = null, $type = 'LEFT')
+        public function join($model, $condition = null, $type = 'LEFT')
         {
+            $model = is_string($model) ? model($model) : $model;
             array_push($this->joins, array($model, $condition, $type));
             return $this;
         }
 
-        public function leftJoin(Database $model, $condition = null)
+        public function leftJoin($model, $condition = null)
         {
             return $this->join($model, $condition, 'LEFT');
         }
 
-        public function rightJoin(Database $model, $condition = null)
+        public function rightJoin($model, $condition = null)
         {
             return $this->join($model, $condition, 'RIGHT');
         }
 
-        public function innerJoin(Database $model, $condition = null)
+        public function innerJoin($model, $condition = null)
         {
             return $this->join($model, $condition, 'INNER');
         }
 
-        public function outerJoin(Database $model, $condition = null)
+        public function outerJoin($model, $condition = null)
         {
             return $this->join($model, $condition, 'OUTER');
         }
@@ -857,7 +858,7 @@
             return $this;
         }
 
-        private function makeResults()
+        private function makeResults($fetch = true)
         {
             if (count($this->fields)) {
                 $pk = "$this->database.$this->table." . $this->pk();
@@ -995,13 +996,17 @@
             }
 
             $this->query = $query;
-            $this->results = $this->fetch($query);
+            if (true === $fetch) {
+                $this->results = $this->fetch($query);
+            } else {
+                return $query;
+            }
             return $this;
         }
 
         public function getQuery()
         {
-            return $this->query;
+            return $this->makeResults(false);
         }
 
         public function isNull($field, $op = 'AND')
