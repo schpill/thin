@@ -89,6 +89,17 @@
         }
 
         /**
+         * Remove an item from the collection by key.
+         *
+         * @param  mixed  $key
+         * @return void
+         */
+        public function forget($key)
+        {
+            unset($this->_items[$key]);
+        }
+
+        /**
          * Remove a record from the collection
          *
          * @param int|Model $param model to remove
@@ -169,6 +180,21 @@
         }
 
         /**
+         * Determine if an item exists in the collection.
+         *
+         * @param  mixed  $value
+         * @return bool
+         */
+        public function contains($value)
+        {
+            if ($value instanceof \Closure) {
+                return ! is_null($this->first($value));
+            }
+
+            return Arrays::in($value, $this->_items);
+        }
+
+        /**
          * Run a map over the collection using the given Closure
          *
          * @param Closure $callback callback
@@ -225,6 +251,38 @@
         }
 
         /**
+         * Group an associative array by a field or Closure value.
+         *
+         * @param  callable|string  $groupBy
+         * @return Collection
+         */
+        public function groupBy($groupBy)
+        {
+            $results = array();
+            foreach ($this->_items as $key => $value) {
+                $key = is_callable($groupBy) ? $groupBy($value, $key) : dataGet($value, $groupBy);
+                $results[$key][] = $value;
+            }
+            return new self($results);
+        }
+
+        /**
+         * Key an associative array by a field.
+         *
+         * @param  string  $keyBy
+         * @return Collection
+         */
+        public function keyBy($keyBy)
+        {
+            $results = array();
+            foreach ($this->_items as $item) {
+                $key = dataGet($item, $keyBy);
+                $results[$key] = $item;
+            }
+            return new self($results);
+        }
+
+        /**
          * Reverse items order.
          *
          * @return Collection
@@ -236,15 +294,44 @@
         }
 
         /**
-         * Make a collection from a array of Model
+         * Make a collection from an array of Model
          *
-         * @param array $models models
+         * @param array $items items
          *
          * @return Collection
          */
-        public static function make($models)
+        public static function make($items)
         {
-            return new self($models);
+            if (is_null($items)) return new static;
+            if ($items instanceof Collection) return $items;
+            return new static(is_array($items) ? $items : array($items));
+        }
+
+        /**
+         * Collapse the collection items into a single array.
+         *
+         * @return Collection
+         */
+        public function collapse()
+        {
+            $results = array();
+
+            foreach ($this->_items as $values) {
+                $results = array_merge($results, $values);
+            }
+
+            return new static($results);
+        }
+
+
+        /**
+         * Get all of the items in the collection.
+         *
+         * @return array
+         */
+        public function all()
+        {
+            return $this->_items;
         }
 
         /**
@@ -252,9 +339,16 @@
          *
          * @return Model
          */
-        public function first()
+        public function first($callback = null, $default = null)
         {
-            return Arrays::first($this->_items);
+            if (is_null($callback)) {
+                return count($this->_items) > 0 ? Arrays::first($this->_items) : $default;
+            } else {
+                foreach ($this->_items as $key => $value) {
+                    if (call_user_func($callback, $key, $value)) return $value;
+                }
+                return value($default);
+            }
         }
 
         /**
@@ -264,7 +358,7 @@
          */
         public function last()
         {
-            return Arrays::last($this->_items);
+            return count($this->_items) > 0 ? Arrays::last($this->_items) : null;
         }
 
         public function items($array = false)
@@ -291,6 +385,17 @@
         }
 
         /**
+         * Fetch a nested element of the collection.
+         *
+         * @param  string  $key
+         * @return \Illuminate\Support\Collection
+         */
+        public function fetch($key)
+        {
+            return new self(Arrays::fetch($this->items, $key));
+        }
+
+        /**
          * Count items
          *
          * @return int
@@ -310,21 +415,22 @@
          */
         public function toArray($isNumericIndex = true, $itemToArray = false)
         {
-
             $array = array();
             foreach ($this->_items as $item) {
                 if (false === $isNumericIndex) {
-                    $id = (int) $item->id();
                     if (true === $itemToArray) {
-                        $item = $item->assoc();
+                        if ($item instanceof Container) {
+                            $item = $item->assoc();
+                        }
                     }
-                    $array[$id] = $item;
                 } else {
                     if (true === $itemToArray) {
-                        $item = $item->assoc();
+                        if ($item instanceof Container) {
+                            $item = $item->assoc();
+                        }
                     }
-                    $array[] = $item;
                 }
+                $array[] = $item;
             }
             return $array;
         }
@@ -489,5 +595,65 @@
                     }
                 }
             }
+        }
+
+        /**
+         * Concatenate values of a given key as a string.
+         *
+         * @param  string  $value
+         * @param  string  $glue
+         * @return string
+         */
+        public function implode($value, $glue = null)
+        {
+            if (is_null($glue)) return implode($this->lists($value));
+            return implode($glue, $this->lists($value));
+        }
+
+        /**
+         * Get an array with the values of a given key.
+         *
+         * @param  string  $value
+         * @param  string  $key
+         * @return array
+         */
+        public function lists($value, $key = null)
+        {
+            return arrayPluck($this->_items, $value, $key);
+        }
+
+        /**
+         * Intersect the collection with the given items.
+         *
+         * @param  array  $items
+         * @return Collection
+         */
+        public function intersect($items)
+        {
+            return new self(array_intersect($this->_items, $this->getArrayableItems($items)));
+        }
+
+        /**
+         * Convert the collection to its string representation.
+         *
+         * @return string
+         */
+        public function __toString()
+        {
+            return $this->toJson();
+        }
+
+        /**
+         * Results array of items from Collection or ArrayableInterface.
+         *
+         * @param  $items
+         * @return array
+         */
+        protected function getArrayableItems($items)
+        {
+            if ($items instanceof Collection) {
+                $items = $items->rows(true);
+            }
+            return $items;
         }
     }

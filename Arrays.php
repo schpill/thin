@@ -744,6 +744,38 @@
             return null;
         }
 
+        /**
+         * Sort the array using the given Closure.
+         *
+         * @param  array     $array
+         * @param  \Closure  $callback
+         * @return array
+         */
+        public static function sort($array, \Closure $callback)
+        {
+            return Database\Collection::make($array)->sortBy($callback)->all();
+        }
+
+        /**
+         * Filter the array using the given Closure.
+         *
+         * @param  array     $array
+         * @param  \Closure  $callback
+         * @return array
+         */
+        public static function where($array, \Closure $callback)
+        {
+            $filtered = array();
+
+            foreach ($array as $key => $value) {
+                if (call_user_func($callback, $key, $value)) {
+                    $filtered[$key] = $value;
+                }
+            }
+
+            return $filtered;
+        }
+
         public static function __callStatic($method, $args)
         {
             if (is_callable($method)) {
@@ -775,5 +807,77 @@
                     return call_user_func_array($method, $args);
                 }
             }
+        }
+
+        /**
+         * Get all of the given array except for a specified array of items.
+         *
+         * @param  array  $array
+         * @param  array|string  $keys
+         * @return array
+         */
+        public static function except($array, $keys)
+        {
+            return array_diff_key($array, array_flip((array) $keys));
+        }
+
+        /**
+         * Fetch a flattened array of a nested array element.
+         *
+         * @param  array   $array
+         * @param  string  $key
+         * @return array
+         */
+        public static function fetch($array, $key, $separator = '.')
+        {
+            foreach (explode($separator, $key) as $segment) {
+                $results = array();
+                foreach ($array as $value) {
+                    $value = (array) $value;
+                    $results[] = $value[$segment];
+                }
+                $array = array_values($results);
+            }
+            return array_values($results);
+        }
+
+        /**
+         * Flatten a multi-dimensional associative array with seps.
+         *
+         * @param  array   $array
+         * @param  string  $prepend
+         * @return array
+         */
+        public static function sep($array, $prepend = '', $separator = '.')
+        {
+            $results = array();
+
+            foreach ($array as $key => $value) {
+                if (is_array($value)) {
+                    $results = array_merge($results, static::dot($value, $prepend . $key . $separator));
+                } else {
+                    $results[$prepend . $key] = $value;
+                }
+            }
+
+            return $results;
+        }
+
+        /**
+         * Build a new array using a callback.
+         *
+         * @param  array     $array
+         * @param  \Closure  $callback
+         * @return array
+         */
+        public static function build($array, \Closure $callback)
+        {
+            $results = array();
+
+            foreach ($array as $key => $value) {
+                list($innerKey, $innerValue) = call_user_func($callback, $key, $value);
+                $results[$innerKey] = $innerValue;
+            }
+            return $results;
         }
     }

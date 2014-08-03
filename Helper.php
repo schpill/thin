@@ -32,6 +32,7 @@
     use Thin\Autoloader;
     use Thin\Database;
     use Thin\Instance;
+    use Thin\Tool;
     use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
@@ -2955,17 +2956,42 @@ $(document).ready(function() {
         }
     }
 
-    if (!function_exists('app')) {
-        function app($name)
+    if ( ! function_exists('dataGet')) {
+        /**
+         * Get an item from an array or object using "dot" notation.
+         *
+         * @param  mixed   $target
+         * @param  string  $key
+         * @param  mixed   $default
+         * @return mixed
+         */
+        function dataGet($target, $key, $default = null, $searator = '.')
         {
-            static $applications = array();
-            if (ake($name, $applications)) {
-                return $applications[$name];
-            } else {
-                $object = new $name;
-                $applications[$name] = $object;
-                return $object;
+            if (is_null($key)) return $target;
+
+            foreach (explode($searator, $key) as $segment) {
+                if (Arrays::is($target)) {
+                    if (!Arrays::exists($segment, $target)) {
+                        return value($default);
+                    }
+                    $target = $target[$segment];
+                } elseif (is_object($target)) {
+                    if (!isset($target->{$segment})) {
+                        return value($default);
+                    }
+                    $target = $target->{$segment};
+                } else {
+                    return value($default);
+                }
             }
+            return $target;
+        }
+    }
+
+    if (!function_exists('app')) {
+        function app($name = 'core')
+        {
+            return Tool::app($name);
         }
     }
 
@@ -3572,6 +3598,19 @@ $(document).ready(function() {
         function value($value)
         {
             return $value instanceof Closure ? $value() : $value;
+        }
+    }
+
+    if (!function_exists('tool')) {
+        function tool()
+        {
+            $key = sha1('tool' . date('dmY'));
+            $has = Instance::has('tool', $key);
+            if (true === $has) {
+                return Instance::get('tool', $key);
+            } else {
+                return Instance::make('tool', $key, with(new Tool));
+            }
         }
     }
 

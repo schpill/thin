@@ -57,6 +57,17 @@
 		 */
 		protected $globalResolvingCallbacks = array();
 
+		public static function app($name)
+		{
+			$key = sha1('tool' . $name);
+            $has = Instance::has('tool', $key);
+            if (true === $has) {
+                return Instance::get('tool', $key);
+            } else {
+                return Instance::make('tool', $key, with(new static));
+            }
+		}
+
 		/**
 		 * Determine if a given string is resolvable.
 		 *
@@ -257,7 +268,7 @@
 				$res = call_user_func_array($resolver, array($container));
 				array_push($args, $res);
 				array_push($args, $container);
-				return call_user_func_array(function, $args);
+				return call_user_func_array($closure, $args);
 			};
 		}
 
