@@ -462,16 +462,7 @@
             return $this;
         }
 
-        // public function where($condition, $op = 'AND')
-        // {
-        //     if (count($this->_items)) {
-        //         $db = $this->first()->orm();
-        //         return $db->where($db->database . '.' . $db->table . '.id IN (' . implode(',', $this->getIds()) . ')')->where($condition, $op);
-        //     }
-        //     return $this;
-        // }
-
-        private function getIds()
+        private function indexes()
         {
             $rows = $this->rows();
             $ids = array();
@@ -491,7 +482,9 @@
                     $db = $first->orm();
                     $methods = get_class_methods($db);
                     if (Arrays::in($method, $methods)) {
-                        $instance = $db->where($db->database . '.' . $db->table . '.id IN (' . implode(',', $this->getIds()) . ')');
+                        $instance = $db->where(
+                            $db->database . '.' . $db->table . '.id IN (' . implode(',', $this->indexes()) . ')'
+                        );
                         return call_user_func_array(array($instance, $method), $args);
                     }
                 }

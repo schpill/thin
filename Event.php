@@ -70,13 +70,18 @@
             }
         }
 
+        public static function fire($event, $parameters = array())
+        {
+            return static::run($event, $parameters);
+        }
+
         public static function run($events, $parameters = array(), $halt = false)
         {
             $responses = array();
 
             $parameters = (array) $parameters;
             foreach ((array) $events as $event) {
-                if (static::listeners($event)) {
+                if (true === static::listeners($event)) {
                     foreach (static::$events[$event] as $callbackPack) {
                         list($callback, $once) = $callbackPack;
                         $response = call_user_func_array($callback, $parameters);
