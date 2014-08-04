@@ -2,17 +2,31 @@
     namespace Thin;
     class Api
     {
-        public $token;
+        private $resource, $token;
 
-        public function auth($resource, $key)
+        public function __construct($resource)
         {
-            if (empty($resource) || empty($key)) {
-                return false;
+            $this->resource = $resource;
+        }
+
+        public static function instance($resource)
+        {
+            $key    = sha1(serialize(func_get_args()));
+            $has    = Instance::has('Api', $key);
+            if (true === $has) {
+                return Instance::get('Api', $key);
+            } else {
+                return Instance::make('Api', $key, with(new self($resource)));
             }
-            $res = Data::query('apikey', 'resource = ' . $resource . ' && key = ' . $key);
-            if (1 == count($res)) {
-                $ever = Data::getObject(current($res));
-                $this->token = sha1($resource . $key);
+        }
+
+        public function auth($key)
+        {
+            $db = em('core', 'api');
+            $auth = $db->where('resource = ' . $this->resource)->where('key = ' . $key)->first(true);
+            if (!empty($auth)) {
+                $this->token = sha1(serialize($auth->assoc()) . date('dmY'));
+                $auth->setToken($this->token)->save();
             }
             return $this->isAuth();
         }

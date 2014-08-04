@@ -28,6 +28,17 @@
             $this->lock     = Inflector::camelize('entity_db');
         }
 
+        public static function instance($ns, $table)
+        {
+            $key    = sha1(serialize(func_get_args()));
+            $has    = Instance::has('Entitydb', $key);
+            if (true === $has) {
+                return Instance::get('Entitydb', $key);
+            } else {
+                return Instance::make('Entitydb', $key, with(new self($ns, $table)));
+            }
+        }
+
         public function begin()
         {
             $key = 'begin::db_' . $this->entity;
@@ -510,6 +521,11 @@
             }
         }
 
+        public function execute($object = false)
+        {
+            return $this->exec($object);
+        }
+
         public function exec($object = false)
         {
             $collection = array();
@@ -520,9 +536,6 @@
                 }
             }
             $this->reset();
-            if (!count($collection) && true === $object) {
-                return null;
-            }
             if (true === $object) {
                 $collection = new Collection($collection);
             }

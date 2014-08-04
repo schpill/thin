@@ -119,7 +119,7 @@
             $key = sha1('orm' . $this->_token);
             $orm = isAke($this->values, $key, false);
 
-            if (substr($func, 0, 4) == 'link') {
+            if (substr($func, 0, 4) == 'link' && false !== $orm) {
                 $value = Arrays::first($argv);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 4)));
                 $var = Inflector::lower($uncamelizeMethod);
@@ -293,7 +293,7 @@
                 $id = sha1($func . $this->_token);
                 if (Arrays::is($this->values)) {
                     if (Arrays::exists($id, $this->values)) {
-                        return call_user_func_array($this->values[$id] , $argv);
+                        return call_user_func_array($this->values[$id], $argv);
                     }
                 }
             }
@@ -520,7 +520,11 @@
                 foreach ($this->_fields as $field) {
                     if ($field != 'values' && $field != '_nameClass') {
                         if (!$this->$field instanceof \Closure) {
-                            $collection[$field] = $this->$field;
+                            if ($this->$field instanceof Object) {
+                                $collection[$field] = $this->$field->assoc();
+                            } else {
+                                $collection[$field] = $this->$field;
+                            }
                         }
                     }
                 }

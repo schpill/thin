@@ -30,11 +30,4 @@
             context()->dispatch($route);
             exit;
         }
-
-        public function __get($key)
-        {
-            if (Tool::registered($key)) {
-                return Tool::resolve($key);
-            }
-        }
     }

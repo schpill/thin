@@ -395,8 +395,7 @@
     if (!function_exists('route')) {
         function route()
         {
-            $o = new Container;
-            return $o->setIsRoute(true);
+            return with(new Container)->setIsRoute(true);
         }
     }
 
@@ -2084,12 +2083,17 @@ $(document).ready(function() {
                     list($namespace, $class) = $getNamespaceAndClassNameFromCode;
                     Autoloader::registerNamespace($namespace, $path . DS . 'bundles' . DS . $bundle);
                     require_once $file;
+                    $actions = get_class_methods($namespace . '\\' . $class);
+                    if (Arrays::in('init', $actions)) {
+                        $nsClass = $namespace . '\\' . $class;
+                        $nsClass::init();
+                    }
                     return true;
                 } else {
-                    throw new Exception("No namespace found in $file.");
+                    throw new Exception("No namespace found in '$file'.");
                 }
             } else {
-                throw new Exception("Bundle File $file does not exist.");
+                throw new Exception("Bundle File '$file' does not exist.");
             }
         }
 
@@ -2150,10 +2154,10 @@ $(document).ready(function() {
             return $config;
         }
 
-        function processKey($config, $key, $value)
+        function processKey($config, $key, $value, $separator = '.')
         {
-            if (strpos($key, '.') !== false) {
-                $parts = explode('.', $key, 2);
+            if (strpos($key, $separator) !== false) {
+                $parts = explode($separator, $key, 2);
                 if (strlen(Arrays::first($parts)) && strlen(Arrays::last($parts))) {
                     if (!isset($config[Arrays::first($parts)])) {
                         if (Arrays::first($parts) === '0' && !empty($config)) {
