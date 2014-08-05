@@ -40,18 +40,33 @@
         {
             if (File::exists($file)) {
                 $sentences = include $file;
-                static::$items = array_merge(static::$sentences, $sentences);
+                static::$sentences = array_merge(static::$sentences, $sentences);
             } else {
                 $file = APPLICATION_PATH . DS . 'translation' . DS . $file . '.php';
                 if (File::exists($file)) {
                     $config = include $file;
-                    static::$items = array_merge(static::$sentences, $sentences);
+                    static::$sentences = array_merge(static::$sentences, $sentences);
                 }
             }
         }
 
+        public static function addSentence($sentence, $language = null)
+        {
+            $language = is_null($language) ? $this->locale : $language;
+            $segment = isAke(static::$sentences, $language);
+            $segment = array_merge($segment, $sentence);
+            static::$sentences = array_merge(static::$sentences, $segment);
+        }
+
         public function translate($key, $default)
         {
-            return isAke(static::$sentences[$this->locale], $key, $default);
+            return $this->locale != Config::get('application.language', DEFAULT_LANGUAGE)
+            ? isAke(static::$sentences[$this->locale], $key, $default)
+            : $default;
+        }
+
+        public function getLocale()
+        {
+            return $this->locale;
         }
     }

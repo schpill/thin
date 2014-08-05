@@ -163,7 +163,43 @@
         {
             $file = (null === $partial) ? $this->_viewFile : $partial;
             $this->_viewFile = $file;
-            $this->_run($echo);
+            if (container()->getViewCache() !== true) {
+                $this->_run($echo);
+            } else {
+                $this->renderCache($echo);
+            }
+        }
+
+        private function renderCache($echo)
+        {
+            $key    = sha1($this->_viewFile) . '::viewCache';
+            $redis  = context()->redis();
+            $ttl    = container()->getViewCacheTtl();
+
+            $ttl    = is_null($ttl) ? Config::get('application.view.cache', 7200) : $ttl;
+
+            $html   = $redis->get($key);
+            if (!strlen($html)) {
+                $html = $this->_run(false);
+                $redis->set($key, $html);
+                $redis->expire($key, $ttl);
+            }
+            if (false === $echo) {
+                return $html;
+            } else {
+                echo $html;
+            }
+        }
+
+        public static function cleanCache()
+        {
+            $redis  = context()->redis();
+            $keys = $redis->keys('*::viewCache');
+            if (count($keys)) {
+                foreach ($keys as $key) {
+                    $redis->del($key);
+                }
+            }
         }
 
         public static function display($page)
@@ -186,6 +222,7 @@
 
         protected function _run()
         {
+            $viewRedis = container()->getViewRedis();
             $echo = func_get_arg(0);
             $file = $this->_viewFile;
             $isExpired = $this->expired();
@@ -206,55 +243,111 @@
                 $isCached = isCached($file, $this->_cache, (array)$this);
                 if (false === $isCached) {
                     ob_start();
-                    include $file;
+                    if (true !== $viewRedis) {
+                        include $file;
+                    }
                     $content = ob_get_contents();
                     ob_end_clean();
                     if (true === $echo) {
-                        echo cache($file, $content, $this->_cache, (array)$this);
+                        if (true !== $viewRedis) {
+                            echo cache($file, $content, $this->_cache, (array)$this);
+                        }
                     } else {
-                        return cache($file, $content, $this->_cache, (array)$this);
+                        if (true !== $viewRedis) {
+                            return cache($file, $content, $this->_cache, (array)$this);
+                        }
                     }
                 } else {
-                    $content = cache($file, null, $this->_cache, (array)$this);
-                    if (true === $echo) {
-                        echo $content;
-                    } else {
-                        return $content;
+                    if (true !== $viewRedis) {
+                        $content = cache($file, null, $this->_cache, (array)$this);
+                        if (true === $echo) {
+                            echo $content;
+                        } else {
+                            return $content;
+                        }
                     }
                 }
             } else {
                 if (true === $echo) {
-                    include $file;
+                    if (true !== $viewRedis) {
+                        include $file;
+                    } else {
+                        $this->compile($file);
+                    }
                 } else {
                     ob_start();
-                    include $file;
+                    if (true !== $viewRedis) {
+                        include $file;
+                    } else {
+                        $this->compile($file);
+                    }
                     $content = ob_get_contents();
                     ob_end_clean();
                     $hash = sha1($this->_viewFile);
                     Utils::set($hash, $content);
-                    return true;
+                    return $content;
+                }
+            }
+        }
+
+        protected function compile($code)
+        {
+            $evals = explode('<?php ', $code);
+            foreach ($evals as $eval) {
+                if (strstr($eval, '?>')) {
+                    list($eval, $dummy) = explode('?>', $eval, 2);
+                    eval($eval);
+                    echo $dummy;
+                } else {
+                    echo $eval;
                 }
             }
         }
 
         protected function expired()
         {
-            if (!File::exists($this->compiled()) || !File::exists($this->_viewFile)) {
+            $viewRedis = container()->getViewRedis();
+            if (true !== $viewRedis) {
+                if (!File::exists($this->compiled()) || !File::exists($this->_viewFile)) {
+                    return true;
+                }
+                return File::modified($this->_viewFile) > File::modified($this->compiled());
+            } else {
+                $key = sha1($this->_viewFile) . '::age';
+                $age = context()->redis()->get($key);
+                if (strlen($age)) {
+                    $age = (int) $age;
+                    return File::modified($this->_viewFile) > $age;
+                }
                 return true;
             }
-            return File::modified($this->_viewFile) > File::modified($this->compiled());
         }
 
         protected function compiled($compile = false)
         {
-            $file = CACHE_PATH . DS . md5($this->_viewFile) . '.compiled';
-            if (false !== $compile) {
-                if (File::exists($file)) {
-                    File::delete($file);
+            $viewRedis = container()->getViewRedis();
+            if (true !== $viewRedis) {
+                $file = CACHE_PATH . DS . md5($this->_viewFile) . '.compiled';
+                if (false !== $compile) {
+                    if (File::exists($file)) {
+                        File::delete($file);
+                    }
+                    File::put($file, $this->makeCompile($compile));
                 }
-                File::put($file, $this->makeCompile($compile));
+                return $file;
+            } else {
+                $redis = context()->redis();
+                $keyAge = sha1($this->_viewFile) . '::age';
+                $keyTpl = sha1($this->_viewFile) . '::html';
+                if (false !== $compile) {
+                    $redis->set($keyAge, time());
+                    $content = $this->makeCompile($compile);
+                    $redis->set($keyTpl, $content);
+                    return $content;
+                } else {
+                    return $redis->get($keyTpl);
+                }
             }
-            return $file;
         }
 
         public function alert($alert)
@@ -300,12 +393,21 @@
             $content = repl('$this->partial(', 'context("view")->partial(', $content);
             $content = repl('$this->tpl(', 'context("view")->partial(', $content);
             $content = repl('includes(', 'context("view")->partial(', $content);
-            return $content;
+            return self::lng($content);
         }
 
         protected function makeCompile($file)
         {
             $content = fgc($file);
+
+            if (strstr($content, '@@layout')) {
+                $layout = Utils::cut("@@layout('", "')", $content);
+                $layoutFile = APPLICATION_PATH . DS . 'modules' . DS . $this->_module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
+                if (File::exists($layoutFile)) {
+                    $contentL = fgc($layoutFile);
+                    $content = repl('@@content', repl("@@layout('$layout')", '', $content), $contentL);
+                }
+            }
 
             $content = repl('<php>', '<?php ', $content);
             $content = repl('<php>=', '<?php echo ', $content);
@@ -343,13 +445,57 @@
 
         public static function lng($content)
         {
-            $tab = explode('<lang args', $content);
+            $tab = array_merge(
+                explode('<t ', $content),
+                explode('<t>', $content)
+            );
             if (count($tab)) {
                 array_shift($tab);
                 foreach ($tab as $row) {
-                    $args        = Utils::cut('="', '"', trim($row));
-                    $default    = Utils::cut('="' . $args . '">', '</lang>', trim($row));
-                    $content    = repl('<lang args="' . $args . '">' . $default . '</lang>', '<?php echo trad("' . repl('"', '\\"', $args) . '", "' . repl('"', '\\"', $default) . '"); ?>', $content);
+                    $id         = Utils::cut('id="', '"', trim($row));
+                    $args       = Utils::cut('args=[', ']', trim($row));
+                    $default    = Utils::cut('">', '</t>', trim($row));
+                    $default    = !strlen($default) ? Utils::cut(']>', '</t>', trim($row)) : $default;
+
+                    if (!strlen($default)) {
+                        if (!strstr($row, '</t>')) {
+                            continue;
+                        } else {
+                            list($default, $dummy) = explode('</t>', $row, 2);
+                        }
+                    }
+
+                    if (strlen($args)) {
+                        if (strlen($id)) {
+                            $content    = repl(
+                                '<t id="' . $id . '" args=[' . $args . ']>' . $default . '</t>',
+                                '<?php echo trad("' . repl('"', '\\"', $id) . '", "' . repl('"', '\\"', $default) . '", "' . repl('"', '\\"', $args) . '"); ?>',
+                                $content
+                            );
+                        } else {
+                            $id = Inflector::urlize($default);
+                            $content    = repl(
+                                '<t args=[' . $args . ']>' . $default . '</t>',
+                                '<?php echo trad("' . $id . '", "' . repl('"', '\\"', $default) . '", "' . repl('"', '\\"', $args) . '"); ?>',
+                                $content
+                            );
+                        }
+                    } else {
+                        if (strlen($id)) {
+                            $content    = repl(
+                                '<t id="' . $id . '">' . $default . '</t>',
+                                '<?php echo trad("' . repl('"', '\\"', $id) . '", "' . repl('"', '\\"', $default) . '"); ?>',
+                                $content
+                            );
+                        } else {
+                            $id = Inflector::urlize($default);
+                            $content    = repl(
+                                '<t>' . $default . '</t>',
+                                '<?php echo trad("' . $id . '", "' . repl('"', '\\"', $default) . '"); ?>',
+                                $content
+                            );
+                        }
+                    }
                 }
             }
             return $content;

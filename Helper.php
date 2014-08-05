@@ -782,45 +782,18 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     }
 
     if (!function_exists('trad')) {
-        function trad($args, $default)
+        function trad($id, $default, $args = '')
         {
+            $app = App::instance();
+            $lang = $app->getLang();
+            $translation = $lang->translate($id, $default);
             $args = eval('return array(' . $args . ');');
-            $key = Arrays::exists('key', $args) ? $args['key'] : null;
-
-            if (1 < count($args)) {
-                foreach ($args as $k => $v) {
-                    if ($k != 'key') {
-                        $default = str_replace('##' . $k . '##', $v, $default);
-                    }
+            if (count($args)) {
+                foreach ($args as $key => $value) {
+                    $translation = str_replace("%$key%", $value, $translation);
                 }
             }
-
-            $lng = container()->getLanguage()->getLanguage();
-
-            if ($lng == options()->getDefaultLanguage() || empty($key)) {
-                return $default;
-            }
-
-            $db = dm('translation');
-            $res = $db->where('key = ' . $key)->get();
-            if (count($res)) {
-                $value = $db->first($res);
-
-                if (Arrays::is($value)) {
-                    if (Arrays::exists($lng, $value)) {
-                        $trad = $value[$lng];
-                        if (1 < count($args)) {
-                            foreach ($args as $k => $v) {
-                                if ($k != 'key') {
-                                    $trad = str_replace('##' . $k . '##', $v, $trad);
-                                }
-                            }
-                        }
-                        return $trad;
-                    }
-                }
-            }
-            return $default;
+            return $translation;
         }
     }
 
