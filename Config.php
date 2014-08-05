@@ -20,7 +20,7 @@
 
         public static function init()
         {
-            static::$items = Bootstrap::$bag['config']->assoc();
+            static::$items = arrayMergeRecursive(static::$items, Bootstrap::$bag['config']->assoc());
         }
 
         public static function reset()
@@ -32,12 +32,12 @@
         {
             if (File::exists($file)) {
                 $config = include $file;
-                static::$items = array_merge(static::$items, $config);
+                static::$items = arrayMergeRecursive(static::$items, $config);
             } else {
                 $file = APPLICATION_PATH . DS . 'config' . DS . $file . '.php';
                 if (File::exists($file)) {
                     $config = include $file;
-                    static::$items = array_merge(static::$items, $config);
+                    static::$items = arrayMergeRecursive(static::$items, $config);
                 }
             }
         }
@@ -49,7 +49,7 @@
 
         public static function set($key, $value = null)
         {
-            return arraySet(static::$items, $item, $value);
+            return arraySet(static::$items, $key, $value);
         }
 
         public static function has($key)

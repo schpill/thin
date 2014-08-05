@@ -62,12 +62,23 @@
             }
         }
 
-        private function render($msg, $type = 'INFO')
+        public function boot()
+        {
+            return $this;
+        }
+
+        public function render($msg, $type = 'INFO')
         {
             echo "\n";
             echo($this->format($msg, $type));
             echo "\n";
             echo "\n";
+        }
+
+        public static function show($msg, $type = 'INFO')
+        {
+            $cli = new self(array('boot'));
+            $cli->render($msg, $type);
         }
 
         private function format($text = '', $parameters = array())
@@ -99,7 +110,43 @@
                     $codes[] = $value;
                 }
             }
-
             return "\033[" . implode(';', $codes) . 'm' . $text . "\033[0m";
+        }
+
+        public static function args($args)
+        {
+            $collection = array();
+            array_shift($args);
+            if (count($args)) {
+                foreach ($args as $arg) {
+                    if (strstr($arg, '=')) {
+                        list($key, $value) = explode('=', $arg, 2);
+                        $collection[substr($key, 2)] = $value;
+                    } elseif ($arg[0] == ':') {
+                        $collection['task'] = substr($arg, 1);
+                    }
+                }
+            }
+            return $collection;
+        }
+
+        public static function tasks()
+        {
+            $tasks = glob(APPLICATION_PATH . DS . 'tasks' . DS . '*.php');
+            $collection = array();
+            if (count($tasks)) {
+                foreach ($tasks as $task) {
+                    $task = str_replace(
+                        array(
+                            APPLICATION_PATH . DS . 'tasks' . DS,
+                            '.php'
+                        ),
+                        '',
+                        $task
+                    );
+                    array_push($collection, $task);
+                }
+            }
+            return $collection;
         }
     }
