@@ -808,23 +808,23 @@
             }
         }
 
-        public function addCss($url, $linkArgs = array())
+        public function addCss($url, $where = 'header', $linkArgs = array())
         {
-            $this->assets['css'][] = asset()->css($url, $linkArgs);
+            $this->assets['css'][$where][] = asset()->css($url, $linkArgs);
         }
 
-        public function addJs($url, $linkArgs = array())
+        public function addJs($url, $where = 'footer', $linkArgs = array())
         {
-            $this->assets['js'][] = asset()->js($url, $linkArgs);
+            $this->assets['js'][$where][] = asset()->js($url, $linkArgs);
         }
 
-        public function outputCss()
+        public function outputCss($where = 'header')
         {
-            echo implode("\n\n", $this->assets['css']);
+            echo implode("\n\n", $this->assets['css'][$where]);
         }
 
-        public function outputJs()
+        public function outputJs($where = 'footer')
         {
-            echo implode("\n\n", $this->assets['js']);
+            echo implode("\n\n", $this->assets['js'][$where]);
         }
     }
