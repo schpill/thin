@@ -92,6 +92,10 @@
                 } else {
                     return $this->where($field . ' = ' . Arrays::first($args), 'OR');
                 }
+            } elseif('like' === $method && strlen($fn) > 4) {
+                $field = Inflector::uncamelize($object);
+                $op = count($args) == 2 ? Arrays::last($args) : 'AND';
+                return $this->like($field, Arrays::first($args), $op);
             }
 
             $method = substr($fn, 0, 5);
@@ -783,6 +787,11 @@
             }
         }
 
+        public function with($model)
+        {
+            return $this->join($model);
+        }
+
         public function join($model, $condition = null, $type = 'LEFT')
         {
             $model = is_string($model) ? model($model) : $model;
@@ -1074,6 +1083,37 @@
             return $this;
         }
 
+        public function like($field, $str, $op = 'AND')
+        {
+            return $this->where("$field LIKE '%" . addslashes($str) . "%'", $op);
+        }
+
+        public function in($ids, $field = null)
+        {
+            /* polymorphism */
+            $ids = !Arrays::is($ids)
+            ? strstr($ids, ',')
+                ? explode(',', repl(' ', '', $ids))
+                : array($ids)
+            : $ids;
+
+            $field = is_null($field) ? $this->pk() : $field;
+            return $this->where($field . ' IN (' . implode(',', $ids) . ')');
+        }
+
+        public function notIn($ids, $field = null)
+        {
+            /* polymorphism */
+            $ids = !Arrays::is($ids)
+            ? strstr($ids, ',')
+                ? explode(',', repl(' ', '', $ids))
+                : array($ids)
+            : $ids;
+
+            $field = is_null($field) ? $this->pk() : $field;
+            return $this->where($field . ' NOT IN (' . implode(',', $ids) . ')');
+        }
+
         private function operand($type, $field)
         {
             $q = "SELECT $type($this->database.$this->table.$field) AS $type FROM $this->database.$this->table";
@@ -1106,6 +1146,25 @@
             return $this->where($field . ' >= ' . $min)->where($field . ' <= ' . $max)->exec($object);
         }
 
+        public function newOrCreate($tab = array())
+        {
+            if (count($tab)) {
+                foreach ($tab as $key => $value) {
+                    $this->where("$key = '" . addslashes($value) . "'");
+                }
+                $first = $this->first(true);
+                if (!is_null($first)) {
+                    return $first;
+                }
+            }
+            return $this->create($tab);
+        }
+
+        public function create($tab = array())
+        {
+            return $this->row($tab);
+        }
+
         public function row($tab = array())
         {
             $o = new Container;
@@ -1117,17 +1176,18 @@
         {
             $params = $this->args;
 
-            $extend = function ($name, $callable) use ($obj, $params) {
+            $fn = function ($name, \Closure $callable) use ($obj, $params) {
                 if (is_callable($callable)) {
                     list($db, $table, $host, $username, $password) = $params;
-                    $db         = Database::instance($db, $table, $host, $username, $password);
-                    $share      = function () use ($obj, $callable) {
+                    $dbi        = Database::instance($db, $table, $host, $username, $password);
+                    $share      = function () use ($obj, $callable, $dbi) {
                         $args   = func_get_args();
                         $args[] = $obj;
-                        $args[] = $db;
-                        return call_user_func_array($callable , $args);
+                        $args[] = $dbi;
+                        return call_user_func_array($callable, $args);
                     };
                     $obj->event($name, $share);
+                    return $obj;
                 }
             };
 
@@ -1194,14 +1254,37 @@
                 return $as;
             };
 
-            $many = function ($table, $field, $object = false) use ($obj) {
+            $many = function ($table, $field = null, $object = false) use ($obj) {
+                $tab = $obj->assoc();
                 $db = model($table);
-                return $db->where("$field = $obj->$field")->exec($object);
+                $pk = is_null($field) ? $db->pk() : $field;
+                $value = $tab[$db->table . '_id'];
+                return $db->where("$pk = $value")->execute($object);
             };
 
-            $one = function ($table, $field, $object = false) use ($obj) {
+            $one = function ($table, $field = null, $object = false) use ($obj) {
+                $tab = $obj->assoc();
                 $db = model($table);
-                return $db->where("$field = $obj->$field")->first($object);
+                $pk = is_null($field) ? $db->pk() : $field;
+                $value = $tab[$db->table . '_id'];
+                return $db->where("$pk = $value")->first($object);
+            };
+
+            $hydrate = function ($data = array()) use ($obj) {
+                $data = empty($data) ? $_POST : $data;
+                if (Arrays::isAssoc($data)) {
+                    foreach ($data as $k => $v) {
+                        if ("true" == $v) {
+                            $v = true;
+                        } elseif ("false" == $v) {
+                            $v = false;
+                        } elseif ("null" == $v) {
+                            $v = null;
+                        }
+                        $obj->$k = $v;
+                    }
+                }
+                return $obj;
             };
 
             $obj->event('save', $save)
@@ -1213,8 +1296,9 @@
             ->event('foreign', $foreign)
             ->event('orm', $orm)
             ->event('many', $many)
+            ->event('hydrate', $hydrate)
             ->event('one', $one)
-            ->event('extend', $extend);
+            ->event('fn', $fn);
 
             list($db, $table, $host, $username, $password) = $params;
             $settings   = isAke(self::$config, "$db.$table");

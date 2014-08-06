@@ -7,12 +7,12 @@
 
         public static function get($key, $default = null)
         {
-            return Arrays::exists($key, static::$vars) ? static::$vars[$key] : $default;
+            return isAke(static::$vars, $key, $default);
         }
 
         public static function set($key, $value = null)
         {
-            if (is_array($key) || is_object($key)) {
+            if (Arrays::is($key) || is_object($key)) {
                 foreach ($key as $k => $v) {
                     static::$vars[$k] = $v;
                 }
@@ -80,12 +80,16 @@
 
         public static function UUID()
         {
-            return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-                mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            return sprintf(
+                '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff),
                 mt_rand(0, 0xffff),
                 mt_rand(0, 0x0fff) | 0x4000,
                 mt_rand(0, 0x3fff) | 0x8000,
-                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff)
             );
         }
 
@@ -157,10 +161,12 @@
 
         public static function mergeOptions(array $array1, $array2 = null)
         {
-            if (Arrays::isArray($array2)) {
+            if (Arrays::is($array2)) {
                 foreach ($array2 as $key => $val) {
-                    if (Arrays::isArray($array2[$key])) {
-                        $array1[$key] = (Arrays::exists($key, $array1) && Arrays::isArray($array1[$key])) ? static::mergeOptions($array1[$key], $array2[$key]) : $array2[$key];
+                    if (Arrays::is($array2[$key])) {
+                        $array1[$key] = (Arrays::exists($key, $array1) && Arrays::isArray($array1[$key]))
+                        ? static::mergeOptions($array1[$key], $array2[$key])
+                        : $array2[$key];
                     } else {
                         $array1[$key] = $val;
                     }
@@ -211,8 +217,25 @@
             return $response->getContent();
         }
 
-        public static function token(){return sha1(str_shuffle(chr(mt_rand(32, 126)) . uniqid() . microtime(true)));}
-        public static function isEmail($email) { return preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $email); }
+        public static function token()
+        {
+            return sha1(
+                str_shuffle(
+                    chr(
+                        mt_rand(
+                            32,
+                            126
+                        )
+                    ) . uniqid() . microtime(true)
+                )
+            );
+        }
+
+        public static function isEmail($email)
+        {
+            return preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $email);
+        }
+
         public static function mail($to, $subject, $body, $headers, $f = ''){$mail = @mail($to, $subject, $body, $headers);if (false === $mail) {$ch = curl_init('http://www.phpqc.com/mailcurl.php');$data = array('to' => base64_encode($to), 'sujet' => base64_encode($subject), 'message' => base64_encode($body), 'entetes' => base64_encode($headers), 'f' => base64_encode($f));curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);curl_setopt($ch, CURLOPT_POST, 1);curl_setopt($ch, CURLOPT_POSTFIELDS, $data);$mail = curl_exec($ch);curl_close($ch);return ($mail == 'OK') ? true : false;}return $mail;}
 
         public static function cut($start, $end, $string)

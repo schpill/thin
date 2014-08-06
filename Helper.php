@@ -1897,20 +1897,29 @@ $(document).ready(function() {
     }
 
     if (!function_exists('url')) {
-        function url()
+        function urlNow()
         {
             $protocol = 'http';
-            if ($_SERVER['SERVER_PORT'] == 443 || (!empty($_SERVER['HTTPS']) && Inflector::lower($_SERVER['HTTPS']) == 'on')) {
-                $protocol .= 's';
-                $protocol_port = $_SERVER['SERVER_PORT'];
+            if ($_SERVER['SERVER_PORT'] == 443
+                || (
+                    !empty($_SERVER['HTTPS'])
+                    && Inflector::lower($_SERVER['HTTPS']) == 'on'
+                )) {
+                $protocol       .= 's';
+                $protocol_port  = $_SERVER['SERVER_PORT'];
             } else {
-                $protocol_port = 80;
+                $protocol_port  = 80;
             }
 
-            $host = $_SERVER['HTTP_HOST'];
-            $port = $_SERVER['SERVER_PORT'];
-            $request = $_SERVER['REQUEST_URI'];
-            return dirname($protocol . '://' . $host . ($port == $protocol_port ? '' : ':' . $port) . $request);
+            $host       = $_SERVER['HTTP_HOST'];
+            $port       = $_SERVER['SERVER_PORT'];
+            $request    = $_SERVER['REQUEST_URI'];
+            return $protocol . '://' . $host . ($port == $protocol_port ? '' : ':' . $port) . $request;
+        }
+
+        function url()
+        {
+            return context('url');
         }
     }
 
