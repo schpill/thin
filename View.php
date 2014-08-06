@@ -811,11 +811,13 @@
         public function addCss($url, $where = 'header', $linkArgs = array())
         {
             $this->assets['css'][$where][] = asset()->css($url, $linkArgs);
+            return $this;
         }
 
         public function addJs($url, $where = 'footer', $linkArgs = array())
         {
             $this->assets['js'][$where][] = asset()->js($url, $linkArgs);
+            return $this;
         }
 
         public function outputCss($where = 'header')
