@@ -9,8 +9,9 @@
     use Thin\Database;
     use Thin\Container;
     use Thin\Arrays;
+    use Thin\Exception;
 
-    class Collection  implements IteratorAggregate, ArrayAccess, Countable
+    class Collection implements IteratorAggregate, ArrayAccess, Countable
     {
 
         private $_items = array();
@@ -26,14 +27,13 @@
             $i = 0;
             if (count($models)) {
                 foreach ($models as $model) {
-                    if (!$model instanceof Container) {
-                        continue;
-                    }
-                    if ($model->exists()) {
-                        $id = (int) $model->id();
-                    } else {
-                        $id = $i++;
-                        $model->setTempId($id);
+                    $id = $i++;
+                    if ($model instanceof Container) {
+                        if ($model->exists()) {
+                            $id = (int) $model->id();
+                        } else {
+                            $model->setTempId($id);
+                        }
                     }
                     $items[$id] = $model;
                 }
@@ -345,7 +345,9 @@
                 return count($this->_items) > 0 ? Arrays::first($this->_items) : $default;
             } else {
                 foreach ($this->_items as $key => $value) {
-                    if (call_user_func($callback, $key, $value)) return $value;
+                    if (call_user_func($callback, $key, $value)) {
+                        return $value;
+                    }
                 }
                 return value($default);
             }
@@ -374,7 +376,7 @@
         /**
          * Execute a callback over each item.
          *
-         * @param \Closure $callback callback
+         * @param Closure $callback callback
          *
          * @return Collection
          */
@@ -385,10 +387,33 @@
         }
 
         /**
+         * extends each Container item of this collection with a Closure.
+         *
+         * @param  string  $name
+         * @param Closure $callback callback
+         * @return Collection
+         */
+
+        public function extend($name, Closure $callback)
+        {
+            if (count($this->_items)) {
+                $collection = array();
+                foreach ($this->_items as $item) {
+                    if ($item instanceof Container) {
+                        $item->fn($name, $callback);
+                    }
+                    array_push($collection, $item);
+                }
+                return new self($collection);
+            }
+            return $this;
+        }
+
+        /**
          * Fetch a nested element of the collection.
          *
          * @param  string  $key
-         * @return \Illuminate\Support\Collection
+         * @return Collection
          */
         public function fetch($key)
         {
@@ -512,13 +537,13 @@
          * @param mixed $offset offset
          * @param mixed $value  value
          *
-         * @throws \Exception
+         * @throws Exception
          *
          * @return null
          */
         public function offsetSet($offset, $value)
         {
-            throw new \Exception('cannot change the set by using []');
+            throw new Exception('cannot change the set by using []');
         }
 
         /**

@@ -42,10 +42,6 @@
          * @param   array   $array  array to check
          * @return  boolean
          */
-        public static function keys(array $array)
-        {
-            return array_keys($array);
-        }
 
         public static function isAssoc(array $array)
         {
@@ -55,6 +51,11 @@
             // If the array keys of the keys match the keys, then the array must
             // not be associative (e.g. the keys array looked like {0:0, 1:1...}).
             return array_keys($keys) !== $keys;
+        }
+
+        public static function keys(array $array)
+        {
+            return array_keys($array);
         }
 
         /**

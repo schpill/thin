@@ -909,6 +909,32 @@
             return $this;
         }
 
+        public function in($ids, $field = null)
+        {
+            /* polymorphism */
+            $ids = !Arrays::is($ids)
+            ? strstr($ids, ',')
+                ? explode(',', repl(' ', '', $ids))
+                : array($ids)
+            : $ids;
+
+            $field = is_null($field) ? $this->pk() : $field;
+            return $this->where($field . ' IN (' . implode(',', $ids) . ')');
+        }
+
+        public function notIn($ids, $field = null)
+        {
+            /* polymorphism */
+            $ids = !Arrays::is($ids)
+            ? strstr($ids, ',')
+                ? explode(',', repl(' ', '', $ids))
+                : array($ids)
+            : $ids;
+
+            $field = is_null($field) ? $this->pk() : $field;
+            return $this->where($field . ' NOT IN (' . implode(',', $ids) . ')');
+        }
+
         private function searchFulltextes($field, $value)
         {
             $collection = array();
@@ -1143,6 +1169,25 @@
                 return $res;
             }
             return $cached;
+        }
+
+        public function like($field, $str, $op = 'AND')
+        {
+            return $this->where("$field LIKE " . $str, $op);
+        }
+
+        public function firstOrCreate($tab = array())
+        {
+            if (count($tab)) {
+                foreach ($tab as $key => $value) {
+                    $this->where("$key = $value");
+                }
+                $first = $this->first(true);
+                if (!is_null($first)) {
+                    return $first;
+                }
+            }
+            return $this->create($tab);
         }
 
         public function create($tab = array())

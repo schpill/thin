@@ -39,7 +39,7 @@
             }
             if (count($words)) {
                 foreach ($words as $word) {
-                    $sqlWord = $this->dbw->newOrCreate(array('word' => $word))->save();
+                    $sqlWord = $this->dbw->firstOrCreate(array('word' => $word))->save();
                     $sqlIndex = $this->dbi->create(
                         array(
                             'word_id' => $sqlWord->id(),

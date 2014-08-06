@@ -1921,6 +1921,11 @@ $(document).ready(function() {
         {
             return context('url');
         }
+
+        function asset()
+        {
+            return context('asset');
+        }
     }
 
     if (!function_exists('byPeople')) {

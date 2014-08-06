@@ -48,6 +48,7 @@
          */
         private $_filterLoadedDir = array();
         public static $urlsite      = null;
+        private $assets = array();
 
         public function __construct($viewFile = null)
         {
@@ -723,8 +724,8 @@
             : Utils::get('NbQueries');
 
             $valQueries = ($queries < 2)
-            ? 'requete SQL executee'
-            : 'requetes SQL executees';
+            ? 'SQL Query executed'
+            : 'SQL Queries executed';
 
             $SQLDuration = (null === Utils::get('SQLTotalDuration'))
             ? 0
@@ -735,8 +736,8 @@
             : Utils::get('NbQueriesNOSQL');
 
             $valQueriesNoSQL = ($queriesNoSQL < 2)
-            ? 'requete NoSQL executee'
-            : 'requetes NoSQL executees';
+            ? 'NoSQL Query executed'
+            : 'NoSQL Queries executed';
 
             $SQLDurationNoSQL = (null === Utils::get('SQLTotalDurationNOSQL'))
             ? 0
@@ -750,7 +751,8 @@
             $PCPhpNoSQL         = round(($execPHPNoSQL / $executionTime) * 100, 2);
             $PCSQL              = 100 - $PCPhpSQL;
             $PCNoSQL            = 100 - $PCPhpNoSQL;
-            return "\n<!--\n\n\tPage generee en $executionTime s. par Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries en $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL en $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tExecution PHP $execPHP s. ($PCPhp %)\n\n\tMemoire utilisee : " . convertSize(memory_get_peak_usage()) . "\n\n-->";
+            $calls              = count(get_included_files());
+            return "\n<!--\n\n\tPage generated in $executionTime s. by Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries in $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL in $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tPHP Execution $execPHP s. ($PCPhp %)\n\n\n\n\tNumber of scripts used : " . $calls . "\n\tUsed Memory : " . convertSize(memory_get_usage()) . "\n\n-->";
         }
 
         public function urlsite($echo = true)
@@ -804,5 +806,25 @@
                 echo $url;
                 return;
             }
+        }
+
+        public function addCss($url, $linkArgs = array())
+        {
+            $this->assets['css'][] = asset()->css($url, $linkArgs);
+        }
+
+        public function addJs($url, $linkArgs = array())
+        {
+            $this->assets['js'][] = asset()->js($url, $linkArgs);
+        }
+
+        public function outputCss()
+        {
+            echo implode("\n\n", $this->assets['css']);
+        }
+
+        public function outputJs()
+        {
+            echo implode("\n\n", $this->assets['js']);
         }
     }

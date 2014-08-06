@@ -22,7 +22,8 @@
         $joins      = array(),
         $havings    = array(),
         $groupBys   = array(),
-        $orders     = array();
+        $orders     = array(),
+        $cache      = false;
 
         public static $config       = array();
 
@@ -433,6 +434,7 @@
             $this->limit    = null;
             $this->offset   = null;
             $this->query    = null;
+            $this->cache    = false;
             return $this;
         }
 
@@ -1015,7 +1017,21 @@
 
             $this->query = $query;
             if (true === $fetch) {
-                $this->results = $this->fetch($query);
+                if (true === $this->cache) {
+                    $redis = context()->redis();
+                    $key = sha1($query) . '::dataQuery';
+                    $cached = $redis->get($key);
+                    if (!strlen($cached)) {
+                        $cached = $this->fetch($query);
+                        $redis->set($key, serialize($cached));
+                        $redis->expire($key, Config::get('database.cache.ttl', 7200));
+                    } else {
+                        $cached = unserialize($cached);
+                    }
+                    $this->results = $cached;
+                } else {
+                    $this->results = $this->fetch($query);
+                }
             } else {
                 return $query;
             }
@@ -1057,6 +1073,24 @@
             return $this;
         }
 
+        public function cache($bool = true)
+        {
+            /* Polymorphism */
+            if (is_int($bool)) {
+                if ($bool == 0) {
+                    $bool = false;
+                } elseif ($bool == 1) {
+                    $bool = true;
+                } elseif (60 <= $bool) {
+                    Config::set('database.cache.ttl', $bool);
+                } else {
+                    $bool = true;
+                }
+            }
+            $this->cache = $bool;
+            return $this;
+        }
+
         public function take($limit, $offset = 0)
         {
             return $this->limit($limit, $offset);
@@ -1079,7 +1113,16 @@
 
         public function where($condition, $op = 'AND')
         {
-            $this->wheres[] = array($op, $condition);
+            /* polymorphism */
+            if (is_string($condition)) {
+                $this->wheres[] = array($op, $condition);
+            } elseif (Arrays::is($condition)) {
+                if (Arrays::isAssoc($condition)) {
+                    foreach ($consition as $key => $value) {
+                        $this->wheres[] = array($op, "$key = $value");
+                    }
+                }
+            }
             return $this;
         }
 
@@ -1146,7 +1189,12 @@
             return $this->where($field . ' >= ' . $min)->where($field . ' <= ' . $max)->exec($object);
         }
 
-        public function newOrCreate($tab = array())
+        public function firstOrNew($tab = array())
+        {
+            return $this->firstOrCreate($tab, false);
+        }
+
+        public function firstOrCreate($tab = array(), $save = true)
         {
             if (count($tab)) {
                 foreach ($tab as $key => $value) {
@@ -1157,7 +1205,63 @@
                     return $first;
                 }
             }
-            return $this->create($tab);
+            $item = $this->create($tab);
+            return !$save ? $item : $item->save();
+        }
+
+        public function replace($compare = array(), $update = array())
+        {
+            $instance = $this->firstOrCreate($compare);
+            return $instance->hydrate($update)->save();
+        }
+
+        /**
+         * Get the first model for the given attributes.
+         *
+         * @param  array  $attributes
+         * @param  bool  $object
+         * @return \Database
+         */
+        public function firstByAttributes(array $attributes, $object = false)
+        {
+            return $this->where($attributes)->first($object);
+        }
+
+        public function findOrNew($id, $object = true)
+        {
+            if (!is_null($item = $this->find($id, $object))) {
+                return $item;
+            }
+            return $this->create();
+        }
+
+        public function findOrFail($id, $object = true)
+        {
+            if (!is_null($item = $this->find($id, $object))) {
+                return $item;
+            }
+            throw new Exception("Row '$id' in '$this->table' is unknown.");
+        }
+
+        public function destroy($ids)
+        {
+            /* polymorphism */
+            $ids = Arrays::is($ids) ? $ids : func_get_args();
+
+            // We will actually pull the models from the database table and call delete on
+            // each of them individually so that their events get fired properly with a
+            // correct set of attributes in case the developers wants to check these.
+            $key = $this->pk();
+            $rows = $this->in($key, $ids)->execute(true);
+            $count = $rows->count();
+            if (0 < $count) {
+                $rows->delete();
+            }
+
+            // We return the total number of deletes
+            // for the operation. The developers can then check this number as a boolean
+            // type value or get this total count of records deleted for logging, etc.
+            return $count;
         }
 
         public function create($tab = array())
@@ -1248,6 +1352,13 @@
                 return Database::instance($db, $table, $host, $username, $password);
             };
 
+            $cache = function ($bool = true) use ($params) {
+                list($db, $table, $host, $username, $password) = $params;
+                $database = Database::instance($db, $table, $host, $username, $password);
+                $database->cache($bool);
+                return $database;
+            };
+
             $as = $this->as;
 
             $foreign = function () use ($as) {
@@ -1298,6 +1409,7 @@
             ->event('many', $many)
             ->event('hydrate', $hydrate)
             ->event('one', $one)
+            ->event('cache', $cache)
             ->event('fn', $fn);
 
             list($db, $table, $host, $username, $password) = $params;
@@ -1401,6 +1513,59 @@
             $functions[$name] = $callable;
 
             self::$config[$key]['functions'] = $functions;
+            return $this;
+        }
+
+        public static function cleanCache()
+        {
+            $redis = context()->redis();
+            $keys = $redis->keys('*::dataQuery');
+            if (count($keys)) {
+                foreach ($keys as $key) {
+                    $redis->del($key);
+                }
+            }
+        }
+
+        public function getObservableEvents()
+        {
+            return array_merge(
+                array(
+                    'creating', 'created', 'updating', 'updated',
+                    'deleting', 'deleted', 'saving', 'saved',
+                    'restoring', 'restored', 'commiting', 'commited'
+                ),
+                get_class_methods(__CLASS__)
+            );
+        }
+
+        public function listenEvent($name, Closure $event)
+        {
+            $key = "database::$this->database::$this->table::$name";
+            events()->listen($key, $event);
+            return $this;
+        }
+
+        public function fireEvent($event, $halt = true)
+        {
+            $key = "database::$this->database::$this->table::$event";
+            $method = $halt ? 'until' : 'fire';
+            return events()->$method($key, $this);
+        }
+
+        public function forgetEvent($event, $halt = true)
+        {
+            $key = "database::$this->database::$this->table::$event";
+            events()->forget($key);
+            return $this;
+        }
+
+        public function flushEvents()
+        {
+            foreach ($instance->getObservableEvents() as $event) {
+                $key = "database::$this->database::$this->table::$event";
+                events()->forget($key);
+            }
             return $this;
         }
     }

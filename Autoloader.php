@@ -5,6 +5,7 @@
     {
         private static $_paths = array();
         private static $_classes = array();
+        public static $calls = 0;
 
         public static function registerNamespace($ns, $path)
         {
@@ -35,6 +36,7 @@
                 $filepath = LIBRARIES_PATH . DS . 'predis' . DS . 'lib' . DS . 'Predis' . DS . implode(DS, $parts) . '.php';
                 // var_dump($filepath);
                 if(is_readable($filepath) && !array_key_exists($className, static::$_classes)) {
+                    static::$calls++;
                     require_once($filepath);
                     static::$_classes[$className] = true;
                 }
@@ -66,6 +68,7 @@
                 ) . '.php';
 
                 if(is_readable($file) && !array_key_exists($className, static::$_classes)) {
+                    static::$calls++;
                     require_once($file);
                     static::$_classes[$className] = true;
                 }
@@ -75,6 +78,7 @@
             $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $className) . '.php';
 
             if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                static::$calls++;
                 require_once $check;
                 $classes[$className] = true;
             } else {
@@ -82,6 +86,7 @@
                 $last = end($tab);
                 $check = str_replace(DS . $last, DS . strtolower($last), $check);
                 if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                    static::$calls++;
                     require_once $check;
                     $classes[$className] = true;
                 } else {
@@ -100,6 +105,7 @@
                         foreach (static::$_paths as $ns => $path) {
                             $file = $path . preg_replace('#\\\|_(?!.+\\\)#', DS, str_replace($ns, '', $className)) . '.php';
                             if(is_readable($file)) {
+                                static::$calls++;
                                 require_once $file;
                                 static::$_classes[$className] = true;
                             }
@@ -107,6 +113,7 @@
                         if (!array_key_exists($className, static::$_classes)) {
                             $check = LIBRARIES_PATH . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, 'Thin\\' . $className) . '.php';
                             if(is_readable($check) && !array_key_exists($className, static::$_classes)) {
+                                static::$calls++;
                                 require_once $check;
                                 $classes[$className] = true;
                             }

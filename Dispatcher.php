@@ -49,6 +49,17 @@
 			$this->container = $container ?: new Eventable;
 		}
 
+		public static function instance(Eventable $container = null)
+		{
+			$key = sha1('Dispatcher');
+			$has = Instance::has('Dispatcher', $key);
+            if (true === $has) {
+                return Instance::get('Dispatcher', $key);
+            } else {
+                return Instance::make('Dispatcher', $key, with(new self($container)));
+            }
+		}
+
 		/**
 		 * Register an event listener with the dispatcher.
 		 *
@@ -153,7 +164,7 @@
 		 */
 		public function flush($event)
 		{
-			$this->fire($event.'_queue');
+			$this->fire($event . '_queue');
 		}
 
 		/**
@@ -181,7 +192,7 @@
 			// If an array is not given to us as the payload, we will turn it into one so
 			// we can easily use call_user_func_array on the listeners, passing in the
 			// payload to each of them so that they receive each of these arguments.
-			if ( ! is_array($payload)) $payload = array($payload);
+			if ( ! Arrays::is($payload)) $payload = array($payload);
 
 			$this->firing[] = $event;
 
