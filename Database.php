@@ -313,10 +313,15 @@
             return $collection;
         }
 
-        public function get($object = false)
+        public function rows($object = false)
+        {
+            return $this->get($object, false);
+        }
+
+        public function get($object = false, $exec = true)
         {
             $this->results = empty($this->results) ? $this->fetch() : $this->results;
-            return $this->exec($object);
+            return true === $exec ? $this->exec($object) : $this;
         }
 
         public function pk()
@@ -657,7 +662,44 @@
 
         public function find($id, $object = true)
         {
-            $q = "SELECT * FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
+            if (count($this->fields)) {
+                $pk = "$this->database.$this->table." . $this->pk();
+                $hasPk = false;
+                $select = '';
+                foreach ($this->fields as $field) {
+                    if (false === $hasPk) {
+                        $hasPk = $field == $pk;
+                    }
+                    list($db, $table, $tmpField) = explode('.', $field, 3);
+                    $as = isAke($this->as, $field, null);
+                    if ($db == $this->database && $table == $this->table) {
+                        if (is_null($as)) {
+                            $select .= "$field, ";
+                        } else {
+                            $select .= "$field AS $as, ";
+                        }
+                    } else {
+                        if (is_null($as)) {
+                            $select .= "$field AS " . 'join_' . str_replace('.', '_', Inflector::lower($field)) . ", ";
+                        } else {
+                            $select .= "$field AS $as, ";
+                        }
+                    }
+                }
+                if (false === $hasPk) {
+                    $select .= "$pk, ";
+                }
+            } else {
+                $fields = array_keys($this->map['fields']);
+                $select = '';
+                foreach ($fields as $field) {
+                    $select .= "$this->database.$this->table.$field, ";
+                }
+            }
+
+            $select = substr($select, 0, -2);
+
+            $q = "SELECT $select FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
             $res = $this->fetch($q);
             if (count($res)) {
                 $row = Arrays::first($res);
@@ -1251,9 +1293,9 @@
             // We will actually pull the models from the database table and call delete on
             // each of them individually so that their events get fired properly with a
             // correct set of attributes in case the developers wants to check these.
-            $key = $this->pk();
-            $rows = $this->in($key, $ids)->execute(true);
-            $count = $rows->count();
+            $key    = $this->pk();
+            $rows   = $this->in($key, $ids)->execute(true);
+            $count  = $rows->count();
             if (0 < $count) {
                 $rows->delete();
             }
@@ -1271,6 +1313,29 @@
 
         public function row($tab = array())
         {
+            $fields = array_keys($this->map['fields']);
+            $pk     = $this->pk();
+            $id     = isAke($tab, $pk, false);
+
+            if (count($tab)) {
+                foreach ($tab as $key => $value) {
+                    if (!Arrays::in($key, $fields)) {
+                        unset($tab[$key]);
+                    }
+                }
+                foreach ($fields as $field) {
+                    $val = isAke($tab, $field, false);
+                    if (false === $val && false === $id) {
+                        $tab[$field] = null;
+                    }
+                }
+            } else {
+                foreach ($fields as $field) {
+                    if (false === $id) {
+                        $tab[$field] = null;
+                    }
+                }
+            }
             $o = new Container;
             $o->populate($tab);
             return $this->closures($o);
@@ -1280,7 +1345,7 @@
         {
             $params = $this->args;
 
-            $fn = function ($name, \Closure $callable) use ($obj, $params) {
+            $fn = function ($name, Closure $callable) use ($obj, $params) {
                 if (is_callable($callable)) {
                     list($db, $table, $host, $username, $password) = $params;
                     $dbi        = Database::instance($db, $table, $host, $username, $password);

@@ -195,7 +195,7 @@
                 $links = $this->slider($adjacent);
             }
 
-            $content = '<ul>' . $this->previous('&larr;') . $links . $this->next('&rarr;') . '</ul>';
+            $content = '<ul class="pagination">' . $this->previous('&larr;') . $links . $this->next('&rarr;') . '</ul>';
 
             return '<div class="pagination">' . Inflector::utf8($content) . '</div>';
         }

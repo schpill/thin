@@ -65,6 +65,8 @@
                 }
             } else {
                 $route      = Utils::get('appDispatch');
+                /* polymorphism */
+                $route      = !$route instanceof Container ? container()->getRoute() : $route;
                 $module     = $route->getModule();
                 $controller = $route->getController();
                 $action     = $route->getAction();
@@ -293,16 +295,7 @@
 
         protected function compile($code)
         {
-            $evals = explode('<?php ', $code);
-            foreach ($evals as $eval) {
-                if (strstr($eval, '?>')) {
-                    list($eval, $dummy) = explode('?>', $eval, 2);
-                    eval($eval);
-                    echo $dummy;
-                } else {
-                    echo $eval;
-                }
-            }
+            eval(' ?>' . $code . '<?php ');
         }
 
         protected function expired()
@@ -542,16 +535,16 @@
             }
         }
 
-        public function __set($name, $value)
+        public function __set($key, $value)
         {
-            $this->$name = $value;
+            $this->$key = $value;
             return $this;
         }
 
-        public function __get($name)
+        public function __get($key)
         {
-            if (isset($this->$name)) {
-                return $this->$name;
+            if (isset($this->$key)) {
+                return $this->$key;
             }
             return null;
         }
@@ -828,5 +821,15 @@
         public function outputJs($where = 'footer')
         {
             echo implode("\n\n", $this->assets['js'][$where]);
+        }
+
+        public function __unset($key)
+        {
+            unset($this->$key);
+        }
+
+        public function __isset($key)
+        {
+            return isset($this->$key);
         }
     }

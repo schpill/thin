@@ -2587,14 +2587,14 @@ $(document).ready(function() {
     if (!function_exists('utils')) {
         function utils()
         {
-            return Utils::getInstance('Utils');
+            return with(new Utils);
         }
     }
 
     if (!function_exists('u')) {
         function u()
         {
-            return Utils::getInstance('Utils');
+            return with(new Utils);
         }
     }
 
@@ -2615,14 +2615,14 @@ $(document).ready(function() {
     if (!function_exists('e')) {
         function e($exception)
         {
-            return Utils::newInstance('Exception', array($exception));
+            return with(new Exception($e));
         }
     }
 
     if (!function_exists('i')) {
         function i()
         {
-            return Utils::getInstance('Inflector');
+            return with(new Inflector);
         }
     }
 

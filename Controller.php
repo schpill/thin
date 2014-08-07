@@ -2,6 +2,11 @@
     namespace Thin;
     class Controller
     {
+        public function __construct()
+        {
+            $this->view = view();
+        }
+
         public function noRender()
         {
             $this->view->noCompiled();
@@ -29,5 +34,20 @@
             $route->setModule($module)->setController($controller)->setAction($action);
             context()->dispatch($route);
             exit;
+        }
+
+        public function route()
+        {
+            return container()->getRoute();
+        }
+
+        public function action()
+        {
+            return $this->route()->getAction();
+        }
+
+        public function isPost($except = array())
+        {
+            return context()->isPost($except);
         }
     }
