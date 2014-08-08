@@ -133,8 +133,8 @@
                     $json
                 );
                 $infos = json_decode($json, true);
-                if (Arrays::isArray($infos)) {
-                    if (ake('status', $infos)) {
+                if (Arrays::is($infos)) {
+                    if (Arrays::exists('status', $infos)) {
                         if ($infos['status'] == 'fail') {
                             return infosIP($array, true);
                         }
@@ -243,7 +243,7 @@
             } else {
                 $getter = getter($lng);
                 $tab    = languages()->$getter();
-                $what   = ake(sha1($string), $tab) ? $tab[sha1($string)] : $string;
+                $what   = Arrays::exists(sha1($string), $tab) ? $tab[sha1($string)] : $string;
                 $translation = assignParams($what, $params);
                 if (true === $echo) {
                     echo $translation;
@@ -283,7 +283,7 @@
                             } else {
                                 $lng         = Utils::cut('[:', ':]', $row);
                                 $translation = str_replace("[:$lng:]", '', $row);
-                                if (!ake(Inflector::lower($lng), $tab)) {
+                                if (!Arrays::exists(Inflector::lower($lng), $tab)) {
                                     $tab[Inflector::lower($lng)] = array();
                                 }
                                 $tab[Inflector::lower($lng)][sha1($key)] = $translation;
@@ -382,9 +382,9 @@
             $type       = Inflector::lower($type);
             $session    = session('admin');
             $user       = $session->getUser();
-            if (ake($type, Data::$_fields) && ake($type, Data::$_rights) && null !== $user) {
+            if (Arrays::exists($type, Data::$_fields) && Arrays::exists($type, Data::$_rights) && null !== $user) {
                 $rights = Data::$_rights[$type];
-                if (ake($action, $rights)) {
+                if (Arrays::exists($action, $rights)) {
                     return $rights[$action];
                 }
             }
@@ -406,7 +406,7 @@
             if (null === $objects) {
                 $objects = array();
             }
-            if (ake($name, $objects)) {
+            if (Arrays::exists($name, $objects)) {
                 return $objects[$name];
             }
             $newObj = new Container;
@@ -656,7 +656,7 @@
                     $info = $db->first($infos);
                     $value = $info->getValue();
 
-                    if (Arrays::isArray($value)) {
+                    if (Arrays::is($value)) {
                         if (Arrays::exists($lng, $value)) {
                             return Cms::executePHP($value[$lng], false);
                         }
@@ -1566,7 +1566,7 @@ $(document).ready(function() {
             $numArgs        = func_num_args();
 
             if (1 == $numArgs) {
-                if (ake(Arrays::first($args), $vars)) {
+                if (Arrays::exists(Arrays::first($args), $vars)) {
                     return $vars[Arrays::first($args)];
                 }
             } else if (2 == $numArgs) {
@@ -1774,7 +1774,7 @@ $(document).ready(function() {
         {
             $defaults = $class->getDefaultProperties();
 
-            if (ake($property->getName(), $defaults)) {
+            if (Arrays::exists($property->getName(), $defaults)) {
                 return serialize($defaults[$property->getName()]);
             }
 
@@ -2271,12 +2271,12 @@ $(document).ready(function() {
     }
 
     if (!function_exists('isPhp')) {
-        function isPhp($version = '5.0.0')
+        function isPhp($version = '5.4.0')
         {
             static $_isPhp;
             $version = (string) $version;
 
-            if (!ake($version, $_isPhp)) {
+            if (!Arrays::exists($version, $_isPhp)) {
                 $_isPhp[$version] = (version_compare(PHP_VERSION, $version) < 0) ? false : true;
             }
 
@@ -2507,7 +2507,7 @@ $(document).ready(function() {
             $type   = Inflector::lower($type);
             $errors = Utils::get('thinErrors');
             $errors = (empty($errors)) ? array() : $errors;
-            if (!ake($type, $errors)) {
+            if (!Arrays::exists($type, $errors)) {
                 $errors[$type] = array();
             }
             $errors[$type] = $error;
@@ -2522,7 +2522,7 @@ $(document).ready(function() {
             $errors = (empty($errors)) ? array() : $errors;
             if (null !== $type) {
                 $type = Inflector::lower($type);
-                if (ake($type, $errors)) {
+                if (Arrays::exists($type, $errors)) {
                     return $errors[$type];
                 }
             }
@@ -3121,7 +3121,7 @@ $(document).ready(function() {
         function arrayIkeyExists($key, array $array)
         {
             $key = Inflector::lower($key);
-            return ake($key, array_change_key_case($array));
+            return Arrays::exists($key, array_change_key_case($array));
         }
     }
 
@@ -3833,7 +3833,7 @@ $(document).ready(function() {
                 Utils::set('ThinSaved', $saved);
             } else {
                 if (null === $value) {
-                    if (ake($key, $saved)) {
+                    if (Arrays::exists($key, $saved)) {
                         return $saved[$key];
                     } else {
                         return null;
@@ -3903,7 +3903,7 @@ $(document).ready(function() {
                     $options = array();
                     return $options;
                 }
-                if(Arrays::isArray($name)) {
+                if(Arrays::is($name)) {
                     $options = array_merge($options, $name);
                     container()->setThinOptions($options);
                 }
