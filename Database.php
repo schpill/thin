@@ -459,9 +459,9 @@
             $data = $this->clean($row->assoc());
 
             $id = isAke($data, $this->map['pk'], null);
+            unset($data[$this->map['pk']]);
 
             if (strlen($id)) {
-                unset($data[$this->map['pk']]);
                 $row = $this->edit($id, $data, $object);
             } else {
                 $row = $this->add($data, $object);
@@ -491,10 +491,10 @@
                 }
 
                 $skip = false;
+                $skipException = false;
 
                 if (!Arrays::in($k, $fields)) {
                     if (count($this->foreign)) {
-                        $skipException = false;
                         foreach ($this->foreign as $originalField => $renamed) {
                             if ($renamed == $k) {
                                 list($db, $table, $field) = explode('.', $originalField);
@@ -522,7 +522,7 @@
                 if (!strlen($v)) {
                     $nullable   = $this->map['nullable'][$k];
                     $default    = $this->map['default'][$k];
-                    if (true !== $nullable && 'null' === $default) {
+                    if (true !== $nullable && 'null' === $default && $k != $this->pk()) {
                         throw new Exception("Field '$k' must not be nulled in the table '$this->table'.");
                     }
                 }
@@ -531,7 +531,7 @@
             $q = substr($q, 0, -2);
 
             $insert = $this->db->prepare($q);
-            if (false === $update) {
+            if (false === $insert) {
                 throw new Exception("The query '$q' is uncorrect. Please check it.");
             }
             $insert->execute();

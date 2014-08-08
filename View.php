@@ -293,7 +293,7 @@
             }
         }
 
-        protected function compile($code)
+        public function compile($code)
         {
             eval(' ?>' . $code . '<?php ');
         }
@@ -704,6 +704,15 @@
                 return ob_get_clean();
             } else {
                 throw new Exception("A view is needed to evaluate.");
+            }
+        }
+
+        public function show($string, $echo = true)
+        {
+            if (true !== $echo) {
+                return Html\Helper::display($string);
+            } else {
+                echo Html\Helper::display($string);
             }
         }
 

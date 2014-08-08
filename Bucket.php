@@ -181,7 +181,7 @@
             $name = Utils::UUID() . '.' . Inflector::lower($extension);
             $this->call('upload', array("data" => $data, "name" => $name));
             $tab = json_decode($this->response, true);
-            $res = isAke($tab, 'message');
+            $res = isAke($tab, 'message', null);
             return $res;
         }
 
