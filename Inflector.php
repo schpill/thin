@@ -482,7 +482,7 @@
 
         public static function substr($str, $start, $length = false, $encoding = 'utf-8')
         {
-            if (is_array($str)) {
+            if (Arrays::is($str)) {
                 return false;
             }
             if (function_exists('mb_substr')) {
@@ -1100,5 +1100,15 @@
             );
             $links = array_unique(array_map('html_entity_decode', current($links)));
             return array_values($links);
+        }
+
+        public static function isMd5($str)
+        {
+            return (bool) preg_match('/^[0-9a-f]{32}$/i', $str);
+        }
+
+        public static function isSha1($str)
+        {
+            return (bool) preg_match('/^[0-9a-f]{40}$/i', $str);
         }
     }
