@@ -49,7 +49,7 @@
 
         public static function set($key, $value = null)
         {
-            return arraySet(static::$items, $key, $value);
+            static::$items = arraySet(static::$items, $key, $value);
         }
 
         public static function has($key)
