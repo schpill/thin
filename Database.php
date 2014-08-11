@@ -326,7 +326,11 @@
 
         public function pk()
         {
-            return $this->map['pk'];
+            if (strlen($this->map['pk'])) {
+                return $this->map['pk'];
+            } else {
+                return $this->table . '_id';
+            }
         }
 
         public function map()
@@ -458,8 +462,8 @@
             $this->foreign = $row->foreign();
             $data = $this->clean($row->assoc());
 
-            $id = isAke($data, $this->map['pk'], null);
-            unset($data[$this->map['pk']]);
+            $id = isAke($data, $this->pk(), null);
+            unset($data[$this->pk()]);
 
             if (strlen($id)) {
                 $row = $this->edit($id, $data, $object);
@@ -537,20 +541,20 @@
             $insert->execute();
             $insert->close();
 
-            $data[$this->map['pk']] = $this->db->insert_id;
+            $data[$this->pk()] = $this->db->insert_id;
             return true === $object ? $this->row($data) : $data;
         }
 
         private function edit($id, $data, $object)
         {
-            $idData = isAke($data, $this->map['pk'], null);
+            $idData = isAke($data, $this->pk(), null);
             if (!is_null($idData)) {
-                unset($data[$this->map['pk']]);
+                unset($data[$this->pk()]);
             }
             $old = $this->find($id)->assoc();
-            $idData = isAke($old, $this->map['pk'], null);
+            $idData = isAke($old, $this->pk(), null);
             if (!is_null($idData)) {
-                unset($old[$this->map['pk']]);
+                unset($old[$this->pk()]);
             }
             $data   = array_merge($old, $data);
             $fields = array_keys($this->map['fields']);
@@ -600,7 +604,7 @@
                 $q .= "$this->database.$this->table.$k = '" . addslashes($v) . "', ";
             }
             $q = substr($q, 0, -2);
-            $q .= " WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
+            $q .= " WHERE $this->database.$this->table." . $this->pk() . " = '" . addslashes($id) . "'";
 
             $update = $this->db->prepare($q);
             if (false === $update) {
@@ -609,13 +613,13 @@
             $update->execute();
             $update->close();
 
-            $data[$this->map['pk']] = $id;
+            $data[$this->pk()] = $id;
             return true === $object ? $this->row($data) : $data;
         }
 
         public function deleteRow($id)
         {
-            $q = "DELETE FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
+            $q = "DELETE FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->pk() . " = '" . addslashes($id) . "'";
             $this->db->query($q);
             return $this;
         }
@@ -630,7 +634,7 @@
                             $val = isAke($row, $field, null);
                             if ($val != $newValue) {
                                 $row[$field] = $newValue;
-                                $this->edit($row[$this->map['pk']], $row);
+                                $this->edit($row[$this->pk()], $row);
                             }
                         }
                     }
@@ -654,7 +658,7 @@
             $res = !empty($where) ? $this->where($where)->exec() : $this->all();
             if (count($res)) {
                 foreach ($res as $row) {
-                    $this->deleteRow($row[$this->map['pk']]);
+                    $this->deleteRow($row[$this->pk()]);
                 }
             }
             return $this;
@@ -699,7 +703,7 @@
 
             $select = substr($select, 0, -2);
 
-            $q = "SELECT $select FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->map['pk'] . " = '" . addslashes($id) . "'";
+            $q = "SELECT $select FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->pk() . " = '" . addslashes($id) . "'";
             $res = $this->fetch($q);
             if (count($res)) {
                 $row = Arrays::first($res);
