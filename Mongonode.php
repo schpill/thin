@@ -99,9 +99,9 @@
             return $count;
         }
 
-        public function post()
+        public function post($save = false)
         {
-            return $this->create($_POST);
+            return !$save ? $this->create($_POST) : $this->create($_POST)->save();
         }
 
         public function save($data)
@@ -382,6 +382,11 @@
                 return $object ? $this->toObject($tab) : $tab;
             }
             return $object ? null : array();
+        }
+
+        public function findOneBy($field, $value, $object = false)
+        {
+            return $this->findBy($field, $value, true, $object);
         }
 
         public function findBy($field, $value, $one = false, $object = false)
@@ -1259,15 +1264,6 @@
                 return $obj;
             };
 
-            $display = function ($field, $echo = true)  use ($obj) {
-                $val = Html\Helper::display($obj->$field);
-                if (true === $echo) {
-                    echo $val;
-                } else {
-                    return $val;
-                }
-            };
-
             $tab = function () use ($obj) {
                 return $obj->assoc();
             };
@@ -1297,8 +1293,7 @@
             ->event('string', $string)
             ->event('export', $export)
             ->event('id', $id)
-            ->event('exists', $exists)
-            ->event('display', $display);
+            ->event('exists', $exists);
 
             $functions = isAke($settings, 'functions');
 

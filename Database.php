@@ -712,6 +712,11 @@
             return $object ? null : array();
         }
 
+        public function findOneBy($field, $value, $object = false)
+        {
+            return $this->findBy($field, $value, true, $object);
+        }
+
         public function findBy($field, $value, $one = false, $object = false)
         {
             $q = "SELECT * FROM $this->database.$this->table WHERE $this->database.$this->table." . $field . " = '" . addslashes($value) . "'";
