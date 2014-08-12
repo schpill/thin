@@ -884,6 +884,47 @@
             return $this;
         }
 
+        public function trick(Closure $condition, $op = 'AND', $results = array())
+        {
+            $data = !count($results) ? $this->all() : $results;
+            $res = array();
+            if (count($data)) {
+                foreach ($data as $row) {
+                    $resTrick = $condition($row);
+                    if (true === $resTrick) {
+                        array_push($res, $row);
+                    }
+                }
+            }
+            if (!count($this->wheres)) {
+                $this->results = array_values($res);
+            } else {
+                $values = array_values($this->results);
+                switch ($op) {
+                    case 'AND':
+                        $this->results = $this->intersect($values, array_values($res));
+                        break;
+                    case 'OR':
+                        $this->results = array_merge($values, array_values($res));
+                        break;
+                    case 'XOR':
+                        $this->results = array_merge(
+                            array_diff(
+                                $values,
+                                array_values($res),
+                                array_diff(
+                                    array_values($res),
+                                    $values
+                                )
+                            )
+                        );
+                        break;
+                }
+            }
+            $this->wheres[] = $condition;
+            return $this;
+        }
+
         public function where($condition, $op = 'AND', $results = array())
         {
             if ('dummy' == $this->entity) {

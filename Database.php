@@ -284,6 +284,76 @@
             return $res;
         }
 
+        private function intersect($tab1, $tab2)
+        {
+            $ids1       = array();
+            $ids2       = array();
+            $collection = array();
+
+            foreach ($tab1 as $row) {
+                $id = isAke($row, $this->pk(), null);
+                if (strlen($id)) {
+                    array_push($ids1, $id);
+                }
+            }
+
+            foreach ($tab2 as $row) {
+                $id = isAke($row, $this->pk(), null);
+                if (strlen($id)) {
+                    array_push($ids2, $id);
+                }
+            }
+
+            $sect = array_intersect($ids1, $ids2);
+            if (count($sect)) {
+                foreach ($sect as $idRow) {
+                    array_push($collection, $this->find($idRow, false));
+                }
+            }
+            return $collection;
+        }
+
+        public function trick(Closure $condition, $op = 'AND', $results = array())
+        {
+            $data = !count($results) ? $this->fetch() : $results;
+            $res = array();
+            if (count($data)) {
+                foreach ($data as $row) {
+                    $resTrick = $condition($row);
+                    if (true === $resTrick) {
+                        array_push($res, $row);
+                    }
+                }
+            }
+            if (!count($this->wheres)) {
+                $this->results = array_values($res);
+            } else {
+                $values = array_values($this->results);
+                switch ($op) {
+                    case 'AND':
+                        $this->results = $this->intersect($values, array_values($res));
+                        break;
+                    case 'OR':
+                        $this->results = array_merge($values, array_values($res));
+                        break;
+                    case 'XOR':
+                        $this->results = array_merge(
+                            array_diff(
+                                $values,
+                                array_values($res),
+                                array_diff(
+                                    array_values($res),
+                                    $values
+                                )
+                            )
+                        );
+                        break;
+                }
+            }
+            $this->wheres[] = $condition;
+            return $this;
+        }
+
         public function fetch($query = null, $object = false)
         {
             $start = $this->getTime();
@@ -808,6 +878,11 @@
         public function execute($object = false, $results = null)
         {
             return $this->exec($object, $results);
+        }
+
+        public function run($object = false)
+        {
+            return $this->exec($object, $this->results);
         }
 
         public function exec($object = false, $results = null)
