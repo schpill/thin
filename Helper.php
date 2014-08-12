@@ -345,6 +345,39 @@
         }
     }
 
+    if (!function_exists('upload')) {
+        function upload($field)
+        {
+            $bucket = container()->bucket();
+
+            if (Arrays::exists($field, $_FILES)) {
+                $fileupload         = $_FILES[$field]['tmp_name'];
+                $fileuploadName     = $_FILES[$field]['name'];
+
+                if (strlen($fileuploadName)) {
+                    $tab = explode(".", $fileuploadName);
+                    $data = fgc($fileupload);
+
+                    if (!strlen($data)) {
+                        return null;
+                    }
+
+                    $ext = Inflector::lower(Arrays::last($tab));
+                    $res = $bucket->data($data, $ext);
+                    return $res;
+                }
+            }
+            return null;
+        }
+
+        function bucketSize($url)
+        {
+            $file = repl(URLSITE, '', $url);
+            $file = realpath(APPLICATION_PATH . '/../public/' . $file);
+            return File::exists($file) ? getFileSize(fgc($file)) : '0 kb';
+        }
+    }
+
     if (!function_exists('unstatic')) {
         function unstatic($class)
         {

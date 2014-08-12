@@ -458,6 +458,11 @@
             }
         }
 
+        public function execute($object = false)
+        {
+            return $this->exec($object);
+        }
+
         public function exec($object = false)
         {
             $collection = array();
@@ -1188,6 +1193,12 @@
                 }
             }
             return $this->create($tab);
+        }
+
+        public function replace($compare = array(), $update = array())
+        {
+            $instance = $this->firstOrCreate($compare);
+            return $instance->hydrate($update)->save();
         }
 
         public function create($tab = array())
