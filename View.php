@@ -311,7 +311,7 @@
                 $age = context()->redis()->get($key);
                 if (strlen($age)) {
                     $age = (int) $age;
-                    return File::modified($this->_viewFile) > $age;
+                    return File::modified($this->_viewFile) || File::modified(__FILE__) > $age;
                 }
                 return true;
             }
@@ -433,6 +433,22 @@
                     $content = repl($grammar, $replace, $content);
                 }
             }
+
+            $base_uri = Config::get('application.base_uri', '');
+
+            $content = repl(
+                array(
+                    'src="/',
+                    'href="/',
+                    'action="/'
+                ),
+                array(
+                    'src="/' . $base_uri . '',
+                    'href="/' . $base_uri . '',
+                    'action="/' . $base_uri . ''
+                ),
+                $content
+            );
 
             return self::lng($content);
         }
