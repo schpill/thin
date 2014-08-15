@@ -187,6 +187,7 @@
                 $redis->set($key, $html);
                 $redis->expire($key, $ttl);
             }
+
             if (false === $echo) {
                 return $html;
             } else {
@@ -295,6 +296,19 @@
 
         public function compile($code)
         {
+            $v = $this;
+
+            $e = function($_) use ($v) {
+                return $v->show($_);
+            };
+
+            // $slug -> sluggify string (i.e: Hello world! -> hello-world)
+            $slug = function($_) {
+                $_ = str_replace(" ", "-", $_);
+                $_ = preg_replace('/[^\w\d\-\_]/i', '', $_);
+                return strtolower($_);
+            };
+
             eval(' ?>' . $code . '<?php ');
         }
 

@@ -1859,6 +1859,10 @@ $(document).ready(function() {
 
         function showException($e)
         {
+            $_REQUEST['exception'] = $e;
+            return context()->dispatch(with(new Container)->setModule('www')->setController('error')->setAction('index'));
+
+
             $code = $e->getCode();
             $file = $e->getFile();
             $line = $e->getLine();
