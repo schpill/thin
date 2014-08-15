@@ -132,12 +132,13 @@
         public static function cleanCache($force = false)
         {
             $cacheFiles = glob(CACHE_PATH . DS . '*', GLOB_NOSORT);
+            $cacheFiles += glob(TMP_PUBLIC_PATH . DS . '*', GLOB_NOSORT);
             $minToKeep = !$force ? time() - 12 * 3600 : time();
             foreach ($cacheFiles as $cacheFile) {
                 $age = File::modified($cacheFile);
                 if ($age < $minToKeep) {
                     $tabFile = explode(DS, $cacheFile);
-                    ThinLog(end($tabFile) . ' => ' . date('d/m/Y H:i:s', $age), null, 'suppression cache');
+                    ThinLog(Arrays::last($tabFile) . ' => ' . date('d/m/Y H:i:s', $age), null, 'suppression cache');
                     File::delete($cacheFile);
                 }
             }

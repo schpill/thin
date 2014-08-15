@@ -47,7 +47,12 @@
     if (!function_exists('jdb')) {
         function jdb($db, $table)
         {
-            return new \Dbjson\Dbjson($db, $table);
+            return \Dbjson\Dbjson::instance($db, $table);
+        }
+
+        function jmodel($table)
+        {
+            return \Dbjson\Dbjson::instance('core', $table);
         }
     }
 
