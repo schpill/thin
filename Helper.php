@@ -51,6 +51,13 @@
         }
     }
 
+    if (!function_exists('eav')) {
+        function eav($db, $table)
+        {
+            return \EavBundle\Eav::instance($db, $table);
+        }
+    }
+
     if (!function_exists('iniLoad')) {
         function iniLoad($filename, $section = null, $options = false)
         {
