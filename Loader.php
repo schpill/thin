@@ -20,13 +20,7 @@
 
         register_shutdown_function(function() {
             $error = error_get_last();
-            // throw new Exception(implode("\n", $error));
-
-            // dd($error);
             showException($error);
-            // if (null !== $error) {
-            //     vd($error);
-            // }
         });
     }
 

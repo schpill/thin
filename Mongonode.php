@@ -526,12 +526,6 @@
 
         public static function tables()
         {
-            // $t = container()->nbm('nma_table')->fetch()->exec(true);
-            // $f = container()->nbm('nma_field')->fetch()->exec(true);
-            // $s = container()->nbm('nma_structure')->fetch()->exec(true);
-            // $s->delete();
-            // $f->delete();
-            // dd($t->delete());
             $dbt = container()->nbm('nma_table');
             $rows = container()->redis()->keys('*_nodeCount');
             $tables = array();

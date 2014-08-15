@@ -50,9 +50,9 @@
             return \Dbjson\Dbjson::instance($db, $table);
         }
 
-        function jmodel($table)
+        function jmodel($table, $db = 'core')
         {
-            return \Dbjson\Dbjson::instance('core', $table);
+            return \Dbjson\Dbjson::instance($db, $table);
         }
     }
 

@@ -179,6 +179,7 @@
 
         public static function rmdir($directory, $preserve = false)
         {
+            umask(0000);
             if (!is_dir($directory)) {
                 return false;
             }
