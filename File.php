@@ -242,7 +242,7 @@
         }
 
         /**
-         * Permet de lire le contenu d'un répertoire lorsqu'on a pac accès à la SPL FileSystemIterator (version PHP < 5.3)
+         * Permet de lire le contenu d'un répertoire lorsqu'on n'a pas accès à la SPL FileSystemIterator (version PHP < 5.3)
          *
          * @param string $path le chemin du répertoire
          * @return array tableau contenant tout le contenu du répertoire
@@ -258,12 +258,18 @@
             }
 
             // on vérifie que $path est bien un répertoire
-            if(is_dir($path)){
+            if(is_dir($path)) {
                 // ouverture du répertoire
                 if($dir = opendir($path)) {
                     // on parcours le répertoire
                     while(false !== ($dirElt = readdir($dir))) {
-                        $ret[] = $path . $dirElt;
+                        if ($dirElt != '.' && $dirElt != '..') {
+                            if (!is_dir($path . $dirElt)) {
+                                $ret[] = $path . $dirElt;
+                            } else {
+                                $ret[] = static::readdir($path . $dirElt);
+                            }
+                        }
                     }
 
                     // fermeture du répertoire
@@ -275,8 +281,7 @@
                 throw new Exception($path . ' is not a directory');
             }
 
-
-            return $ret;
+            return Arrays::flatten($ret);
         }
 
         public static function mime($extension, $default = 'application/octet-stream')
