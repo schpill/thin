@@ -56,4 +56,11 @@
         {
             return !is_null(static::get($key));
         }
+
+        public static function forget($key)
+        {
+            if (static::has($key)) {
+                arrayUnset(static::$items, $key);
+            }
+        }
     }

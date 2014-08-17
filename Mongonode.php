@@ -1643,15 +1643,12 @@
 
         private function csv($data)
         {
-            $csv = implode("\n", $data);
-            header("Pragma: public");
-            header("Expires: 0");
-            header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
-            header("Cache-Control: private", false);
-            header("Content-Type: application/octet-stream");
-            header("Content-Disposition: attachment; filename=\"Export.csv\";" );
-            header("Content-Transfer-Encoding: binary");
-            die($csv);
+            $csv    = implode("\n", $data);
+            $name   = date('d_m_Y_H_i_s') . '_' . $this->entity . '_export.csv';
+            $file   = TMP_PUBLIC_PATH . DS . $name;
+            File::delete($file);
+            File::put($file, $csv);
+            Utils::go(repl('nma.php', '', URLSITE) . 'tmp/' . $name);
         }
 
         public function sql($sql)
