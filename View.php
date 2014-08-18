@@ -199,6 +199,15 @@
         {
             $redis  = context()->redis();
             $keys = $redis->keys('*::viewCache');
+
+            if (count($keys)) {
+                foreach ($keys as $key) {
+                    $redis->del($key);
+                }
+            }
+
+            $keys = $redis->keys('cms::pages::*');
+
             if (count($keys)) {
                 foreach ($keys as $key) {
                     $redis->del($key);
@@ -746,6 +755,12 @@
             }
         }
 
+        public static function link($url, $content, $external = false)
+        {
+            $target = !$external ? '' : 'target="_blank" ';
+            return '<a ' . $target . 'href="' . context('url')->make($url) . '" rel="tooltip" title="' . Html\Helper::display($content) . '">' . Html\Helper::display($content) . '</a>';
+        }
+
         public static function showStats()
         {
             Timer::stop();
@@ -783,8 +798,8 @@
             $PCPhpNoSQL         = round(($execPHPNoSQL / $executionTime) * 100, 2);
             $PCSQL              = 100 - $PCPhpSQL;
             $PCNoSQL            = 100 - $PCPhpNoSQL;
-            $calls              = count(get_included_files());
-            return "\n<!--\n\n\tPage generated in $executionTime s. by Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries in $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL in $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tPHP Execution $execPHP s. ($PCPhp %)\n\n\n\n\tNumber of scripts used : " . $calls . "\n\tUsed Memory : " . convertSize(memory_get_usage()) . "\n\n-->";
+            $included           = count(get_included_files());
+            return "\n<!--\n\n\tPage generated in $executionTime s. by Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries in $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL in $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tPHP Execution $execPHP s. ($PCPhp %)\n\n\n\n\t" . $included . " scripts included\n\tUsed Memory : " . convertSize(memory_get_usage()) . "\n\n-->";
         }
 
         public function urlsite($echo = true)

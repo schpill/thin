@@ -11,13 +11,6 @@
          */
         public static $items = array();
 
-        /**
-         * A cache of the parsed configuration items.
-         *
-         * @var array
-         */
-        public static $cache = array();
-
         public static function init()
         {
             static::$items = arrayMergeRecursive(static::$items, Bootstrap::$bag['config']->assoc());
