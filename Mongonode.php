@@ -109,11 +109,14 @@
             if (is_object($data)) {
                 $data = $data->assoc();
             }
+
             $this->lock('write');
             if (!Arrays::is($data)) {
                 return $data;
             }
+
             $id = isAke($data, 'id', false);
+
             if (false === $id) {
                 $this->lastInsertId = $id = container()->redis()->incr($this->ns . '_' . $this->entity . '_nodeCount');
                 $data['id'] = $id;
@@ -124,10 +127,12 @@
                 $data['updated_at'] = time();
                 $data = array_merge($old, $data);
             }
+
             $add = container()->redis()->hset($this->table, $id, json_encode($data));
             $this->all(true);
             $this->unlock('write');
             $this->makeIndexes($data, $id);
+
             return $this->find($id);
         }
 
@@ -135,6 +140,7 @@
         {
             $indexes = $this->indexes();
             $fulltextes = $this->fulltextes();
+
             if (count($fulltextes)) {
                 foreach ($fulltextes as $fulltext) {
                     $v = isAke($data, $fulltext, null);
@@ -145,19 +151,23 @@
                     }
                 }
             }
+
             if (count($indexes)) {
                 if (count($data)) {
                     foreach ($indexes as $index) {
                         $v = isAke($data, $index, null);
+
                         if (!empty($v)) {
                             $v = Arrays::is($v) || is_object($v) ? serialize($v) : $v;
                             $pattern = "index::$this->ns::$this->entity::" . sha1(Inflector::lower($index));
                             $get = container()->redis()->get($pattern);
+
                             if (strlen($get)) {
                                 $tab = json_decode($get, true);
                             } else {
                                 $tab = array();
                             }
+
                             $tab[$id] = $v;
                             container()->redis()->set($pattern, json_encode($tab));
                         }
@@ -173,12 +183,14 @@
             container()->redis()->hdel($this->table, $id);
             $indexes = $this->indexes();
             $fulltextes = $this->fulltextes();
+
             if (count($fulltextes)) {
                 foreach ($fulltextes as $fulltext) {
                     $pattern = "fulltext::$this->ns::$this->entity::" . sha1(Inflector::lower($fulltext)) . "::$id";
                     container()->redis()->del($pattern);
                 }
             }
+
             if (count($indexes)) {
                 foreach ($indexes as $index) {
                     $pattern = "index::$this->ns::$this->entity::" . sha1(Inflector::lower($index));
@@ -199,13 +211,16 @@
                     container()->redis()->set($pattern, json_encode($newTab));
                 }
             }
+
             $this->unlock('delete');
+
             return $this;
         }
 
         public function update($update, $where = null)
         {
             $res = !empty($where) ? $this->where($where)->exec() : $this->all(true);
+
             if (count($res)) {
                 list($field, $newValue) = explode(' = ', $update, 2);
                 foreach ($res as $row) {
@@ -216,6 +231,7 @@
                     }
                 }
             }
+
             return $this;
         }
 
@@ -237,6 +253,7 @@
                     $this->delete($row['id']);
                 }
             }
+
             return $this;
         }
 
@@ -248,29 +265,35 @@
                 $tab = json_decode(container()->redis()->get($row), true);
                 array_push($collection, $tab);
             }
+
             return $collection;
         }
 
         private function addIndexedValue($id, $value)
         {
             $row = container()->redis()->get($this->db . '::index::' . sha1($value));
+
             if (strlen($row)) {
                 $tab = json_decode(container()->redis()->get($row), true);
             } else {
                 $tab = array();
             }
+
             if (!Arrays::in($id, $tab)) {
                 $tab[] = $id;
             }
+
             container()->redis()->set($this->db . '::index::' . sha1($value), json_encode($tab));
         }
 
         private function indexedValue($value)
         {
             $row = container()->redis()->get($this->db . '::index::' . sha1($value));
+
             if (strlen($row)) {
                 return json_decode(container()->redis()->get($row), true);
             }
+
             return array();
         }
 
@@ -287,8 +310,10 @@
         private function prepareFulltext($text)
         {
             $slugs = explode(' ', Inflector::slug($text, ' '));
+
             if (count($slugs)) {
                 $collection = array();
+
                 foreach ($slugs as $slug) {
                     if (strlen($slug) > 1) {
                         if (!Arrays::in($slug, $collection)) {
@@ -296,8 +321,10 @@
                         }
                     }
                 }
+
                 asort($collection);
             }
+
             return $collection;
         }
 
@@ -311,8 +338,10 @@
 
             if (count($data)) {
                 $new = array();
+
                 foreach ($data as $k => $v) {
                     $new[$k] = $v;
+
                     if ($v instanceof Container) {
                         $new[$k] = $v->getId();
                     }
@@ -323,6 +352,7 @@
             if (count($defaults)) {
                 foreach ($defaults as $default => $value) {
                     $val = isAke($data, $default, null);
+
                     if (empty($val)) {
                         $data[$default] = $value;
                     }
@@ -332,6 +362,7 @@
             if (count($controls)) {
                 foreach ($controls as $control => $callable) {
                     $val = isAke($data, $control, null);
+
                     if (is_callable($callable)) {
                         $data[$control] = $callable($val);
                     }
@@ -341,6 +372,7 @@
             if (count($requires)) {
                 foreach ($requires as $require) {
                     $val = isAke($data, $require, null);
+
                     if (empty($val)) {
                         return "The field $require is required.";
                     }
@@ -350,12 +382,16 @@
             if (count($uniques)) {
                 foreach ($uniques as $unique) {
                     $val = isAke($data, $unique, null);
+
                     if (!empty($val)) {
                         $exists = $this->where("$unique = $val")->first();
+
                         if (count($exists)) {
                             $id = isAke($data, 'id', null);
+
                             if (!empty($id)) {
                                 $idExists = isAke($exists, 'id', null);
+
                                 if ($idExists != $id) {
                                     return "The field $unique must be unique.";
                                 }
@@ -371,16 +407,19 @@
                     unset($data[$k]);
                 }
             }
+
             return $data;
         }
 
         public function find($id, $object = true)
         {
             $row = container()->redis()->hget($this->table, $id);
+
             if (strlen($row)) {
                 $tab = json_decode($row, true);
                 return $object ? $this->toObject($tab) : $tab;
             }
+
             return $object ? null : array();
         }
 
@@ -392,18 +431,22 @@
         public function findBy($field, $value, $one = false, $object = false)
         {
             $res = $this->search("$field = $value");
+
             if (count($res) && true === $one) {
                 return $object ? $this->toObject(Arrays::first($res)) : Arrays::first($res);
             }
+
             if (!count($res) && true === $one && true === $object) {
                 return null;
             }
+
             return $this->exec($object);
         }
 
         public function only($field)
         {
             $row = $this->first(true);
+
             return $row instanceof Container
             ? !is_string($row->$field)
                 ? $row->$field()
@@ -416,9 +459,11 @@
             $collection = array();
             $fields = Arrays::is($fields) ? $fields : array($fields);
             $rows = $this->exec($object);
+
             if (true === $object) {
                 $rows = $rows->rows();
             }
+
             if (count($rows)) {
                 foreach ($rows as $row) {
                     $record = true === $object
@@ -428,6 +473,7 @@
                         )
                     )
                     : array();
+
                     foreach ($fields as $field) {
                         if (true === $object) {
                             $record->$field = !is_string($row->$field) ? $row->$field() : $row->$field;
@@ -435,9 +481,11 @@
                             $record[$field] = ake($field, $row) ? $row[$field] : null;
                         }
                     }
+
                     array_push($collection, $record);
                 }
             }
+
             return true === $object ? new Collection($collection) : $collection;
         }
 
@@ -445,6 +493,7 @@
         {
             $res = $this->results;
             $this->reset();
+
             if (true === $object) {
                 return count($res) ? $this->toObject(Arrays::first($res)) : null;
             } else {
@@ -456,6 +505,7 @@
         {
             $res = $this->results;
             $this->reset();
+
             if (true === $object) {
                 return count($res) ? $this->toObject(Arrays::last($res)) : null;
             } else {
@@ -471,16 +521,20 @@
         public function exec($object = false)
         {
             $collection = array();
+
             if (count($this->results)) {
                 foreach ($this->results as $row) {
                     $item = $object ? $this->toObject($row) : $row;
                     array_push($collection, $item);
                 }
             }
+
             $this->reset();
+
             if (true === $object) {
                 $collection = new Collection($collection);
             }
+
             return $collection;
         }
 
@@ -495,11 +549,13 @@
             if (is_null($t)) {
                 $t = $dbt->create(array('name' => $table, 'ns' => $ns))->save();
             }
+
             if (!is_null($t)) {
                 if (count($fields)) {
                     foreach ($fields as $field) {
                         if ('id' != $field) {
                             $f = $dbf->where('name = ' . $field)->first(true);
+
                             if (is_null($f)) {
                                 $f = $dbf->create()->setName($field)->save();
                             }
@@ -507,6 +563,7 @@
                             ->where('table = ' . $t->getId())
                             ->where('field = ' . $f->getId())
                             ->first(true);
+
                             if (is_null($s)) {
                                 $s = $dbs->create()
                                 ->setTable($t->getId())
@@ -529,18 +586,22 @@
             $dbt = container()->nbm('nma_table');
             $rows = container()->redis()->keys('*_nodeCount');
             $tables = array();
+
             if (count($rows)) {
                 foreach ($rows as $row) {
                     $seg = repl('_nodeCount', '', $row);
                     $tab = explode('_', $seg);
                     $ns = Arrays::first($tab);
                     $index = strReplaceFirst($ns . "_", "", $seg);
+
                     if (!strstr($index, 'nma_')) {
                         $t = $dbt->where('name = ' . $index)->where('ns = ' . $ns)->first(true);
+
                         if (is_null($t)) {
                             $tableName                  = "dbNode_" . $ns . "::$index";
                             $tables[$index]['count']    = container()->redis()->get($row);
                             $data                       = container()->redis()->hkeys($tableName);
+
                             if (count($data)) {
                                 $first = Arrays::first($data);
                                 $first = json_decode(container()->redis()->hget($tableName, $first), true);
@@ -549,21 +610,25 @@
                             } else {
                                 $fields = array();
                             }
+
                             self::structure($ns, $index, $fields);
                         }
                     }
                 }
             }
+
             return $tables;
         }
 
         public function createTable()
         {
             $check = container()->redis()->get($this->ns . '_' . $this->entity . '_nodeCount');
+
             if (!strlen($check)) {
                 container()->redis()->set($this->ns . '_' . $this->entity . '_nodeCount', 0);
                 return $this;
             }
+
             return false;
         }
 
@@ -571,12 +636,14 @@
         {
             $this->emptyTable();
             container()->redis()->del($this->ns . '_' . $this->entity . '_nodeCount');
+
             return $this;
         }
 
         public function emptyTable()
         {
             $rows = $this->fetch()->exec();
+
             if (count($rows)) {
                 foreach ($rows as $row) {
                     $r = $row['id'];
@@ -587,6 +654,7 @@
                 }
             }
             container()->redis()->del($this->ns . '_' . $this->entity . '_nodeCount');
+
             return $this;
         }
 
@@ -595,15 +663,19 @@
             $cached = false === $force
             ? $this->cached('RDB_allDb_' . $this->entity)
             : array();
+
             if (empty($cached)) {
                 $rows = container()->redis()->hkeys($this->table);
                 $collection = array();
+
                 foreach ($rows as $k => $row) {
                     $data = container()->redis()->hget($this->table, $row);
                     $tab = json_decode($data, true);
                     array_push($collection, $tab);
                 }
+
                 $this->cached('RDB_allDb_' . $this->entity, $collection);
+
                 return $collection;
             } else {
                 return $cached;
@@ -613,6 +685,7 @@
         public function fetch($force = false)
         {
             $this->results = $this->all($force);
+
             return $this;
         }
 
@@ -623,6 +696,7 @@
             $this->joins            = array();
             $this->wheres           = array();
             $this->transactions     = array();
+
             return $this;
         }
 
@@ -632,18 +706,23 @@
             $keyCache = sha1('RDB_groupby_' . $field . serialize($res) . $this->entity);
 
             $groupBys = $this->cached($keyCache);
+
             if (empty($groupBys)) {
                 $groupBys   = array();
                 $ever       = array();
+
                 foreach ($res as $id => $tab) {
                     $obj = isAke($tab, $field, null);
+
                     if (!Arrays::in($obj, $ever)) {
                         $groupBys[$id]  = $tab;
                         $ever[]         = $obj;
                     }
                 }
+
                 $this->cached($keyCache, $groupBys);
             }
+
             $this->results = $groupBys;
             $this->order($field);
 
@@ -655,6 +734,7 @@
             $res            = count($results) ? $results : $this->results;
             $offset         = count($res) < $offset ? count($res) : $offset;
             $this->results  = array_slice($res, $offset, $limit);
+
             return $this;
         }
 
@@ -669,6 +749,7 @@
                     $sum += $val;
                 }
             }
+
             $this->reset();
             return $sum;
         }
@@ -682,10 +763,13 @@
         {
             $res = count($results) ? $results : $this->results;
             $min = 0;
+
             if (count($res)) {
                 $first = true;
+
                 foreach ($res as $id => $tab) {
                     $val = isAke($tab, $field, 0);
+
                     if (true === $first) {
                         $min = $val;
                     } else {
@@ -695,6 +779,7 @@
                 }
             }
             $this->reset();
+
             return $min;
         }
 
@@ -707,19 +792,25 @@
         {
             $res = count($results) ? $results : $this->results;
             $max = 0;
+
             if (count($res)) {
                 $first = true;
+
                 foreach ($res as $id => $tab) {
                     $val = isAke($tab, $field, 0);
+
                     if (true === $first) {
                         $max = $val;
                     } else {
                         $max = $val > $max ? $val : $max;
                     }
+
                     $first = false;
                 }
             }
+
             $this->reset();
+
             return $max;
         }
 
@@ -728,6 +819,7 @@
             $res = count($results) ? $results : $this->results;
             shuffle($res);
             $this->results = $res;
+
             return $this;
         }
 
@@ -743,6 +835,7 @@
                 return function ($a, $b) use ($key, $direction) {
                     $valA = isAke($a, $key, null);
                     $valB = isAke($b, $key, null);
+
                     if ('ASC' == $direction) {
                         return $valA > $valB;
                     } else {
@@ -753,6 +846,7 @@
 
             if (Arrays::is($fieldOrder) && !Arrays::is($orderDirection)) {
                 $t = array();
+
                 foreach ($fieldOrder as $tmpField) {
                     array_push($t, $orderDirection);
                 }
@@ -772,6 +866,7 @@
             }
 
             $this->results = $res;
+
             return $this;
         }
 
@@ -824,6 +919,7 @@
         {
             $this->joins[$table] = array();
             array_push($this->joins[$table], array($field, $fieldFk));
+
             return $this;
         }
 
@@ -835,6 +931,7 @@
 
             foreach ($tab1 as $row) {
                 $id = isAke($row, 'id', null);
+
                 if (strlen($id)) {
                     array_push($ids1, $id);
                 }
@@ -842,17 +939,20 @@
 
             foreach ($tab2 as $row) {
                 $id = isAke($row, 'id', null);
+
                 if (strlen($id)) {
                     array_push($ids2, $id);
                 }
             }
 
             $sect = array_intersect($ids1, $ids2);
+
             if (count($sect)) {
                 foreach ($sect as $idRow) {
                     array_push($collection, $this->find($idRow, false));
                 }
             }
+
             return $collection;
         }
 
@@ -860,21 +960,26 @@
         {
             if (strstr($sql, ' && ')) {
                 $segs = explode(' && ', $sql);
+
                 foreach ($segs as $seg) {
                     $this->where($seg);
                     $sql = str_replace($seg . ' && ', '', $sql);
                 }
             }
+
             if (strstr($sql, ' || ')) {
                 $segs = explode(' || ', $sql);
+
                 foreach ($segs as $seg) {
                     $this->where($seg, 'OR');
                     $sql = str_replace($seg . ' || ', '', $sql);
                 }
             }
+
             if (!empty($sql)) {
                 $this->where($sql);
             }
+
             return $this;
         }
 
@@ -882,6 +987,7 @@
         {
             $data = !count($results) ? $this->all() : $results;
             $res = array();
+
             if (count($data)) {
                 foreach ($data as $row) {
                     $resTrick = $condition($row);
@@ -890,10 +996,12 @@
                     }
                 }
             }
+
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
                 $values = array_values($this->results);
+
                 switch ($op) {
                     case 'AND':
                         $this->results = $this->intersect($values, array_values($res));

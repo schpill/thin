@@ -2,6 +2,7 @@
     use Thin\Data;
     use Thin\Activerecord;
     use Thin\Querydata;
+    use Thin\Config;
     use Thin\Configdata;
     use Thin\Optiondata;
     use Thin\Container;
@@ -78,6 +79,11 @@
         function action($tag, $closure)
         {
             return context('actions');
+        }
+
+        function string()
+        {
+            return context('string');
         }
 
         function events()
@@ -3858,14 +3864,28 @@ $(document).ready(function() {
     if (!function_exists('set')) {
         function set($key, $value)
         {
-            return Utils::set($key, $value);
+            return Config::set('helper.' . $key, $value);
         }
     }
 
     if (!function_exists('get')) {
-        function get($key)
+        function get($key, $default = null)
         {
-            return Utils::get($key);
+            return Config::get('helper.' . $key, $default);
+        }
+    }
+
+    if (!function_exists('has')) {
+        function has($key)
+        {
+            return Config::has('helper.' . $key);
+        }
+    }
+
+    if (!function_exists('forget')) {
+        function forget($key)
+        {
+            return Config::forget('helper.' . $key);
         }
     }
 
