@@ -211,13 +211,8 @@
         * @param mixed   $value     Value to set
         * @param string  $delimiter Path delimiter
         */
-        public static function setPath( & $array, $path, $value, $delimiter = null)
+        public static function setPath( & $array, $path, $value, $delimiter = '.')
         {
-            if ( ! $delimiter) {
-                // Use the default delimiter
-                $delimiter = static::$delimiter;
-            }
-
             // Split the keys by delimiter
             $keys = explode($delimiter, $path);
 
