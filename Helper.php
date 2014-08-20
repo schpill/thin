@@ -55,6 +55,16 @@
         {
             return \Dbjson\Dbjson::instance($db, $table);
         }
+
+        function coreCache()
+        {
+            return \Dbjson\Dbjson::instance();
+        }
+
+        function now($sql = false)
+        {
+            return !$sql ? time() : date('Y-m-d H:i:s');
+        }
     }
 
     if (!function_exists('eav')) {

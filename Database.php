@@ -587,7 +587,7 @@
             $fields = array_keys($this->map['fields']);
 
             foreach ($data as $k => $v) {
-                if (is_callable($v)) {
+                if ($v instanceof Closure) {
                     continue;
                 }
 
@@ -669,7 +669,7 @@
             $q      = "UPDATE $this->database.$this->table SET ";
 
             foreach ($data as $k => $v) {
-                if (is_callable($v)) {
+                if ($v instanceof Closure) {
                     continue;
                 }
 
@@ -865,6 +865,11 @@
             return $this->exec($object, $res);
         }
 
+        public function object()
+        {
+            return $this->first(true);
+        }
+
         public function first($object = false)
         {
             $this->makeResults();
@@ -956,6 +961,11 @@
         public function execute($object = false, $results = null)
         {
             return $this->exec($object, $results);
+        }
+
+        public function objects($results = null)
+        {
+            return $this->exec(true, $results);
         }
 
         public function run($object = false)
@@ -1264,14 +1274,14 @@
 
             if (true === $fetch) {
                 if (true === $this->cache) {
-                    $redis = context()->redis();
+                    $cache = coreCache();
                     $key = sha1($query) . '::dataQuery';
-                    $cached = $redis->get($key);
+                    $cached = $cache->get($key);
 
                     if (!strlen($cached)) {
                         $cached = $this->fetch($query);
-                        $redis->set($key, serialize($cached));
-                        $redis->expire($key, Config::get('database.cache.ttl', 7200));
+                        $cache->set($key, serialize($cached));
+                        $cache->expire($key, Config::get('database.cache.ttl', 7200));
                     } else {
                         $cached = unserialize($cached);
                     }
@@ -1323,6 +1333,11 @@
             $this->offset = $offset;
 
             return $this;
+        }
+
+        public function remember($minutes = 60)
+        {
+            return $this->cache($minutes * 60);
         }
 
         public function cache($bool = true)
@@ -1839,12 +1854,12 @@
 
         public static function cleanCache()
         {
-            $redis = context()->redis();
-            $keys = $redis->keys('*::dataQuery');
+            $cache = coreCache();
+            $keys = $cache->keys('*::dataQuery');
 
             if (count($keys)) {
                 foreach ($keys as $key) {
-                    $redis->del($key);
+                    $cache->del($key);
                 }
             }
         }

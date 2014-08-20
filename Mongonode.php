@@ -518,6 +518,21 @@
             return $this->exec($object);
         }
 
+        public function objects()
+        {
+            return $this->exec(true);
+        }
+
+        public function rows()
+        {
+            return $this->exec();
+        }
+
+        public function object()
+        {
+            return $this->first(true);
+        }
+
         public function exec($object = false)
         {
             $collection = array();
