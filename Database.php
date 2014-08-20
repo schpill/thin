@@ -317,18 +317,22 @@
         {
             $data = !count($results) ? $this->fetch() : $results;
             $res = array();
+
             if (count($data)) {
                 foreach ($data as $row) {
                     $resTrick = $condition($row);
+
                     if (true === $resTrick) {
                         array_push($res, $row);
                     }
                 }
             }
+
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
                 $values = array_values($this->results);
+
                 switch ($op) {
                     case 'AND':
                         $this->results = $this->intersect($values, array_values($res));
@@ -350,7 +354,9 @@
                         break;
                 }
             }
+
             $this->wheres[] = $condition;
+
             return $this;
         }
 
@@ -364,6 +370,7 @@
 
             $collection = array();
             $res = $this->db->query($query);
+
             if (is_object($res)) {
                 while ($row = $res->fetch_assoc()) {
                     if (true === $object) {
@@ -376,10 +383,13 @@
             } else {
                 /* to do */
             }
+
             if (true === $object) {
                 $collection = new Collection($collection);
             }
+
             $this->incQueries($start);
+
             return $collection;
         }
 
@@ -391,6 +401,7 @@
         public function get($object = false, $exec = true)
         {
             $this->results = empty($this->results) ? $this->fetch() : $this->results;
+
             return true === $exec ? $this->exec($object) : $this;
         }
 
@@ -414,6 +425,7 @@
                   `created_at` datetime NOT NULL,
                   `updated_at` datetime NOT NULL
                 ) COMMENT='Auto generated table $this->table' ENGINE='InnoDB' COLLATE 'utf8_general_ci';";
+
                 $this->db->query($sql);
                 $query      = "SHOW COLUMNS FROM $this->database.$this->table";
                 $res        = $this->fetch($query);
@@ -425,17 +437,21 @@
             if (false === $relations) {
                 $relations      = array();
                 $relationsQuery = "SELECT
+
                 REFERENCED_TABLE_NAME as foreignTable
                 FROM information_schema.REFERENTIAL_CONSTRAINTS
                 WHERE
                 UNIQUE_CONSTRAINT_SCHEMA = '$this->database'
                 AND TABLE_NAME = '$this->table'";
+
                 $resRel = $this->fetch($relationsQuery);
+
                 if (count($resRel)) {
                     foreach ($resRel as $rowRel) {
                         array_push($relations, $rowRel['foreignTable']);
                     }
                 }
+
                 self::$config["$this->database.$this->table"]['relations'] = $relations;
             }
 
@@ -449,9 +465,11 @@
                     );
                     $nullable[$row['Field']] = 'yes' == Inflector::lower($row['Null']) ? true : false;
                     $default[$row['Field']] = is_null($row['Default']) ? 'null' : $row['Default'];
+
                     if ($row['Key'] == 'PRI') {
                         $pk = $row['Field'];
                     }
+
                     if ($row['Key'] != 'PRI' && strlen($row['Key'])) {
                         array_push($keys, $row['Field']);
                     }
@@ -469,17 +487,21 @@
             if (false === $relations) {
                 $relations = array();
             }
+
             if (count($keys)) {
                 foreach ($keys as $key) {
                     if (strstr($key, '_id')) {
                         $fkField = repl('_id', '', $key);
+
                         if (!Arrays::in($fkField, $relations)) {
                             array_push($relations, $fkField);
                         }
                     }
                 }
             }
+
             self::$config["$this->database.$this->table"]['relations'] = $relations;
+
             return $this;
         }
 
@@ -497,6 +519,7 @@
         {
             $count = count($this->results);
             $this->reset();
+
             return $count;
         }
 
@@ -514,6 +537,7 @@
             $this->offset   = null;
             $this->query    = null;
             $this->cache    = false;
+
             return $this;
         }
 
@@ -540,7 +564,9 @@
             } else {
                 $row = $this->add($data, $object);
             }
+
             $this->foreign = null;
+
             return $row;
         }
 
@@ -551,6 +577,7 @@
                     unset($data[$key]);
                 }
             }
+
             return $data;
         }
 
@@ -558,8 +585,8 @@
         {
             $q = "INSERT INTO $this->database.$this->table SET ";
             $fields = array_keys($this->map['fields']);
-            foreach ($data as $k => $v) {
 
+            foreach ($data as $k => $v) {
                 if (is_callable($v)) {
                     continue;
                 }
@@ -572,6 +599,7 @@
                         foreach ($this->foreign as $originalField => $renamed) {
                             if ($renamed == $k) {
                                 list($db, $table, $field) = explode('.', $originalField);
+
                                 if ($db != $this->database || $table != $this->table) {
                                     $skip           = true;
                                     $skipException  = true;
@@ -584,6 +612,7 @@
                             }
                         }
                     }
+
                     if (false === $skipException) {
                         throw new Exception("Field '$k' is unknown in the table '$this->table'.");
                     }
@@ -596,39 +625,49 @@
                 if (!strlen($v)) {
                     $nullable   = $this->map['nullable'][$k];
                     $default    = $this->map['default'][$k];
+
                     if (true !== $nullable && 'null' === $default && $k != $this->pk()) {
                         throw new Exception("Field '$k' must not be nulled in the table '$this->table'.");
                     }
                 }
                 $q .= "$this->database.$this->table.$k = '" . addslashes($v) . "', ";
             }
+
             $q = substr($q, 0, -2);
 
             $insert = $this->db->prepare($q);
+
             if (false === $insert) {
                 throw new Exception("The query '$q' is uncorrect. Please check it.");
             }
+
             $insert->execute();
             $insert->close();
 
             $data[$this->pk()] = $this->db->insert_id;
+
             return true === $object ? $this->row($data) : $data;
         }
 
         private function edit($id, $data, $object)
         {
             $idData = isAke($data, $this->pk(), null);
+
             if (!is_null($idData)) {
                 unset($data[$this->pk()]);
             }
+
             $old = $this->find($id)->assoc();
             $idData = isAke($old, $this->pk(), null);
+
             if (!is_null($idData)) {
                 unset($old[$this->pk()]);
             }
+
             $data   = array_merge($old, $data);
             $fields = array_keys($this->map['fields']);
             $q      = "UPDATE $this->database.$this->table SET ";
+
             foreach ($data as $k => $v) {
                 if (is_callable($v)) {
                     continue;
@@ -639,9 +678,11 @@
                 if (!Arrays::in($k, $fields)) {
                     if (count($this->foreign)) {
                         $skipException = false;
+
                         foreach ($this->foreign as $originalField => $renamed) {
                             if ($renamed == $k) {
                                 list($db, $table, $field) = explode('.', $originalField);
+
                                 if ($db != $this->database || $table != $this->table) {
                                     $skip           = true;
                                     $skipException  = true;
@@ -654,6 +695,7 @@
                             }
                         }
                     }
+
                     if (false === $skipException) {
                         throw new Exception("Field '$k' is unknown in the table '$this->table'.");
                     }
@@ -666,6 +708,7 @@
                 if (!strlen($v)) {
                     $nullable   = $this->map['nullable'][$k];
                     $default    = $this->map['default'][$k];
+
                     if (true !== $nullable && 'null' === $default) {
                         throw new Exception("Field '$k' must not be nulled in the table '$this->table'.");
                     }
@@ -673,17 +716,21 @@
 
                 $q .= "$this->database.$this->table.$k = '" . addslashes($v) . "', ";
             }
+
             $q = substr($q, 0, -2);
             $q .= " WHERE $this->database.$this->table." . $this->pk() . " = '" . addslashes($id) . "'";
 
             $update = $this->db->prepare($q);
+
             if (false === $update) {
                 throw new Exception("The query '$q' is uncorrect. Please check it.");
             }
+
             $update->execute();
             $update->close();
 
             $data[$this->pk()] = $id;
+
             return true === $object ? $this->row($data) : $data;
         }
 
@@ -691,17 +738,20 @@
         {
             $q = "DELETE FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->pk() . " = '" . addslashes($id) . "'";
             $this->db->query($q);
+
             return $this;
         }
 
         public function update(array $updates, $where = null)
         {
             $res = !empty($where) ? $this->where($where)->exec() : $this->all();
+
             if (count($res)) {
                 if (count($updates)) {
                     foreach ($updates as $key => $newValue) {
                         foreach ($res as $row) {
                             $val = isAke($row, $field, null);
+
                             if ($val != $newValue) {
                                 $row[$field] = $newValue;
                                 $this->edit($row[$this->pk()], $row);
@@ -710,6 +760,7 @@
                     }
                 }
             }
+
             return $this;
         }
 
@@ -726,11 +777,13 @@
         public function remove($where = null)
         {
             $res = !empty($where) ? $this->where($where)->exec() : $this->all();
+
             if (count($res)) {
                 foreach ($res as $row) {
                     $this->deleteRow($row[$this->pk()]);
                 }
             }
+
             return $this;
         }
 
@@ -740,12 +793,15 @@
                 $pk = "$this->database.$this->table." . $this->pk();
                 $hasPk = false;
                 $select = '';
+
                 foreach ($this->fields as $field) {
                     if (false === $hasPk) {
                         $hasPk = $field == $pk;
                     }
+
                     list($db, $table, $tmpField) = explode('.', $field, 3);
                     $as = isAke($this->as, $field, null);
+
                     if ($db == $this->database && $table == $this->table) {
                         if (is_null($as)) {
                             $select .= "$field, ";
@@ -760,12 +816,14 @@
                         }
                     }
                 }
+
                 if (false === $hasPk) {
                     $select .= "$pk, ";
                 }
             } else {
                 $fields = array_keys($this->map['fields']);
                 $select = '';
+
                 foreach ($fields as $field) {
                     $select .= "$this->database.$this->table.$field, ";
                 }
@@ -774,11 +832,15 @@
             $select = substr($select, 0, -2);
 
             $q = "SELECT $select FROM $this->database.$this->table WHERE $this->database.$this->table." . $this->pk() . " = '" . addslashes($id) . "'";
+
             $res = $this->fetch($q);
+
             if (count($res)) {
                 $row = Arrays::first($res);
+
                 return $object ? $this->row($row) : $row;
             }
+
             return $object ? null : array();
         }
 
@@ -791,12 +853,15 @@
         {
             $q = "SELECT * FROM $this->database.$this->table WHERE $this->database.$this->table." . $field . " = '" . addslashes($value) . "'";
             $res = $this->fetch($q);
+
             if (count($res) && true === $one) {
                 return $object ? $this->row(Arrays::first($res)) : Arrays::first($res);
             }
+
             if (!count($res) && true === $one && true === $object) {
                 return null;
             }
+
             return $this->exec($object, $res);
         }
 
@@ -804,20 +869,25 @@
         {
             $this->makeResults();
             $res = $this->results;
+
             if (true === $object) {
                 $row = count($res) ? $this->row(Arrays::first($res)) : null;
             } else {
                 $row = count($res) ? Arrays::first($res) : array();
             }
+
             $this->reset();
+
             return $row;
         }
 
         public function only($field, $default = null)
         {
             $sql = strstr($field, ' ') ? true : false;
+
             if (false === $sql) {
                 $row = $this->first(true);
+
                 return $row instanceof Container
                 ? !is_string($row->$field)
                     ? $row->$field()
@@ -826,9 +896,11 @@
             } else {
                 $res = $this->fetch($field);
                 $row = count($res) ? Arrays::first($res) : null;
+
                 if (null !== $row) {
                     return Arrays::first($row);
                 }
+
                 return $default;
             }
         }
@@ -838,9 +910,11 @@
             $collection = array();
             $fields = Arrays::is($fields) ? $fields : array($fields);
             $rows = $this->exec($object);
+
             if (true === $object) {
                 $rows = $rows->rows();
             }
+
             if (count($rows)) {
                 foreach ($rows as $row) {
                     $record = true === $object
@@ -850,6 +924,7 @@
                         )
                     )
                     : array();
+
                     foreach ($fields as $field) {
                         if (true === $object) {
                             $record->$field = !is_string($row->$field) ? $row->$field() : $row->$field;
@@ -857,9 +932,11 @@
                             $record[$field] = ake($field, $row) ? $row[$field] : null;
                         }
                     }
+
                     array_push($collection, $record);
                 }
             }
+
             return true === $object ? new Collection($collection) : $collection;
         }
 
@@ -868,6 +945,7 @@
             $this->makeResults();
             $res = $this->results;
             $this->reset();
+
             if (true === $object) {
                 return count($res) ? $this->row(Arrays::last($res)) : null;
             } else {
@@ -892,17 +970,22 @@
             } else {
                 $this->results = $results;
             }
+
             $collection = array();
+
             if (count($this->results)) {
                 foreach ($this->results as $row) {
                     $item = $object ? $this->row($row) : $row;
                     array_push($collection, $item);
                 }
             }
+
             $this->reset();
+
             if (true === $object) {
                 $collection = new Collection($collection);
             }
+
             return $collection;
         }
 
@@ -924,6 +1007,7 @@
         {
             $model = is_string($model) ? model($model) : $model;
             array_push($this->joins, array($model, $condition, $type));
+
             return $this;
         }
 
@@ -950,6 +1034,7 @@
         public function field($field)
         {
             $fields = array_keys($this->map['fields']);
+
             if (!strstr($field, '.')) {
                 if (!Arrays::in($field, $fields)) {
                     throw new Exception("The field '$field' does not exist in table '$this->table'.");
@@ -973,6 +1058,7 @@
                     array_push($this->fields, $field);
                 }
             }
+
             return $this;
         }
 
@@ -982,6 +1068,7 @@
                 $field = Arrays::last($this->fields);
                 $this->as[$field] = $name;
             }
+
             return $this;
         }
 
@@ -989,18 +1076,22 @@
         {
             if (is_string($fields)) {
                 $fields = repl(' ', '', $fields);
+
                 if (strstr($fields, ',')) {
                     $fields = explode(',', $fields);
                 } else {
                     $fields = array($fields);
                 }
             }
+
             if (!Arrays::is($fields)) {
                 throw new Exception("You must provide an array as first argument.");
             }
+
             foreach ($fields as $field) {
                 $this->field($field);
             }
+
             return $this;
         }
 
@@ -1010,12 +1101,15 @@
                 $pk = "$this->database.$this->table." . $this->pk();
                 $hasPk = false;
                 $select = '';
+
                 foreach ($this->fields as $field) {
                     if (false === $hasPk) {
                         $hasPk = $field == $pk;
                     }
+
                     list($db, $table, $tmpField) = explode('.', $field, 3);
                     $as = isAke($this->as, $field, null);
+
                     if ($db == $this->database && $table == $this->table) {
                         if (is_null($as)) {
                             $select .= "$field, ";
@@ -1030,12 +1124,14 @@
                         }
                     }
                 }
+
                 if (false === $hasPk) {
                     $select .= "$pk, ";
                 }
             } else {
                 $fields = array_keys($this->map['fields']);
                 $select = '';
+
                 foreach ($fields as $field) {
                     $select .= "$this->database.$this->table.$field, ";
                 }
@@ -1047,10 +1143,12 @@
                 $query = "SELECT $select FROM $this->database.$this->table WHERE ";
             } else {
                 $query = "SELECT $select FROM $this->database.$this->table ";
+
                 foreach ($this->joins as $join) {
                     list($model, $condition, $type) = $join;
                     $joinKey = $model->table . '_id';
                     $fpk = $model->pk();
+
                     if (is_null($condition)) {
                         $query .= "$type JOIN $model->database.$model->table ON $this->database.$this->table.$joinKey = $model->database.$model->table.$fpk\n";
                     } else {
@@ -1059,26 +1157,39 @@
                 }
                 $query .= "WHERE\n";
             }
+
             if (count($this->wheres)) {
                 $first = true;
+
                 foreach ($this->wheres as $where) {
                     list($op, $condition) = $where;
+
                     if (count($this->joins)) {
                         $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
                         $condition  = repl('NOT IN', 'NOTIN', $condition);
+
                         list($field, $operator, $value) = explode(' ', $condition, 3);
+
+                        if ($value instanceof Container) {
+                            $value = $value->id();
+                            $field = $field . '_id';
+                        }
+
                         if (!strstr($field, '.')) {
                             $field = "$this->database.$this->table.$field";
                         }
+
                         $condition = "$field $operator $value";
                         $condition  = repl('NOTLIKE', 'NOT LIKE', $condition);
                         $condition  = repl('NOTIN', 'NOT IN', $condition);
                     }
+
                     if (false === $first) {
                         $query .= " $op $condition";
                     } else {
                         $query .= $condition;
                     }
+
                     $first = false;
                 }
             } else {
@@ -1088,6 +1199,7 @@
             if (count($this->groupBys)) {
                 $query .= ' GROUP BY ';
                 $first = true;
+
                 foreach ($this->groupBys as $groupBy) {
                     if (false === $first) {
                         if (!strstr($groupBy, '.')) {
@@ -1102,11 +1214,14 @@
                             $query .= $groupBy;
                         }
                     }
+
                     $first = false;
                 }
             }
+
             if (count($this->havings)) {
                 $sql = array();
+
                 foreach ($query->havings as $having) {
                     $sql[] = 'AND '. $having['column'] . ' ' . $having['operator'] . ' ' . $having['value'];
                 }
@@ -1117,8 +1232,10 @@
             if (count($this->orders)) {
                 $query .= ' ORDER BY ';
                 $first = true;
+
                 foreach ($this->orders as $order) {
                     list($field, $direction) = $order;
+
                     if (false === $first) {
                         if (!strstr($field, '.')) {
                             $query .= ", $this->database.$this->table.$field $direction";
@@ -1141,12 +1258,16 @@
                 $query .= ' LIMIT ' . $offset . ', ' . $this->limit;
             }
 
+            $query = str_replace('WHERE 1 = 1', '', $query);
+
             $this->query = $query;
+
             if (true === $fetch) {
                 if (true === $this->cache) {
                     $redis = context()->redis();
                     $key = sha1($query) . '::dataQuery';
                     $cached = $redis->get($key);
+
                     if (!strlen($cached)) {
                         $cached = $this->fetch($query);
                         $redis->set($key, serialize($cached));
@@ -1154,6 +1275,7 @@
                     } else {
                         $cached = unserialize($cached);
                     }
+
                     $this->results = $cached;
                 } else {
                     $this->results = $this->fetch($query);
@@ -1161,6 +1283,7 @@
             } else {
                 return $query;
             }
+
             return $this;
         }
 
@@ -1183,12 +1306,14 @@
         {
             $direction = Inflector::upper($direction);
             $this->orders[] = array($field, $direction);
+
             return $this;
         }
 
         public function groupBy($field)
         {
             $this->groupBys[] = $field;
+
             return $this;
         }
 
@@ -1196,6 +1321,7 @@
         {
             $this->limit = $limit;
             $this->offset = $offset;
+
             return $this;
         }
 
@@ -1213,7 +1339,9 @@
                     $bool = true;
                 }
             }
+
             $this->cache = $bool;
+
             return $this;
         }
 
@@ -1249,6 +1377,7 @@
                     }
                 }
             }
+
             return $this;
         }
 
@@ -1267,6 +1396,7 @@
             : $ids;
 
             $field = is_null($field) ? $this->pk() : $field;
+
             return $this->where($field . ' IN (' . implode(',', $ids) . ')');
         }
 
@@ -1280,6 +1410,7 @@
             : $ids;
 
             $field = is_null($field) ? $this->pk() : $field;
+
             return $this->where($field . ' NOT IN (' . implode(',', $ids) . ')');
         }
 
@@ -1287,6 +1418,7 @@
         {
             $q = "SELECT $type($this->database.$this->table.$field) AS $type FROM $this->database.$this->table";
             $res = $this->fetch($q);
+
             return count($res) ? Arrays::first($res) : 0;
         }
 
@@ -1326,18 +1458,23 @@
                 foreach ($tab as $key => $value) {
                     $this->where("$key = '" . addslashes($value) . "'");
                 }
+
                 $first = $this->first(true);
+
                 if (!is_null($first)) {
                     return $first;
                 }
             }
+
             $item = $this->create($tab);
+
             return !$save ? $item : $item->save();
         }
 
         public function replace($compare = array(), $update = array())
         {
             $instance = $this->firstOrCreate($compare);
+
             return $instance->hydrate($update)->save();
         }
 
@@ -1358,6 +1495,7 @@
             if (!is_null($item = $this->find($id, $object))) {
                 return $item;
             }
+
             return $this->create();
         }
 
@@ -1366,6 +1504,7 @@
             if (!is_null($item = $this->find($id, $object))) {
                 return $item;
             }
+
             throw new Exception("Row '$id' in '$this->table' is unknown.");
         }
 
@@ -1420,8 +1559,10 @@
                     }
                 }
             }
+
             $o = new Container;
             $o->populate($tab);
+
             return $this->closures($o);
         }
 
@@ -1439,7 +1580,9 @@
                         $args[] = $dbi;
                         return call_user_func_array($callable, $args);
                     };
+
                     $obj->event($name, $share);
+
                     return $obj;
                 }
             };
@@ -1447,16 +1590,19 @@
             $save = function ($object = true) use ($obj, $params) {
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
+
                 return $db->save($obj, $object);
             };
 
             $db = function () use ($params) {
                 list($db, $table, $host, $username, $password) = $params;
+
                 return Database::instance($db, $table, $host, $username, $password);
             };
 
             $query = function () use ($params) {
                 list($db, $table, $host, $username, $password) = $params;
+
                 return new Query(Database::instance($db, $table, $host, $username, $password));
             };
 
@@ -1464,6 +1610,7 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 $pk = $db->pk();
+
                 return $db->deleteRow($obj->$pk);
             };
 
@@ -1471,6 +1618,7 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 $pk = $db->pk();
+
                 return $obj->$pk;
             };
 
@@ -1478,12 +1626,14 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 $pk = $db->pk();
+
                 return isset($obj->$pk);
             };
 
             $touch = function () use ($obj) {
                 if (!isset($obj->created_at))  $obj->created_at = time();
                 $obj->updated_at = time();
+
                 return $obj;
             };
 
@@ -1491,13 +1641,16 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $db = Database::instance($db, $table, $host, $username, $password);
                 $pk = $db->pk();
+
                 if (isset($obj->$pk)) unset($obj->$pk);
                 if (isset($obj->created_at)) unset($obj->created_at);
+
                 return $obj->save($object);
             };
 
             $orm = function () use ($params) {
                 list($db, $table, $host, $username, $password) = $params;
+
                 return Database::instance($db, $table, $host, $username, $password);
             };
 
@@ -1505,6 +1658,7 @@
                 list($db, $table, $host, $username, $password) = $params;
                 $database = Database::instance($db, $table, $host, $username, $password);
                 $database->cache($bool);
+
                 return $database;
             };
 
@@ -1519,6 +1673,7 @@
                 $db = model($table);
                 $pk = is_null($field) ? $db->pk() : $field;
                 $value = $tab[$db->table . '_id'];
+
                 return $db->where("$pk = $value")->execute($object);
             };
 
@@ -1527,11 +1682,13 @@
                 $db = model($table);
                 $pk = is_null($field) ? $db->pk() : $field;
                 $value = $tab[$db->table . '_id'];
+
                 return $db->where("$pk = $value")->first($object);
             };
 
             $hydrate = function ($data = array()) use ($obj) {
                 $data = empty($data) ? $_POST : $data;
+
                 if (Arrays::isAssoc($data)) {
                     foreach ($data as $k => $v) {
                         if ("true" == $v) {
@@ -1544,6 +1701,7 @@
                         $obj->$k = $v;
                     }
                 }
+
                 return $obj;
             };
 
@@ -1575,9 +1733,11 @@
                         $args[]     = Database::instance($db, $table, $host, $username, $password);
                         return call_user_func_array($callable , $args);
                     };
+
                     $obj->event($closureName, $share);
                 }
             }
+
             return $this->related($obj);
         }
 
@@ -1586,30 +1746,38 @@
             $settings   = isAke(self::$config, "$this->database.$this->table");
             $relations  = isAke($settings, 'relations');
             $params     = $this->args;
+
             if (count($relations)) {
                 foreach ($relations as $relation) {
                     $field = $relation . '_id';
+
                     if (is_string($field)) {
                         $value = $obj->$field;
+
                         if (!is_callable($value)) {
                             $fk = $tableFk = $relation;
                             $fks = $fk . 's';
                             $cb = function ($object = true) use ($value, $tableFk, $params) {
                                 list($database, $table, $host, $username, $password) = $params;
                                 $db = Database::instance($database, $tableFk, $host, $username, $password);
+
                                 if ($db) {
                                     return $db->find($value, $object);
                                 }
+
                                 return null;
                             };
+
                             $obj->event($fk, $cb);
 
                             $cb = function ($object = true) use ($value, $tableFk, $params) {
                                 list($database, $table, $host, $username, $password) = $params;
                                 $db = Database::instance($database, $tableFk, $host, $username, $password);
+
                                 if ($db) {
                                     return $db->where($db->pk() . " = '" . addslashes($value) . "'")->exec($object);
                                 }
+
                                 return null;
                             };
                             $obj->event($fks, $cb);
@@ -1621,7 +1789,9 @@
                                 $newCb = function () use ($fkObject) {
                                     return $fkObject;
                                 };
+
                                 $obj->event($fk, $newCb);
+
                                 return $obj;
                             };
                             $obj->event($setter, $cb);
@@ -1649,6 +1819,7 @@
         {
             $time = microtime();
             $time = explode(' ', $time, 2);
+
             return (Arrays::last($time) + Arrays::first($time));
         }
 
@@ -1662,6 +1833,7 @@
             $functions[$name] = $callable;
 
             self::$config[$key]['functions'] = $functions;
+
             return $this;
         }
 
@@ -1669,6 +1841,7 @@
         {
             $redis = context()->redis();
             $keys = $redis->keys('*::dataQuery');
+
             if (count($keys)) {
                 foreach ($keys as $key) {
                     $redis->del($key);
@@ -1692,6 +1865,7 @@
         {
             $key = "database::$this->database::$this->table::$name";
             events()->listen($key, $event);
+
             return $this;
         }
 
@@ -1699,6 +1873,7 @@
         {
             $key = "database::$this->database::$this->table::$event";
             $method = $halt ? 'until' : 'fire';
+
             return events()->$method($key, $this);
         }
 
@@ -1706,6 +1881,7 @@
         {
             $key = "database::$this->database::$this->table::$event";
             events()->forget($key);
+
             return $this;
         }
 
@@ -1715,6 +1891,7 @@
                 $key = "database::$this->database::$this->table::$event";
                 events()->forget($key);
             }
+
             return $this;
         }
     }
