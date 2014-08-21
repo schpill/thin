@@ -45,14 +45,17 @@
 
             if ('is' === $method && strlen($fn) > 2) {
                 $field = Inflector::uncamelize($object);
+
                 if (!Arrays::in($field, $fields)) {
                     $field = $field . '_id';
                     $model = Arrays::first($args);
+
                     if ($model instanceof Container) {
                         $idFk = $model->id();
                     } else {
                         $idFk = $model;
                     }
+
                     return $this->where("$field = $idFk");
                 } else {
                     return $this->where($field . ' = ' . Arrays::first($args));
@@ -65,13 +68,16 @@
             if (strlen($fn) > 3) {
                 if ('get' === $method) {
                     $object = Inflector::uncamelize($object);
+
                     return isset($this->$object) ? $this->$object : null;
                 } else if ('set' === $method) {
                     $object = Inflector::uncamelize($object);
                     $this->$object = Arrays::first($args);
+
                     return $this;
                 } else if ('has' === $method) {
                     $object = Inflector::uncamelize($object);
+
                     return isset($this->$object);
                 }
             }
@@ -81,14 +87,17 @@
 
             if ('orIs' === $method && strlen($fn) > 4) {
                 $field = Inflector::uncamelize($object);
+
                 if (!Arrays::in($field, $fields)) {
                     $field = $field . '_id';
                     $model = Arrays::first($args);
+
                     if ($model instanceof Container) {
                         $idFk = $model->id();
                     } else {
                         $idFk = $model;
                     }
+
                     return $this->where("$field = $idFk", 'OR');
                 } else {
                     return $this->where($field . ' = ' . Arrays::first($args), 'OR');
@@ -96,6 +105,7 @@
             } elseif('like' === $method && strlen($fn) > 4) {
                 $field = Inflector::uncamelize($object);
                 $op = count($args) == 2 ? Arrays::last($args) : 'AND';
+
                 return $this->like($field, Arrays::first($args), $op);
             }
 
@@ -105,42 +115,51 @@
             if (strlen($fn) > 5) {
                 if ('where' == $method) {
                     $field = Inflector::uncamelize($object);
+
                     if (!Arrays::in($field, $fields)) {
                         $field = $field . '_id';
                         $model = Arrays::first($args);
+
                         if ($model instanceof Container) {
                             $idFk = $model->id();
                         } else {
                             $idFk = $model;
                         }
+
                         return $this->where("$field = $idFk");
                     } else {
                         return $this->where($field . ' ' . Arrays::first($args));
                     }
                 } elseif ('xorIs' === $method) {
                     $field = Inflector::uncamelize($object);
+
                     if (!Arrays::in($field, $fields)) {
                         $field = $field . '_id';
                         $model = Arrays::first($args);
+
                         if ($model instanceof Container) {
                             $idFk = $model->id();
                         } else {
                             $idFk = $model;
                         }
+
                         return $this->where("$field = $idFk", 'XOR');
                     } else {
                         return $this->where($field . ' = ' . Arrays::first($args), 'XOR');
                     }
                 } elseif ('andIs' === $method) {
                     $field = Inflector::uncamelize($object);
+
                     if (!Arrays::in($field, $fields)) {
                         $field = $field . '_id';
                         $model = Arrays::first($args);
+
                         if ($model instanceof Container) {
                             $idFk = $model->id();
                         } else {
                             $idFk = $model;
                         }
+
                         return $this->where("$field = $idFk");
                     } else {
                         return $this->where($field . ' = ' . Arrays::first($args));
@@ -148,24 +167,90 @@
                 }
             }
 
+            $method = substr($fn, 0, 6);
+            $object = Inflector::uncamelize(lcfirst(substr($fn, 6)));
+
+            if (strlen($fn) > 6) {
+                if ('findBy' == $method) {
+                    return $this->findBy($object, Arrays::first($args));
+                }
+            }
+
+
             $method = substr($fn, 0, 7);
             $object = lcfirst(substr($fn, 7));
 
             if (strlen($fn) > 7) {
                 if ('orWhere' == $method) {
                     $field = Inflector::uncamelize($object);
+
                     if (!Arrays::in($field, $fields)) {
                         $field = $field . '_id';
                         $model = Arrays::first($args);
+
                         if ($model instanceof Container) {
                             $idFk = $model->id();
                         } else {
                             $idFk = $model;
                         }
+
                         return $this->where("$field = $idFk", 'OR');
                     } else {
                         return $this->where($field . ' ' . Arrays::first($args), 'OR');
                     }
+                } elseif ('orderBy' == $method) {
+                    $object = Inflector::uncamelize(lcfirst(substr($fn, 7)));
+
+                    if ($object == 'id') {
+                        $object = $this->pk();
+                    }
+
+                    if (!Arrays::in($object, $fields)) {
+                        $object = Arrays::in($object . '_id', $fields) ? $object . '_id' : $object;
+                    }
+
+                    $direction = (count($args)) ? Arrays::first($args) : 'ASC';
+
+                    return $this->order($object, $direction);
+                } elseif ('groupBy' == $method) {
+                    $object = Inflector::uncamelize(lcfirst(substr($fn, 7)));
+
+                    if ($object == 'id') {
+                        $object = $this->pk();
+                    }
+
+                    if (!Arrays::in($object, $fields)) {
+                        $object = Arrays::in($object . '_id', $fields) ? $object . '_id' : $object;
+                    }
+
+                    return $this->groupBy($object);
+                }
+            }
+
+            $method = substr($fn, 0, 9);
+            $object = Inflector::uncamelize(lcfirst(substr($fn, 9)));
+
+            if (strlen($fn) > 9) {
+                if ('findOneBy' == $method) {
+                    return $this->findOneBy($object, Arrays::first($args));
+                }
+            }
+
+            $method = substr($fn, 0, 13);
+            $object = Inflector::uncamelize(lcfirst(substr($fn, 13)));
+
+            if (strlen($fn) > 13) {
+                if ('findObjectsBy' == $method) {
+                    return $this->findBy($object, Arrays::first($args), true);
+                }
+            }
+
+            $method = substr($fn, 0, 15);
+            $object = Inflector::uncamelize(lcfirst(substr($fn, 15)));
+
+            if (strlen($fn) > 15) {
+                if ('findOneObjectBy' == $method) {
+                    return $this->findOneBy($object, Arrays::first($args), true);
                 }
             }
 
@@ -175,28 +260,34 @@
             if (strlen($fn) > 8) {
                 if ('xorWhere' == $method) {
                     $field = Inflector::uncamelize($object);
+
                     if (!Arrays::in($field, $fields)) {
                         $field = $field . '_id';
                         $model = Arrays::first($args);
+
                         if ($model instanceof Container) {
                             $idFk = $model->id();
                         } else {
                             $idFk = $model;
                         }
+
                         return $this->where("$field = $idFk", 'XOR');
                     } else {
                         return $this->where($field . ' ' . Arrays::first($args), 'XOR');
                     }
                 } elseif('andWhere' == $method) {
                     $field = Inflector::uncamelize($object);
+
                     if (!Arrays::in($field, $fields)) {
                         $field = $field . '_id';
                         $model = Arrays::first($args);
+
                         if ($model instanceof Container) {
                             $idFk = $model->id();
                         } else {
                             $idFk = $model;
                         }
+
                         return $this->where("$field = $idFk");
                     } else {
                         return $this->where($field . ' ' . Arrays::first($args));
@@ -206,18 +297,22 @@
                 $field = $fn;
                 $fieldFk = $fn . '_id';
                 $op = count($args) == 2 ? Inflector::upper(Arrays::last($args)) : 'AND';
+
                 if (Arrays::in($field, $fields)) {
                     return $this->where($field . ' = ' . Arrays::first($args), $op);
                 } else if (Arrays::in($fieldFk, $fields)) {
                     $model = Arrays::first($args);
+
                     if ($model instanceof Container) {
                         $idFk = $model->id();
                     } else {
                         $idFk = $model;
                     }
+
                     return $this->where("$fieldFk = $idFk", $op);
                 }
             }
+
             throw new Exception("Method '$fn' is unknown.");
         }
 
@@ -267,7 +362,7 @@
             if (true === $has) {
                 return Instance::get('Database', $key);
             } else {
-                return Instance::make('Database', $key, with(new self($db, $table, $host, $username, $password)));
+                return Instance::make('Database', $key, new self($db, $table, $host, $username, $password));
             }
         }
 
@@ -508,6 +603,11 @@
         public function all($object = false)
         {
             return $this->fetch(null, $object);
+        }
+
+        public function full()
+        {
+            return $this->get(false, false);
         }
 
         public function countAll()
@@ -870,6 +970,11 @@
             return $this->first(true);
         }
 
+        public function one($object = true)
+        {
+            return $this->first($object);
+        }
+
         public function first($object = false)
         {
             $this->makeResults();
@@ -966,6 +1071,11 @@
         public function objects($results = null)
         {
             return $this->exec(true, $results);
+        }
+
+        public function toArray($results = null)
+        {
+            return $this->exec(false, $results);
         }
 
         public function run($object = false)

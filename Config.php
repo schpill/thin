@@ -28,6 +28,7 @@
                 static::$items = arrayMergeRecursive(static::$items, $config);
             } else {
                 $file = APPLICATION_PATH . DS . 'config' . DS . $file . '.php';
+
                 if (File::exists($file)) {
                     $config = include $file;
                     static::$items = arrayMergeRecursive(static::$items, $config);

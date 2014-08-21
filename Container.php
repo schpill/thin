@@ -20,17 +20,20 @@
             if (is_object($values)) {
                 $values = $values->assoc();
             }
+
             if (count($values)) {
                 $this->values = $this->make($values);
             } else {
                 $this->values = $values;
             }
+
             $this->_token = Utils::token();
         }
 
         public function make(array $array)
         {
             $return = array();
+
             foreach ($array as $k => $v) {
                 if (Arrays::is($v)) {
                     $o = new self;
@@ -39,6 +42,7 @@
                     $return[$k] = $v;
                 }
             }
+
             return $return;
         }
 
@@ -135,6 +139,7 @@
             $routes = empty($routes) ? array() : $routes;
             $routes[$route->getName()] = $route;
             container()->setMapRoutes($routes);
+
             return $this;
         }
 
@@ -142,31 +147,38 @@
         {
             $link = URLSITE;
             $routes = container()->getMapRoutes();
+
             if (Arrays::isArray($routes)) {
                 if (ake($routeName, $routes)) {
                     $route = $routes[$routeName];
                     $path = $route->getPath();
+
                     if (count($params)) {
                         foreach ($params as $key => $param) {
                             $path = strReplaceFirst('(.*)', $param, $path);
                         }
                     }
+
                     $link .= $path;
                 }
             }
+
             return $link;
         }
 
         public function isRoute($routeName)
         {
             $routes = container()->getMapRoutes();
+
             if (Arrays::isArray($routes)) {
                 if (ake($routeName, $routes)) {
                     $route = $routes[$routeName];
                     $actualRoute = $this->getRoute();
+
                     return $actualRoute === $route;
                 }
             }
+
             return false;
         }
 
@@ -174,12 +186,14 @@
         {
             $name       = (null === $name) ? sha1(time()) : $name;
             $o          = o($name);
+
             return $o->populate($array);
         }
 
         public function event($id, \Closure $closure)
         {
             $this->values[sha1($id . $this->_token)] = $closure;
+
             return $this;
         }
 
@@ -187,10 +201,13 @@
         {
             $c = strstr($c, '-') ? strrev(repl('-', '', $c)) : $c;
             $exist = isAke($this->values, sha1($f . $this->_token), null);
+
             if (empty($exist)) {
                 $exist = isAke($this->_closures, $f, null);
+
                 if (empty($exist)) {
                     $exist = registry('events.' . $f);
+
                     if (!empty($exist)) {
                         event($c, $exist);
                     } else {
@@ -205,15 +222,18 @@
             } else {
                 event($c, $exist);
             }
+
             return $this;
         }
 
         public function run($id, $args = array())
         {
             $id = sha1($id . $this->_token);
+
             if (Arrays::exists($id, $this->values)) {
                 return call_user_func_array($this->values[$id], $args);
             }
+
             return null;
         }
     }

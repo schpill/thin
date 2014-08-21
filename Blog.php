@@ -9,6 +9,7 @@
         public static function getAll()
         {
             $articles = glob(STORAGE_PATH . DS . 'articles' . DS . '*.message', GLOB_NOSORT);
+
             return $articles;
         }
 
@@ -16,29 +17,36 @@
         {
             $collection = array();
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $article = static::getArticle($tmpArticle);
                 $cat = $article->getCategory();
+
                 if (!Arrays::exists($cat, $collection)) {
                     $collection[$cat] = 1;
                 } else {
                     $collection[$cat]++;
                 }
             }
+
             ksort($collection);
+
             return $collection;
         }
 
         public static function getById($id)
         {
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $tab = explode(DS, $tmpArticle);
                 $keyComp = repl('.message', '', end($tab));
+
                 if ($keyComp == $id) {
                     return static::getArticle($tmpArticle);
                 }
             }
+
             return null;
         }
 
@@ -46,12 +54,15 @@
         {
             $articles = static::getAll();
             $collection = array();
+
             foreach ($articles as $tmpArticle) {
                 $article = static::getArticle($tmpArticle);
                 $age = static::fixAge($collection, $article->dateCreate);
                 $collection[$age] = $article;
             }
+
             krsort($collection);
+
             return array_slice($collection, 0, $limit);
         }
 
@@ -59,13 +70,16 @@
         {
             $collection = array();
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $article        = static::getArticle($tmpArticle);
                 $articleAuthor  = $article->getAuthor();
+
                 if ($articleAuthor == $author) {
                     array_push($collection, $article);
                 }
             }
+
             return static::order($collection);
         }
 
@@ -73,13 +87,16 @@
         {
             $collection = array();
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $article            = static::getArticle($tmpArticle);
                 $articleCategory    = $article->getCategory();
+
                 if ($articleCategory == $category) {
                     array_push($collection, $article);
                 }
             }
+
             return static::order($collection);
         }
 
@@ -88,31 +105,39 @@
             if (null === $year) {
                 $year = date('Y');
             }
+
             if (null === $month) {
                 $year = date('n');
             }
+
             $collection = array();
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $article        = static::getArticle($tmpArticle);
                 $articleDate    = $article->dateCreate;
                 $articleYear    = date('Y', $articleDate);
                 $articleMonth   = date('n', $articleDate);
+
                 if ($articleYear == $year && $articleMonth == $month) {
                     array_push($collection, $article);
                 }
             }
+
             return static::order($collection);
         }
 
         public static function order($articles)
         {
             $collection = array();
+
             foreach ($articles as $article) {
                 $age = static::fixAge($collection, $article->dateCreate);
                 $collection[$age] = $article;
             }
+
             krsort($collection);
+
             return $collection;
         }
 
@@ -121,6 +146,7 @@
             if (isset($collection[$age])) {
                 return static::fixAge($collection, $age + 1);
             }
+
             return $age;
         }
 
@@ -129,16 +155,20 @@
             if (null === $year) {
                 $year = date('Y');
             }
+
             $collection = array();
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $article        = static::getArticle($tmpArticle);
                 $articleDate    = $article->dateCreate;
                 $articleYear    = date('Y', $articleDate);
+
                 if ($articleYear == $year) {
                     array_push($collection, $article);
                 }
             }
+
             return $collection;
         }
 
@@ -146,9 +176,11 @@
         {
             $collection = array();
             $articles = static::getAll();
+
             foreach ($articles as $tmpArticle) {
                 $article        = static::getArticle($tmpArticle);
                 $articleTags    = $article->getTags();
+
                 if (count($articleTags)) {
                     foreach ($articleTags as $articleTag) {
                         if ($articleTag == $tag) {
@@ -157,6 +189,7 @@
                     }
                 }
             }
+
             return static::order($collection);
         }
 
@@ -167,7 +200,7 @@
 
         public static function store($flatArticle, $key = null)
         {
-            $article = new Article;
+            $article = new Container;
             $article->populate($flatArticle);
             $serialize = serialize($article);
             if (is_null($key)) {
@@ -185,7 +218,7 @@
             $articles = static::getAll();
             foreach ($articles as $tmpArticle) {
                 $tab = explode(DS, $tmpArticle);
-                $keyComp = repl('.message', '', end($tab));
+                $keyComp = repl('.message', '', Arrays::last($tab));
                 if ($keyComp == $id) {
                     return File::delete($tmpArticle);
                 }
