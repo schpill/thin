@@ -62,7 +62,7 @@
         public function add($id, $name = null, $qty = null, $price = null, Array $options = array())
         {
             // If the first parameter is an array we need to call the add() function again
-            if(is_array($id)) {
+            if(Arrays::is($id)) {
                 // And if it's not only an array, but a multidimensional array, we need to
                 // recursively call the add function
                 if($this->isMulti($id)) {
@@ -275,7 +275,7 @@
 
             $rowId = $this->generateRowId($id, $options);
 
-            if(Arrays::inArray($rowId, $cart->_fields)) {
+            if(Arrays::in($rowId, $cart->_fields)) {
                 $row = $cart->$rowId;
                 $cart = $this->updateRow($rowId, array('qty' => $row->qty + $qty));
             } else {
@@ -302,7 +302,7 @@
         private static function _makeKey($keyLength = 9)
         {
             $key    = Inflector::quickRandom($keyLength);
-            if (!Arrays::inArray($key, static::$keys)) {
+            if (!Arrays::in($key, static::$keys)) {
                 static::$keys[] = $key;
                 return $key;
             } else {
@@ -320,7 +320,7 @@
         {
             $cart = $this->getContent();
             $rows = $cart->_fields;
-            return Arrays::inArray($rowId, $rows);
+            return Arrays::in($rowId, $rows);
         }
 
         /**
@@ -337,14 +337,13 @@
         /**
          * Get the carts content, if there is no cart content set yet, return a new empty Collection
          *
-         * @return Illuminate\Support\Collection
          */
         protected function getContent()
         {
             $content = $this->session->getContent();
 
             if (null === $content) {
-                return new Cartcontent;
+                return new Container;
             }
 
             return $content;
@@ -389,7 +388,7 @@
         {
             $cart = $this->getContent();
 
-            $newRow = new CartRowCollection();
+            $newRow = new Container();
 
             $values = array(
                 'rowid'     => $rowId,
@@ -397,7 +396,7 @@
                 'name'      => $name,
                 'qty'       => $qty,
                 'price'     => $price,
-                'options'   => new CartRowOptions($options),
+                'options'   => new Container($options),
                 'subtotal'  => $qty * $price
             );
 
@@ -445,7 +444,7 @@
         protected function isMulti(array $array)
         {
             $first = array_shift($array);
-            return Arrays::isArray($first);
+            return Arrays::is($first);
         }
 
     }

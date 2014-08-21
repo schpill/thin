@@ -3,8 +3,8 @@
 
     require_once 'Helper.php';
     require_once 'Autoloader.php';
-    require_once 'Swift/swift_required.php';
-    require_once 'facebook/facebook.php';
+    // require_once 'Swift/swift_required.php';
+    // require_once 'facebook/facebook.php';
 
     if (true === $debug) {
         error_reporting(-1);

@@ -1,6 +1,8 @@
 <?php
     namespace Thin;
 
+    use Closure;
+
     class Context extends Customize
     {
         private static $instances   = array();
@@ -22,11 +24,13 @@
             if (substr($event, 0, 3) == 'get' && strlen($event) > 3) {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($event, 3)));
                 $key = Inflector::lower($uncamelizeMethod);
+
                 return $this->get($key);
             } elseif(substr($event, 0, 3) == 'set' && strlen($event) > 3) {
                 $value = Arrays::first($args);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($event, 3)));
                 $key = Inflector::lower($uncamelizeMethod);
+
                 return $this->set($key, $value);
             }
 
@@ -40,7 +44,8 @@
                     );
                 }
                 $value = Arrays::first($args);
-                if (is_callable($value)) {
+
+                if ($value instanceof Closure) {
                     $eventable = $this->__event($event, $value);
                 } else {
                     $set = function () use ($value) {
@@ -48,6 +53,7 @@
                     };
                     $eventable =  $this->__event($event, $set);
                 }
+
                 return $this;
             }
         }

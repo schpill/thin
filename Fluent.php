@@ -101,11 +101,11 @@
 		 *
 		 * @param  string  $method
 		 * @param  array   $parameters
-		 * @return \Illuminate\Support\Fluent
+		 * @return Fluent
 		 */
 		public function __call($method, $parameters)
 		{
-			$this->attributes[$method] = count($parameters) > 0 ? current($parameters) : true;
+			$this->attributes[$method] = count($parameters) > 0 ? Arrays::first($parameters) : true;
 
 			return $this;
 		}

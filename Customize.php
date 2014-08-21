@@ -12,9 +12,11 @@
             if (method_exists($this, $name)) {
                 throw new Exception("The method $name is a native class' method. Please choose an other name.");
             }
+
             $obj = $this;
             $key = sha1($name);
             self::$__callables[$key] = $callable;
+
             return $this;
         }
 
@@ -22,9 +24,11 @@
         {
             $key = sha1($event);
             $callable = isAke(self::$__callables, $key, null);
+
             if (is_callable($callable)) {
                 return call_user_func_array($callable, $args);
             }
+
             throw new Exception("The method '$event' is not callable in this class.");
         }
 
@@ -32,24 +36,28 @@
         {
             $key = sha1($event);
             $callable = isAke(self::$__callables, $key, null);
+
             return is_callable($callable);
         }
 
         public function set($key, $value)
         {
             $this->__values[$key] = $value;
+
             return $this;
         }
 
         public function forget($key)
         {
             $this->__values[$key] = null;
+
             return $this;
         }
 
         public function has($key)
         {
             $value = isAke($this->__values, $key, null);
+
             return !is_null($value);
         }
 
@@ -62,6 +70,7 @@
         {
             $this->__values = array();
             self::$__callables = array();
+
             return $this;
         }
 

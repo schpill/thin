@@ -262,6 +262,11 @@
             return static::$foundation;
         }
 
+        public static function instance()
+        {
+            return instance(__CLASS__);
+        }
+
         /**
          * Pass any other methods to the Symfony request.
          *
@@ -272,6 +277,18 @@
         public static function __callStatic($method, $parameters)
         {
             return call_user_func_array(array(static::foundation(), $method), $parameters);
+        }
+
+        /**
+         * Pass any other methods to the Symfony request.
+         *
+         * @param  string  $method
+         * @param  array   $parameters
+         * @return mixed
+         */
+        public static function __call($method, $parameters)
+        {
+            return call_user_func_array(array(self::foundation(), $method), $parameters);
         }
 
     }

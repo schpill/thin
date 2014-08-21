@@ -33,6 +33,7 @@
     use Thin\Autoloader;
     use Thin\Database;
     use Thin\Instance;
+    use Thin\Request;
     use Thin\Tool;
     use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
@@ -2799,11 +2800,16 @@ $(document).ready(function() {
                     }
                 }
             }
-            $object = new Request();
+            $object = new Container();
             $object->populate($_REQUEST);
             $uri = substr($_SERVER['REQUEST_URI'], 1, strlen($_SERVER['REQUEST_URI']));
             $object->setThinUri(explode('/', $uri));
             return $object;
+        }
+
+        function req()
+        {
+            return Request::instance();
         }
     }
 

@@ -772,6 +772,30 @@
             return $filtered;
         }
 
+        /**
+         * Get the string parameters from a given list.
+         *
+         * @param  array  $array
+         * @return array
+         */
+
+        public static function stringParams($array)
+        {
+            return static::where($array, function($k, $v) { return is_string($k); });
+        }
+
+        /**
+         * Get the numeric parameters from a given list.
+         *
+         * @param  array  $array
+         * @return array
+         */
+
+        public static function numericParams($array)
+        {
+            return static::where($array, function($k, $v) { return is_numeric($k); });
+        }
+
         public static function __callStatic($method, $args)
         {
             if (is_callable($method)) {
