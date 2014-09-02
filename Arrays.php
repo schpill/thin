@@ -30,6 +30,12 @@
             return null;
         }
 
+        public static function set(array $array, $key, $value)
+        {
+            $array[$key] = $value;
+            return $array;
+        }
+
         /**
          * Tests if an array is associative or not.
          *

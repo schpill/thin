@@ -311,11 +311,8 @@
                 return $v->show($_);
             };
 
-            // $slug -> sluggify string (i.e: Hello world! -> hello-world)
-            $slug = function($_) {
-                $_ = str_replace(" ", "-", $_);
-                $_ = preg_replace('/[^\w\d\-\_]/i', '', $_);
-                return strtolower($_);
+            $slug = function ($str) {
+                return Inflector::slug($str);
             };
 
             eval(' ?>' . $code . '<?php ');
