@@ -31,7 +31,7 @@
         public function translate($key, $default)
         {
             if ($this->locale != Config::get('application.language', DEFAULT_LANGUAGE)) {
-                $row = jmodel('translation')->where("key = $key")->first();
+                $row = jmodel('translation')->where("key = $key")->where('lang = ' . $this->locale)->first();
 
                 if ($row) {
                     return Html\Helper::display($row['value']);
