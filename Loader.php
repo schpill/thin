@@ -17,13 +17,17 @@
         set_error_handler(function($type, $message, $file, $line) {
             $exception = new ErrorException($message, $type, 0, $file, $line);
 
-            showException($exception);
+            if (!startsWith($message, 'Undefined offset:')) {
+                showException($exception);
+            }
         });
 
         register_shutdown_function(function() {
-            $error = error_get_last();
+            $exception = error_get_last();
 
-            showException($error);
+            if($exception) {
+                showException($exception);
+            }
         });
     }
 

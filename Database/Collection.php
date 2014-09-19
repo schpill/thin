@@ -6,28 +6,34 @@
     use Countable;
     use ArrayIterator;
     use Closure;
+
     use Thin\Database;
     use Thin\Container;
     use Thin\Arrays;
     use Thin\Exception;
+    use Thin\Inflector;
 
     class Collection implements IteratorAggregate, ArrayAccess, Countable
     {
 
-        private $_items = array();
+        private $_items     = array();
+        private $is_where   = false;
+        private $_key;
 
         /**
          * Make a collection from a array of Model
          *
          * @param array $models models to add to the collection
          */
-        public function __construct($models = array())
+        public function __construct($models = array(), $key = null)
         {
             $items = array();
             $i = 0;
-            if (count($models)) {
+
+            if (count($models)) {if (!is_array($models)) dd($models);
                 foreach ($models as $model) {
                     $id = $i++;
+
                     if ($model instanceof Container) {
                         if ($model->exists()) {
                             $id = (int) $model->id();
@@ -35,10 +41,13 @@
                             $model->setTempId($id);
                         }
                     }
+
                     $items[$id] = $model;
                 }
             }
-            $this->_items = $items;
+
+            $this->_items   = $items;
+            $this->_key     = 'collection::' . $key;
         }
 
         /**
@@ -62,6 +71,7 @@
             } elseif ($items instanceof self) {
                 $this->add($items->toArray());
             }
+
             return $this;
         }
 
@@ -85,6 +95,7 @@
                     return $this->_items[$index];
                 }
             }
+
             return null;
         }
 
@@ -113,12 +124,15 @@
             }
 
             $item = $this->get($param);
+
             if ($item) {
                 $id = (int) $item->id();
+
                 if ($this->_items[$id]) {
                     unset($this->_items[$id]);
                 }
             }
+
             return $this;
         }
 
@@ -146,6 +160,7 @@
         public function take($limit = null)
         {
             if ($limit < 0) return $this->slice($limit, abs($limit));
+
             return $this->slice(0, $limit);
         }
 
@@ -173,9 +188,11 @@
             } elseif (is_integer($param)) {
                 $id = $param;
             }
+
             if (isset($id) && isset($this->_items[$id])) {
                 return true;
             }
+
             return false;
         }
 
@@ -204,6 +221,7 @@
         public function map(Closure $callback)
         {
             $this->_items = array_map($callback, $this->_items);
+
             return $this;
         }
 
@@ -233,7 +251,7 @@
 
             foreach ($this->_items as $key => $value) {
                 array_push($args, $value);
-                $results[$key] = call_user_func_array($callback, $$args);
+                $results[$key] = call_user_func_array($callback, $args);
             }
 
             if (true === $asc) {
@@ -247,6 +265,282 @@
             }
 
             $this->_items = $results;
+
+            return $this;
+        }
+
+        public function where($condition = null, $op = 'AND')
+        {
+            $res = $this->search($condition);
+
+            if (false === $this->is_where) {
+                $this->_items = $res;
+
+                return $this;
+            }
+
+            $this->is_where = true;
+            $values = array_values($this->_items);
+
+            switch ($op) {
+                case 'AND':
+                    $this->_items = array_intersect($values, array_values($res));
+                    break;
+                case 'OR':
+                    $this->_items = array_merge($values, array_values($res));
+                    break;
+                case 'XOR':
+                    $this->_items = array_merge(
+                        array_diff(
+                            $values,
+                            array_values($res),
+                            array_diff(
+                                array_values($res),
+                                $values
+                            )
+                        )
+                    );
+                    break;
+            }
+
+            return $this;
+        }
+
+        private function search($condition = null)
+        {
+            if ($this->_key != 'collection::') {
+                $cached = redis()->hget($this->_key, sha1($condition));
+
+                if (strlen($cached)) {
+                    return unserialize($cached);
+                }
+            }
+
+            $datas = $this->_items;
+
+            if (empty($condition)) {
+                return $datas;
+            }
+
+            $collection = [];
+
+            $condition  = repl('LIKE START', 'LIKESTART', $condition);
+            $condition  = repl('LIKE END', 'LIKEEND', $condition);
+            $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
+            $condition  = repl('NOT IN', 'NOTIN', $condition);
+
+            if (strstr($condition, ' = ')) {
+                list($field, $value) = explode(' = ', $condition, 2);
+                $op = '=';
+            } elseif (strstr($condition, ' < ')) {
+                list($field, $value) = explode(' < ', $condition, 2);
+                $op = '<';
+            } elseif (strstr($condition, ' > ')) {
+                list($field, $value) = explode(' > ', $condition, 2);
+                $op = '>';
+            } elseif (strstr($condition, ' <= ')) {
+                list($field, $value) = explode(' <= ', $condition, 2);
+                $op = '<=';
+            } elseif (strstr($condition, ' >= ')) {
+                list($field, $value) = explode(' >= ', $condition, 2);
+                $op = '>=';
+            } elseif (strstr($condition, ' LIKESTART ')) {
+                list($field, $value) = explode(' LIKESTART ', $condition, 2);
+                $op = 'LIKESTART';
+            } elseif (strstr($condition, ' LIKEEND ')) {
+                list($field, $value) = explode(' LIKEEND ', $condition, 2);
+                $op = 'LIKEEND';
+            } elseif (strstr($condition, ' NOTLIKE ')) {
+                list($field, $value) = explode(' NOTLIKE ', $condition, 2);
+                $op = 'NOTLIKE';
+            } elseif (strstr($condition, ' LIKE ')) {
+                list($field, $value) = explode(' LIKE ', $condition, 2);
+                $op = 'LIKE';
+            } elseif (strstr($condition, ' IN ')) {
+                list($field, $value) = explode(' IN ', $condition, 2);
+                $op = 'IN';
+            } elseif (strstr($condition, ' NOTIN ')) {
+                list($field, $value) = explode(' NOTIN ', $condition, 2);
+                $op = 'NOTIN';
+            } elseif (strstr($condition, ' != ')) {
+                list($field, $value) = explode(' != ', $condition, 2);
+                $op = '!=';
+            } elseif (strstr($condition, ' <> ')) {
+                list($field, $value) = explode(' <> ', $condition, 2);
+                $op = '<>';
+            }
+
+            if ($field == 'created_at' || $field == 'updated_at' && strstr($value, '/')) {
+                list($d, $m, $y) = explode('/', $value, 3);
+                $value = mktime(23, 59, 59, $m, $d, $y);
+            }
+
+            if(count($datas)) {
+                foreach ($datas as $tab) {
+                    if (!empty($tab)) {
+                        $val = isAke($tab, $field, null);
+
+                        if (strlen($val)) {
+                            $val = repl('|', ' ', $val);
+                            $check = $this->compare($val, $op, $value);
+                        } else {
+                            $check = ('null' == $value) ? true : false;
+                        }
+
+                        if (true === $check) {
+                            array_push($collection, $tab);
+                        }
+                    }
+                }
+            }
+
+            if ($this->_key != 'collection::') {
+                redis()->hset($this->_key, sha1($condition), serialize($collection));
+            }
+
+            return $collection;
+        }
+
+        private function compare($comp, $op, $value)
+        {
+            $res = false;
+
+            if (isset($comp)) {
+                $comp   = Inflector::lower($comp);
+                $value  = Inflector::lower($value);
+
+                switch ($op) {
+                    case '=':
+                        $res = sha1($comp) == sha1($value);
+                        break;
+
+                    case '>=':
+                        $res = $comp >= $value;
+                        break;
+
+                    case '>':
+                        $res = $comp > $value;
+                        break;
+
+                    case '<':
+                        $res = $comp < $value;
+                        break;
+
+                    case '<=':
+                        $res = $comp <= $value;
+                        break;
+
+                    case '<>':
+                    case '!=':
+                        $res = sha1($comp) != sha1($value);
+                        break;
+
+                    case 'LIKE':
+                        $value = repl("'", '', $value);
+                        $value = repl('%', '', $value);
+
+                        if (strstr($comp, $value)) {
+                            $res = true;
+                        }
+
+                        break;
+
+                    case 'NOTLIKE':
+                        $value = repl("'", '', $value);
+                        $value = repl('%', '', $value);
+
+                        if (!strstr($comp, $value)) {
+                            $res = true;
+                        }
+
+                        break;
+
+                    case 'LIKESTART':
+                        $value = repl("'", '', $value);
+                        $value = repl('%', '', $value);
+                        $res = (substr($comp, 0, strlen($value)) === $value);
+
+                        break;
+
+                    case 'LIKEEND':
+                        $value = repl("'", '', $value);
+                        $value = repl('%', '', $value);
+
+                        if (!strlen($comp)) {
+                            $res = true;
+                        }
+
+                        $res = (substr($comp, -strlen($value)) === $value);
+
+                        break;
+
+                    case 'IN':
+                        $value = repl('(', '', $value);
+                        $value = repl(')', '', $value);
+                        $tabValues = explode(',', $value);
+                        $res = Arrays::in($comp, $tabValues);
+
+                        break;
+
+                    case 'NOTIN':
+                        $value = repl('(', '', $value);
+                        $value = repl(')', '', $value);
+                        $tabValues = explode(',', $value);
+                        $res = !Arrays::in($comp, $tabValues);
+
+                        break;
+                }
+            }
+
+            return $res;
+        }
+
+        public function orderBy($fieldOrder, $orderDirection = 'ASC')
+        {
+            if ($this->_key != 'collection::') {
+                $cached = redis()->hget($this->_key, sha1(serialize(func_get_args())));
+
+                if (strlen($cached)) {
+                    $this->_items = unserialize($cached);
+                }
+            }
+
+            $sortFunc = function($key, $direction) {
+                return function ($a, $b) use ($key, $direction) {
+                    if ('ASC' == $direction) {
+                        return $a[$key] > $b[$key];
+                    } else {
+                        return $a[$key] < $b[$key];
+                    }
+                };
+            };
+
+            if (Arrays::is($fieldOrder) && !Arrays::is($orderDirection)) {
+                $t = array();
+
+                foreach ($fieldOrder as $tmpField) {
+                    array_push($t, $orderDirection);
+                }
+
+                $orderDirection = $t;
+            }
+
+            if (!Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
+                $orderDirection = Arrays::first($orderDirection);
+            }
+
+            if (Arrays::is($fieldOrder) && Arrays::is($orderDirection)) {
+                for ($i = 0 ; $i < count($fieldOrder) ; $i++) {
+                    usort($this->_items, $sortFunc($fieldOrder[$i], $orderDirection[$i]));
+                }
+            } else {
+                usort($this->_items, $sortFunc($fieldOrder, $orderDirection));
+            }
+
+            if ($this->_key != 'collection::') {
+                redis()->hset($this->_key, sha1(serialize(func_get_args())), serialize($this->_items));
+            }
+
             return $this;
         }
 
@@ -259,10 +553,12 @@
         public function groupBy($groupBy)
         {
             $results = array();
+
             foreach ($this->_items as $key => $value) {
                 $key = is_callable($groupBy) ? $groupBy($value, $key) : dataGet($value, $groupBy);
                 $results[$key][] = $value;
             }
+
             return new self($results);
         }
 
@@ -275,10 +571,12 @@
         public function keyBy($keyBy)
         {
             $results = array();
+
             foreach ($this->_items as $item) {
                 $key = dataGet($item, $keyBy);
                 $results[$key] = $item;
             }
+
             return new self($results);
         }
 
@@ -290,6 +588,7 @@
         public function reverse()
         {
             $this->_items = array_reverse($this->_items);
+
             return $this;
         }
 
@@ -303,7 +602,9 @@
         public static function make($items)
         {
             if (is_null($items)) return new static;
+
             if ($items instanceof Collection) return $items;
+
             return new static(is_array($items) ? $items : array($items));
         }
 
@@ -349,6 +650,7 @@
                         return $value;
                     }
                 }
+
                 return value($default);
             }
         }
@@ -383,6 +685,7 @@
         public function each(Closure $callback)
         {
             array_map($callback, $this->_items);
+
             return $this;
         }
 
@@ -398,12 +701,15 @@
         {
             if (count($this->_items)) {
                 $collection = array();
+
                 foreach ($this->_items as $item) {
                     if ($item instanceof Container) {
                         $item->fn($name, $callback);
                     }
+
                     array_push($collection, $item);
                 }
+
                 return new self($collection);
             }
             return $this;
@@ -441,6 +747,7 @@
         public function toArray($isNumericIndex = true, $itemToArray = false)
         {
             $array = array();
+
             foreach ($this->_items as $item) {
                 if (false === $isNumericIndex) {
                     if (true === $itemToArray) {
@@ -457,6 +764,7 @@
                 }
                 $array[] = $item;
             }
+
             return $array;
         }
 
@@ -472,6 +780,7 @@
         public function toJson($render = false)
         {
             $json = json_encode($this->toArray(true, true));
+
             if (false === $render) {
                 return $json;
             } else {
@@ -487,10 +796,12 @@
         public function toEmbedsArray()
         {
             $array = array();
+
             foreach ($this->_items as $item) {
                 $item = $item->assoc();
                 $array[] = $item;
             }
+
             return $array;
         }
 
@@ -516,6 +827,7 @@
             if (is_integer($key) && $key + 1 <= $this->count()) {
                 return true;
             }
+
             return $this->has($key);
         }
 
@@ -572,6 +884,7 @@
                     }
                 }
             }
+
             return $this;
         }
 
@@ -590,6 +903,7 @@
                     }
                 }
             }
+
             return $this;
         }
 
@@ -597,9 +911,13 @@
         {
             $rows = $this->rows();
             $ids = array();
+
             foreach ($rows as $row) {
-                array_push($ids, $row->id());
+                if ($row instanceof Container) {
+                    array_push($ids, $row->id());
+                }
             }
+
             return $ids;
         }
 
@@ -609,14 +927,38 @@
                 $first = $this->first();
                 $key = sha1('orm' . $first->_token);
                 $orm = isAke($first->values, $key, false);
+
                 if (false !== $orm) {
                     $db = $first->orm();
                     $methods = get_class_methods($db);
+
                     if (Arrays::in($method, $methods)) {
                         $instance = $db->where(
                             $db->database . '.' . $db->table . '.id IN (' . implode(',', $this->indexes()) . ')'
                         );
+
                         return call_user_func_array(array($instance, $method), $args);
+                    }
+                }
+
+                $key    = sha1('touch' . $first->_token);
+                $json   = isAke($first->values(), $key, false);
+
+                if (false !== $json) {
+                    $key    = sha1('db' . $first->_token);
+                    $cb     = isAke($first->values(), $key, false);
+
+                    if (false !== $cb) {
+                        $db         = call_user_func_array($cb, []);
+                        $methods    = get_class_methods($db);
+
+                        if (Arrays::in($method, $methods)) {
+                            $instance = $db->where(
+                                'id IN (' . implode(',', $this->indexes()) . ')'
+                            );
+
+                            return call_user_func_array(array($instance, $method), $args);
+                        }
                     }
                 }
             }
@@ -632,6 +974,7 @@
         public function implode($value, $glue = null)
         {
             if (is_null($glue)) return implode($this->lists($value));
+
             return implode($glue, $this->lists($value));
         }
 
@@ -679,6 +1022,7 @@
             if ($items instanceof Collection) {
                 $items = $items->rows(true);
             }
+
             return $items;
         }
     }

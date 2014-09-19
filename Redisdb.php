@@ -26,22 +26,26 @@
         {
             $this->waitUnlock();
             File::put($this->lock, time());
+
             return $this;
         }
 
         private function unlock()
         {
             File::delete($this->lock);
+
             return $this;
         }
 
         private function waitUnlock()
         {
             $wait = File::exists($this->lock);
+
             while (true == $wait) {
                 usleep(100);
                 $wait = File::exists($this->lock);
             }
+
             return $this;
         }
 
@@ -49,6 +53,7 @@
         {
             $this->results = null;
             $this->wheres  = array();
+
             return $this;
         }
 
@@ -63,6 +68,7 @@
             $data = count($data) ? $this->clean($data) : $data;
             $json = json_encode($data);
             container()->redis()->set($this->dbName, $json);
+
             return $this->unlock();
         }
 
@@ -70,6 +76,7 @@
         {
             $clean = array();
             $evers = array();
+
             foreach ($data as $row) {
                 if (Arrays::is($row)) {
                     $id = isAke($row, 'id', null);
@@ -77,33 +84,39 @@
                         unset($row['id']);
                     }
                     $key = sha1(serialize($row));
+
                     if (!Arrays::in($key, $evers)) {
                         array_push($clean, $row);
                         array_push($evers, $key);
                     }
                 }
             }
+
             return $clean;
         }
 
         public function all()
         {
             $this->waitUnlock();
-            $data = container()->redis()->get($this->dbName);dieDump($data);
+            $data = container()->redis()->get($this->dbName);
             $data = strlen($data) ? $this->id(json_decode($data, true)) : array();
+
             return $data;
         }
 
         private function id($tab, $idSave = null)
         {
             $collection = array();
+
             foreach ($tab as $id => $row) {
                 if (isset($id) && Arrays::is($row)) {
                     $row['id'] = $id;
                     $collection[] = $row;
                 }
             }
+
             $this->lastIbsertId = !strlen($idSave) ? isset($id) ? $id : null : $idSave;
+
             return $collection;
         }
 
@@ -112,6 +125,7 @@
             if (!strlen($this->lastIbsertId)) {
                 $this->lastIbsertId = 0;
             }
+
             return $this->lastIbsertId;
         }
 
@@ -125,12 +139,16 @@
             if (false === $object) {
                 return $this->results;
             }
+
             $collection = array();
+
             foreach ($this->results as $res) {
                 $tmp = $this->row($res);
                 array_push($collection, $tmp);
             }
+
             $this->reset();
+
             return $collection;
         }
 
@@ -139,18 +157,23 @@
             if (false === $object) {
                 return $this->results;
             }
+
             $collection = array();
+
             foreach ($this->results as $res) {
                 $tmp = $this->row($res);
                 array_push($collection, $tmp);
             }
+
             $this->reset();
+
             return $collection;
         }
 
         public function fetch()
         {
             $this->results = $this->all();
+
             return $this;
         }
 
@@ -158,17 +181,22 @@
         {
             $list = $this->get();
             $id = isAke($value, 'id', null);
+
             if (strlen($id)) {
                 unset($value['id']);
+
                 return $this->edit($id, $value, $list);
             }
+
             array_push($list, $value);
+
             return $this->save($list);
         }
 
         public function edit($index, $value, $list)
         {
             $collection = array();
+
             foreach ($list as $k => $v) {
                 if ($k == $index) {
                     $collection[$k] = $value;
@@ -176,6 +204,7 @@
                     $collection[$k] = $v;
                 }
             }
+
             return $this->save($collection, $index);
         }
 
@@ -183,11 +212,13 @@
         {
             $list = $this->all();
             $collection = array();
+
             foreach ($list as $k => $v) {
                 if ($k != $index) {
                     $collection[$k] = $v;
                 }
             }
+
             return $this->save($collection);
         }
 
@@ -201,6 +232,7 @@
             }
 
             $this->reset();
+
             return $row;
         }
 
@@ -214,6 +246,7 @@
             }
 
             $this->reset();
+
             return $row;
         }
 
@@ -285,9 +318,11 @@
         public function findBy($field, $value, $one = false, $object = false)
         {
             $res = $this->search("$field = $value");
+
             if (count($res) && true === $one) {
                 return $this->row(Arrays::first($res));
             }
+
             return $this->exec($object);
         }
 
@@ -297,18 +332,23 @@
             $keyCache = sha1('groupbyRDB' . $field . serialize($res) . $this->type);
 
             $groupBys = $this->cached($keyCache);
+
             if (empty($groupBys)) {
                 $groupBys   = array();
                 $ever       = array();
+
                 foreach ($res as $id => $tab) {
                     $obj = isAke($tab, $field, null);
+
                     if (!Arrays::in($obj, $ever)) {
                         $groupBys[$id]  = $tab;
                         $ever[]         = $obj;
                     }
                 }
+
                 $this->cached($keyCache, $groupBys);
             }
+
             $this->results = $groupBys;
             $this->order($field);
 
@@ -319,6 +359,7 @@
         {
             $res = count($results) ? $results : $this->results;
             $this->results = array_slice($res, $offset, $limit);
+
             return $this;
         }
 
@@ -333,7 +374,9 @@
                     $sum += $val;
                 }
             }
+
             $this->reset();
+
             return $sum;
         }
 
@@ -346,8 +389,10 @@
         {
             $res = count($results) ? $results : $this->results;
             $min = 0;
+
             if (count($res)) {
                 $first = true;
+
                 foreach ($res as $id => $tab) {
                     $val = isAke($tab, $field, 0);
                     if (true === $first) {
@@ -358,7 +403,9 @@
                     $first = false;
                 }
             }
+
             $this->reset();
+
             return $min;
         }
 
@@ -366,8 +413,10 @@
         {
             $res = count($results) ? $results : $this->results;
             $max = 0;
+
             if (count($res)) {
                 $first = true;
+
                 foreach ($res as $id => $tab) {
                     $val = isAke($tab, $field, 0);
                     if (true === $first) {
@@ -378,13 +427,16 @@
                     $first = false;
                 }
             }
+
             $this->reset();
+
             return $max;
         }
 
         public function order($fieldOrder, $orderDirection = 'ASC', $results = array())
         {
             $res = count($results) ? $results : $this->results;
+
             if (empty($res)) {
                 return $this;
             }
@@ -396,12 +448,13 @@
                 serialize($res) .
                 $this->type
             );
+
             $cached = $this->cached($keyCache);
 
             if (empty($cached)) {
                 $fields = array_keys(Arrays::first($res));
-
                 $sort = array();
+
                 foreach($res as $i => $tab) {
                     foreach ($fields as $k) {
                         $value = isAke($tab, $k, null);
@@ -410,6 +463,7 @@
                 }
 
                 $asort = array();
+
                 foreach ($sort as $key => $rows) {
                     for ($i = 0 ; $i < count($rows) ; $i++) {
                         if (empty($$key) || is_string($$key)) {
@@ -432,6 +486,7 @@
                     if (count($orderDirection) < count($fieldOrder)) {
                         throw new Exception('You must provide the same arguments number of fields sorting and directions sorting.');
                     }
+
                     if (count($fieldOrder) == 1) {
                         $fieldOrder = Arrays::first($fieldOrder);
                         if ('ASC' == Inflector::upper(Arrays::first($orderDirection))) {
@@ -456,7 +511,9 @@
                         array_multisort($$fieldOrder, SORT_DESC, $asort);
                     }
                 }
+
                 $collection = array();
+
                 foreach ($asort as $key => $row) {
                     array_push($collection, $row);
                 }
@@ -466,6 +523,7 @@
             }
 
             $this->results = $collection;
+
             return $this;
         }
 
@@ -502,6 +560,7 @@
         public function where($condition, $op = 'AND', $results = array())
         {
             $res = $this->search($condition, $results);
+
             if (!count($this->wheres)) {
                 $this->results = array_values($res);
             } else {
@@ -526,7 +585,9 @@
                         break;
                 }
             }
+
             $this->wheres[] = $condition;
+
             return $this;
         }
 
@@ -538,6 +599,7 @@
             $keyCache = sha1('searchRDB' . $condition . serialize($datas) . $this->type);
 
             $cached = $this->cached($keyCache);
+
             if (empty($cached)) {
                 if(count($datas)) {
                     $condition  = repl('NOT LIKE', 'NOTLIKE', $condition);
@@ -564,6 +626,7 @@
                             }
                         }
                     }
+
                     $this->cached($keyCache, $collection);
                 }
             } else {
@@ -573,6 +636,7 @@
             if (true === $populate) {
                 $this->results = $collection;
             }
+
             return $collection;
         }
 
@@ -580,11 +644,14 @@
         {
             $keyCache = sha1('compare_' . serialize(func_get_args()));
             $cached = $this->cached($keyCache);
+
             if (empty($cached)) {
                 $res = false;
+
                 if (isset($comp)) {
                     $comp   = Inflector::lower($comp);
                     $value  = Inflector::lower($value);
+
                     switch ($op) {
                         case '=':
                             $res = sha1($comp) == sha1($value);
@@ -646,9 +713,12 @@
                             break;
                     }
                 }
+
                 $this->cached($keyCache, $res);
+
                 return $res;
             }
+
             return $cached;
         }
 
@@ -657,9 +727,12 @@
             if (false === $this->cache) {
                 return null;
             }
+
             $db = container()->redis();
+
             if (empty($value)) {
                 $val = $db->get($key);
+
                 if (strlen($val)) {
                     return json_decode($val, true);
                 }
@@ -676,9 +749,11 @@
             if (!strlen($entity)) {
                 throw new Exception("An entity must be provided to use this method.");
             }
+
             if (!Arrays::exists($entity, static::$configs)) {
                 self::$configs[$entity] = array();
             }
+
             if (empty($value)) {
                 if (!strlen($key)) {
                     throw new Exception("A key must be provided to use this method.");
@@ -689,6 +764,7 @@
             if (!strlen($key)) {
                 throw new Exception("A key must be provided to use this method.");
             }
+
             self::$configs[$entity][$key] = $value;
         }
 
@@ -696,6 +772,7 @@
         {
             $settings = isAke(self::$configs, $this->type);
             $event = isAke($settings, $id);
+
             if (!empty($event)) {
                 if (is_callable($event)) {
                     if (version_compare(PHP_VERSION, '5.4.0', ">=")) {
@@ -709,12 +786,14 @@
         public function setCache($bool = true)
         {
             $this->cache = $bool;
+
             return $this;
         }
 
         public function setTtl($ttl = 3600)
         {
             $this->ttl = $ttl;
+
             return $this;
         }
 
@@ -724,16 +803,19 @@
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 6)));
                 $field = Inflector::lower($uncamelizeMethod);
                 $value = Arrays::first($parameters);
+
                 return $this->findBy($field, $value);
             } elseif (substr($method, 0, strlen('findObjectsBy')) == 'findObjectsBy') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, strlen('findObjectsBy'))));
                 $field = Inflector::lower($uncamelizeMethod);
                 $value = Arrays::first($parameters);
+
                 return $this->findBy($field, $value, false, true);
             } elseif (substr($method, 0, 9) == 'findOneBy') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 9)));
                 $field = Inflector::lower($uncamelizeMethod);
                 $value = Arrays::first($parameters);
+
                 return $this->findBy($field, $value, true);
             }
         }

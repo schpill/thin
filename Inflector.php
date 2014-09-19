@@ -506,7 +506,7 @@
             return 'utf-8';
         }
 
-        public static function urlize($text)
+        public static function urlize($text, $separator = '-')
         {
             // Remove all non url friendly characters with the unaccent function
             $text = static::lower(static::unaccent($text));
@@ -515,12 +515,27 @@
             $text = preg_replace('/\W/', ' ', $text);
 
             // More stripping. Replace spaces with dashes
-            $text = static::lower(preg_replace('/[^A-Z^a-z^0-9^\/]+/', '-',
-                               preg_replace('/([a-z\d])([A-Z])/', '\1_\2',
-                               preg_replace('/([A-Z]+)([A-Z][a-z])/', '\1_\2',
-                               preg_replace('/::/', '/', $text)))));
+            $text = static::lower(
+                preg_replace(
+                    '/[^A-Z^a-z^0-9^\/]+/',
+                    $separator,
+                    preg_replace(
+                        '/([a-z\d])([A-Z])/',
+                        '\1_\2',
+                        preg_replace(
+                            '/([A-Z]+)([A-Z][a-z])/',
+                            '\1_\2',
+                            preg_replace(
+                                '/::/',
+                                '/',
+                                $text
+                            )
+                        )
+                    )
+                )
+            );
 
-            return trim($text, '-');
+            return trim($text, $separator);
         }
 
         public static function unaccent($string)

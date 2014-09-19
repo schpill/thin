@@ -54,6 +54,7 @@
         {
             if (null !== $viewFile) {
                 $this->_module   = 'www';
+
                 if (strstr($viewFile, DS)) {
                     $this->_viewFile = $viewFile;
                 } else {
@@ -73,8 +74,10 @@
 
                 $this->_module   = $module;
                 $isTranslate = Utils::get('isTranslate');
+
                 if (true === $isTranslate) {
                     $lng = getLanguage();
+
                     if (true === container()->getMultiSite()) {
                         $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
                     } else {
@@ -97,6 +100,7 @@
         {
             $tab = explode(DS, $this->_viewFile);
             $path = repl(Arrays::last($tab), $tpl, $this->_viewFile);
+
             if (File::exists($path)) {die($path);
                 include_once $path;
             }
@@ -119,6 +123,7 @@
             } else {
                 $route = container()->getRoute();
                 $module = (null === $module) ? $route->getModule() : $module;
+
                 if (true === container()->getMultiSite()) {
                     $viewFile = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
                 } else {
@@ -147,6 +152,7 @@
                     $result .= $this->partial($partial, $with, $cache, false, $module);
                 }
             }
+
             if (true === $echo) {
                 return $result;
             } else {
@@ -159,6 +165,7 @@
             if (File::exists($tpl)) {
                 $this->_viewFile = $tpl;
             }
+
             return $this;
         }
 
@@ -166,6 +173,7 @@
         {
             $file = (null === $partial) ? $this->_viewFile : $partial;
             $this->_viewFile = $file;
+
             if (container()->getViewCache() !== true) {
                 $this->_run($echo);
             } else {
@@ -182,6 +190,7 @@
             $ttl    = is_null($ttl) ? Config::get('application.view.cache', 7200) : $ttl;
 
             $html   = $redis->get($key);
+
             if (!strlen($html)) {
                 $html = $this->_run(false);
                 $redis->set($key, $html);
@@ -197,8 +206,13 @@
 
         public static function cleanCache()
         {
+            if (!function_exists('context')) {
+                $path = realpath(__DIR__ . '/../../public');
+                require_once($path . '/env.php');
+            }
+
             $redis  = context()->redis();
-            $keys = $redis->keys('*::viewCache');
+            $keys   = $redis->keys('*::viewCache');
 
             if (count($keys)) {
                 foreach ($keys as $key) {
@@ -218,16 +232,23 @@
         public static function display($page)
         {
             $tpl = $page->getTpl();
+
             if (File::exists($tpl)) {
                 $content = fgc($tpl);
                 $content = repl('$this->', '$page->', $content);
                 $file = CACHE_PATH . DS . sha1($content) . '.display';
                 File::put($file, $content);
+
                 ob_start();
+
                 include $file;
+
                 $html = ob_get_contents();
+
                 ob_end_clean();
+
                 File::delete($file);
+
                 return $html;
             }
             return '';
@@ -239,6 +260,7 @@
             $echo = func_get_arg(0);
             $file = $this->_viewFile;
             $isExpired = $this->expired();
+
             if (false === $this->_compiled) {
                 $isExpired = true;
             }
@@ -250,29 +272,34 @@
                     $hash = sha1($this->compiled() . $this->_cache . _serialize((array)$this)) . '.cache';
                     $cacheInst->forget($hash);
                 }
+
                 $file = $this->compiled($file);
             }
             if (null !== $this->_cache) {
                 $isCached = isCached($file, $this->_cache, (array)$this);
+
                 if (false === $isCached) {
                     ob_start();
+
                     if (true !== $viewRedis) {
                         include $file;
                     }
+
                     $content = ob_get_contents();
                     ob_end_clean();
+
                     if (true === $echo) {
                         if (true !== $viewRedis) {
-                            echo cache($file, $content, $this->_cache, (array)$this);
+                            echo cache($file, $content, $this->_cache, (array) $this);
                         }
                     } else {
                         if (true !== $viewRedis) {
-                            return cache($file, $content, $this->_cache, (array)$this);
+                            return cache($file, $content, $this->_cache, (array) $this);
                         }
                     }
                 } else {
                     if (true !== $viewRedis) {
-                        $content = cache($file, null, $this->_cache, (array)$this);
+                        $content = cache($file, null, $this->_cache, (array) $this);
                         if (true === $echo) {
                             echo $content;
                         } else {
@@ -289,15 +316,20 @@
                     }
                 } else {
                     ob_start();
+
                     if (true !== $viewRedis) {
                         include $file;
                     } else {
                         $this->compile($file);
                     }
+
                     $content = ob_get_contents();
+
                     ob_end_clean();
+
                     $hash = sha1($this->_viewFile);
                     Utils::set($hash, $content);
+
                     return $content;
                 }
             }
@@ -325,14 +357,18 @@
                 if (!File::exists($this->compiled()) || !File::exists($this->_viewFile)) {
                     return true;
                 }
+
                 return File::modified($this->_viewFile) > File::modified($this->compiled());
             } else {
                 $key = sha1($this->_viewFile) . '::age';
                 $age = context()->redis()->get($key);
+
                 if (strlen($age)) {
                     $age = (int) $age;
+
                     return File::modified($this->_viewFile) || File::modified(__FILE__) > $age;
                 }
+
                 return true;
             }
         }
@@ -340,23 +376,28 @@
         protected function compiled($compile = false)
         {
             $viewRedis = container()->getViewRedis();
+
             if (true !== $viewRedis) {
                 $file = CACHE_PATH . DS . md5($this->_viewFile) . '.compiled';
+
                 if (false !== $compile) {
                     if (File::exists($file)) {
                         File::delete($file);
                     }
                     File::put($file, $this->makeCompile($compile));
                 }
+
                 return $file;
             } else {
                 $redis = context()->redis();
                 $keyAge = sha1($this->_viewFile) . '::age';
                 $keyTpl = sha1($this->_viewFile) . '::html';
+
                 if (false !== $compile) {
                     $redis->set($keyAge, time());
                     $content = $this->makeCompile($compile);
                     $redis->set($keyTpl, $content);
+
                     return $content;
                 } else {
                     return $redis->get($keyTpl);
@@ -369,9 +410,21 @@
             $this->_alert = $alert;
         }
 
+        public function aged($asset)
+        {
+            $file = PUBLIC_PATH . $asset;
+
+            if (File::exists($file)) {
+                return File::age($file);
+            }
+
+            return time();
+        }
+
         public function asset($file, $echo = true)
         {
             $url = URLSITE . 'assets/themes/' . SITE_NAME . '/' . $file;
+
             if (true === $echo) {
                 echo $url;
             } else {
@@ -407,6 +460,7 @@
             $content = repl('$this->partial(', 'context("view")->partial(', $content);
             $content = repl('$this->tpl(', 'context("view")->partial(', $content);
             $content = repl('includes(', 'context("view")->partial(', $content);
+
             return self::lng($content);
         }
 
@@ -448,6 +502,7 @@
             $content = repl('$this->partial(', 'context("view")->partial(', $content);
             $content = repl('$this->tpl(', 'context("view")->partial(', $content);
             $content = repl('includes(', 'context("view")->partial(', $content);
+
             if (count($this->_grammar)) {
                 foreach ($this->_grammar as $grammar => $replace) {
                     $content = repl($grammar, $replace, $content);
@@ -479,8 +534,10 @@
                 explode('<t ', $content),
                 explode('<t>', $content)
             );
+
             if (count($tab)) {
                 array_shift($tab);
+
                 foreach ($tab as $row) {
                     $id         = Utils::cut('id="', '"', trim($row));
                     $args       = Utils::cut('args=[', ']', trim($row));
@@ -528,6 +585,7 @@
                     }
                 }
             }
+
             return $content;
         }
 
@@ -536,6 +594,7 @@
             if (!Arrays::exists($grammar, $this->_grammar)) {
                 $this->_grammar[$grammar] = $replace;
             }
+
             return $this;
         }
 
@@ -546,6 +605,7 @@
                     $this->_cache = $duration;
                 }
             }
+
             return $this;
         }
 
@@ -566,6 +626,7 @@
                 $this->$var = $value;
                 return $this;
             }
+
             if (!is_callable($func) || substr($func, 0, 3) !== 'set' || substr($func, 0, 3) !== 'get') {
                 throw new \BadMethodCallException(__class__ . ' => ' . $func);
             }
@@ -574,6 +635,7 @@
         public function __set($key, $value)
         {
             $this->$key = $value;
+
             return $this;
         }
 
@@ -582,6 +644,7 @@
             if (isset($this->$key)) {
                 return $this->$key;
             }
+
             return null;
         }
 
@@ -601,15 +664,19 @@
                 $tabString = explode('.', Inflector::lower($asset));
                 $ext = Arrays::last($tabString);
             }
+
             if ($ext == 'css') {
                 $assetHtml = '<link href="' . $asset . '?v=' . $versionCss . '"';
+
                 if (count($configAsset)) {
                     foreach ($configAsset as $key => $value) {
                         $assetHtml .= " $key=\"$value\" ";
                     }
                     $assetHtml = Inflector::substr($assetHtml, 0, -1);
                 }
+
                 $assetHtml .= ' />' . "\n";
+
                 return $assetHtml;
             } else if ($ext == 'ico') {
                 return '<link rel="shortcut icon" href="' . $asset . '" type="image/x-icon" />' . "\n";
@@ -617,6 +684,7 @@
                 return '<script type="text/javascript" src="' . $asset . '?v=' . $versionJs . '"></script>' . "\n";
             } elseif (in_array($ext, array('jpg', 'jpeg', 'png', 'gif', 'bmp'))) {
                 $assetHtml = '<img src="' . $asset . '"';
+
                 if (count($configAsset)) {
                     foreach ($configAsset as $key => $value) {
                         $assetHtml .= " $key=\"$value\" ";
@@ -624,6 +692,7 @@
                     $assetHtml = Inflector::substr($assetHtml, 0, -1);
                 }
                 $assetHtml .= ' />' . "\n";
+
                 return $assetHtml;
             } else {
                 return $asset;
@@ -633,6 +702,7 @@
         public function setEscape($spec)
         {
             $this->_escape = $spec;
+
             return $this;
         }
 
@@ -667,7 +737,9 @@
             if (1 == func_num_args()) {
                 return call_user_func($this->_escape, $var);
             }
+
             $args = func_get_args();
+
             return call_user_func_array($this->_escape, $args);
         }
 
@@ -680,6 +752,7 @@
         public function setEncoding($encoding)
         {
             $this->_encoding = $encoding;
+
             return $this;
         }
 
@@ -723,11 +796,14 @@
         public static function evaluate($template, array $parameters)
         {
             extract($parameters, EXTR_SKIP);
+
             if (File::exists($template)) {
                 if (empty($view)) {
                     throw new Exception("A view is needed to evaluate.");
                 }
+
                 ob_start();
+
                 require $template;
 
                 return ob_get_clean();
@@ -735,8 +811,11 @@
                 if (empty($view)) {
                     throw new Exception("A view is needed to evaluate.");
                 }
+
                 ob_start();
+
                 eval('; ?>' . $template . '<?php ;');
+
                 return ob_get_clean();
             } else {
                 throw new Exception("A view is needed to evaluate.");
@@ -755,6 +834,7 @@
         public static function link($url, $content, $external = false)
         {
             $target = !$external ? '' : 'target="_blank" ';
+
             return '<a ' . $target . 'href="' . context('url')->make($url) . '" rel="tooltip" title="' . Html\Helper::display($content) . '">' . Html\Helper::display($content) . '</a>';
         }
 
@@ -796,6 +876,7 @@
             $PCSQL              = 100 - $PCPhpSQL;
             $PCNoSQL            = 100 - $PCPhpNoSQL;
             $included           = count(get_included_files());
+
             return "\n<!--\n\n\tPage generated in $executionTime s. by Thin Framework (C) www.geraldplusquellec.me 1996 - " . date('Y') . "\n\t$queries $valQueries in $SQLDuration s. (" . ($PCSQL) . " %)\n\t$queriesNoSQL $valQueriesNoSQL in $SQLDurationNoSQL s. (" . ($PCNoSQL) . " %)\n\tPHP Execution $execPHP s. ($PCPhp %)\n\n\n\n\t" . $included . " scripts included\n\tUsed Memory : " . convertSize(memory_get_usage()) . "\n\n-->";
         }
 
@@ -803,6 +884,7 @@
         {
             if (null === static::$urlsite) {
                 $protocol = 'http';
+
                 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
                     $protocol = 'https';
                 }
@@ -819,9 +901,11 @@
                 if (Inflector::upper(substr(PHP_OS, 0, 3)) === 'WIN') {
                     $tab = explode('\\', $urlSite);
                     $r = '';
+
                     foreach ($tab as $c => $v) {
                         $r .= $v;
                     }
+
                     $r = repl('//', '/', $r);
                     $r = repl($protocol . ':/', $protocol . '://', $r);
                     $urlSite = $r;
@@ -855,12 +939,14 @@
         public function addCss($url, $where = 'header', $linkArgs = array())
         {
             $this->assets['css'][$where][] = asset()->css($url, $linkArgs);
+
             return $this;
         }
 
         public function addJs($url, $where = 'footer', $linkArgs = array())
         {
             $this->assets['js'][$where][] = asset()->js($url, $linkArgs);
+
             return $this;
         }
 

@@ -140,6 +140,9 @@
             $key = sha1('orm' . $this->_token);
             $orm = isAke($this->values, $key, false);
 
+            $key = sha1('touch' . $this->_token);
+            $dbjson = isAke($this->values, $key, false);
+
             if (substr($func, 0, 4) == 'link' && false !== $orm) {
                 $value = Arrays::first($argv);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 4)));
@@ -413,8 +416,43 @@
                         $table  = $func;
                     }
 
-                    $object = count($argv) == 1 ? Arrays::first($argv) : true;
+                    $object = count($argv) == 1 ? Arrays::first($argv) : false;
                     $model  = model($table);
+
+                    return true === $many
+                    ? $model->where($db->table . '_id = ' . $this->id())->exec($object)
+                    : $model->where($db->table . '_id = ' . $this->id())->first($object);
+                }
+
+                if (false !== $dbjson) {
+                    $key    = sha1('db' . $this->_token);
+                    $cb     = isAke($this->values, $key);
+                    $db     = call_user_func_array($cb, array());
+                    $fields = $db->fields();
+
+                    if (Arrays::in($func, $fields)) {
+                        if (!count($argv)) return $this->$func;
+                        else {
+                            $setter = setter($func);
+                            $this->$setter(Arrays::first($argv));
+
+                            return $this;
+                        }
+                    }
+
+                    $tab    = str_split($func);
+                    $many   = false;
+
+                    if (Arrays::last($tab) == 's') {
+                        array_pop($tab);
+                        $table  = implode('', $tab);
+                        $many   = true;
+                    } else {
+                        $table  = $func;
+                    }
+
+                    $object = count($argv) == 1 ? Arrays::first($argv) : false;
+                    $model  = jdb($db->db, $table);
 
                     return true === $many
                     ? $model->where($db->table . '_id = ' . $this->id())->exec($object)

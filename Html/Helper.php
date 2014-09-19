@@ -1,27 +1,33 @@
 <?php
     namespace Thin\Html;
+
     use Thin\Blog as Blog;
     use Thin\Data as Data;
     use Thin\Arrays as Arrays;
     use Thin\Inflector as Inflector;
+
     class Helper
     {
 
         public static function adminSingular($type)
         {
             $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
+
             if (ake('singular', $settings)) {
                 return static::display($settings['singular']);
             }
+
             return static::display($type);
         }
 
         public static function adminPlural($type)
         {
             $settings = ake($type, Data::$_settings) ? Data::$_settings[$type] : array();
+
             if (ake('plural', $settings)) {
                 return static::display($settings['plural']);
             }
+
             return static::display($type . 's');
         }
 
@@ -35,6 +41,7 @@
             if (!empty($date) && is_numeric($date)) {
                 $date = date($format, $date);
             }
+
             return $date;
         }
 
@@ -42,12 +49,14 @@
         {
             $str = static::display($str);
             $str = repl('_', ' ', $str);
+
             return stripslashes($str);
         }
 
         public static function js($str)
         {
             $str = static::display($str);
+
             return json_encode($str);
         }
 
@@ -55,6 +64,7 @@
         {
             $str = static::display($str);
             $str = repl('is ', 'is not ', $str);
+
             return $str;
         }
 
@@ -62,6 +72,7 @@
         {
             $str = repl(" '", ' <span style="padding: 5px; font-family: Coustard; color: #fff; background: #4e1078;">', $str);
             $str = repl("'", ' </span>', $str);
+
             return $str;
         }
 

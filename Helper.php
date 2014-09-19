@@ -39,10 +39,34 @@
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
 
+    if (!function_exists('urlAction')) {
+        function urlAction($action, $module = null, $controller = null)
+        {
+            $module = is_null($module) ? container()->getRoute()->getModule() : $module;
+            $controller = is_null($controller) ? container()->getRoute()->getController() : $controller;
+
+            return URLSITE . Inflector::lower($module) . '/' . Inflector::lower($controller) . '/' . Inflector::lower($action);
+        }
+
+        function url($action = null, $module = null, $controller = null)
+        {
+            if (0 == func_num_args()) return context('url');
+
+            echo urlAction($action, $module, $controller);
+        }
+    }
+
     if (!function_exists('validator')) {
         function validator(Database $model)
         {
             return DBValidator::instance($model);
+        }
+    }
+
+    if (!function_exists('codex')) {
+        function codex($code)
+        {
+            die('<pre>' . $code . '</pre>');
         }
     }
 
@@ -82,6 +106,7 @@
                 $tab = explode('.', $filename);
                 $filename = path('config') . DS . implode(DS, $tab) . '.ini';
             }
+
             return new IniLoad($filename, $section, $options);
         }
     }
@@ -100,10 +125,12 @@
         function events()
         {
             $events = container()->getEvents();
+
             if (is_null($events)) {
                 $events = new Dispatcher(new Eventable);
                 container()->setEvents($events);
             }
+
             return $events;
         }
     }
@@ -121,6 +148,7 @@
             $name = ucfirst(strtolower($name));
             $code = 'class ' . $name . ' extends Thin\\Facade {protected static function factory(){ return ' . strtolower($name) . ';}}';
             eval($code);
+
             return new $name();
         }
 
@@ -140,13 +168,16 @@
         {
             $session = session('web');
             $infosIP = $session->getInfosIp();
+
             if (empty($infosIP)) {
                 $ip = $_SERVER["REMOTE_ADDR"];
+
                 if (true === $localhost) {
                     $url = "http://ip-api.com/json";
                 } else {
                     $url = "http://ip-api.com/json/$ip";
                 }
+
                 $json = dwn($url);
                 $json = str_replace(
                     array(
@@ -161,18 +192,22 @@
                     ),
                     $json
                 );
+
                 $infos = json_decode($json, true);
+
                 if (Arrays::is($infos)) {
                     if (Arrays::exists('status', $infos)) {
                         if ($infos['status'] == 'fail') {
                             return infosIP($array, true);
                         }
                     }
+
                     $InfosIp = o("IP");
                     $InfosIp->populate($infos);
                     $session->setInfosIp($InfosIp);
                 }
             }
+
             return false === $array ? $infosIP : $infos;
         }
     }
@@ -183,11 +218,13 @@
             if (empty($str)) {
                 return '';
             }
+
             if (count($args) > 0) {
                 foreach ($args as $k => $v) {
                     $str = str_replace($char . $k, $v, $str);
                 }
             }
+
             return $str;
         }
     }
@@ -197,6 +234,7 @@
         {
             $a = func_get_args();
             $i = Functions::instance();
+
             if (!empty($a)) {
                 if (2 == count($a)) {
                     $n = Arrays::first($a);
@@ -207,6 +245,7 @@
                     return $i->$n;
                 }
             }
+
             return $i;
         }
 
@@ -220,13 +259,16 @@
         function redis()
         {
             $redis = container()->getRedis();
+
             if (null === $redis) {
                 // require_once "predis/autoload.php";
                 // PredisAutoloader::register();
                 $args = func_get_args();
+
                 if (count($args)) {
                     extract(Arrays::first($args));
                 }
+
                 $host   = isset($host)      ? $host     : '127.0.0.1';
                 $scheme = isset($scheme)    ? $scheme   : 'tcp';
                 $port   = isset($port)      ? $port     : 6379;
@@ -240,10 +282,10 @@
                         )
                     );
                     container()->setRedis($redis);
-                }
-                catch (Exception $e) {
+                } catch (Exception $e) {
                     echo "Couldn't connected to Redis";
                     echo $e->getMessage();
+
                     return null;
                 }
             }
@@ -262,6 +304,7 @@
         {
             $lng        = session('web')->getLanguage();
             $default    = options()->getDefaultLanguage();
+
             if ($lng == $default) {
                 $translation = assignParams($string, $params);
                 if (true === $echo) {
@@ -274,6 +317,7 @@
                 $tab    = languages()->$getter();
                 $what   = Arrays::exists(sha1($string), $tab) ? $tab[sha1($string)] : $string;
                 $translation = assignParams($what, $params);
+
                 if (true === $echo) {
                     echo $translation;
                 } else {
@@ -287,10 +331,12 @@
             if (!count($params)) {
                 return $string;
             }
+
             foreach ($params as $key => $value) {
                 $what   = "##$key##";
                 $string = str_replace($what, $value, $string);
             }
+
             return $string;
         }
 
@@ -300,13 +346,16 @@
             $cnt        = fgc($file);
             $sentences  = explode('@@@', $cnt);
             $key        = null;
+
             if (count($sentences)) {
                 foreach ($sentences as $sentence) {
                     $sentence   = trim($sentence);
                     $rows       = explode("\n", $sentence);
+
                     if (count($rows)) {
                         foreach ($rows as $row) {
                             $row = trim($row);
+
                             if (!contain('[:', $row)) {
                                 $key = $row;
                             } else {
@@ -321,6 +370,7 @@
                     }
                 }
             }
+
             foreach ($tab as $lng => $sentences) {
                 $setter = setter($lng);
                 languages()->$setter($sentences);
@@ -336,17 +386,20 @@
         {
             $db = dm('translation');
             $res = $db->where('name = ' . sha1($name))->where('language = ' . $language)->get();
+
             if (count($res)) {
                 $t = $db->first($res);
             } else {
                 $t = newData('translation');
             }
+
             $t->setName(sha1($name))->setLanguage($language)->setValue($value)->save();
         }
 
         function t($key, $params = array(), $echo = true)
         {
             $lng = session('web')->getLanguage();
+
             if ($lng == options()->getDefaultLanguage()) {
                 if (true === $echo) {
                     echo $key;
@@ -354,11 +407,14 @@
                     return $key;
                 }
             }
+
             $db = dm('translation');
             $res = $db->where('name = ' . sha1($key))->where('language = ' . $lng)->get();
+
             if (count($res)) {
                 $row = $db->first($res);
                 $translation = assignParams($row->getValue(), $params);
+
                 if (true === $echo) {
                     echo $translation;
                 } else {
@@ -393,9 +449,11 @@
 
                     $ext = Inflector::lower(Arrays::last($tab));
                     $res = $bucket->data($data, $ext);
+
                     return $res;
                 }
             }
+
             return null;
         }
 
@@ -403,6 +461,7 @@
         {
             $file = repl(URLSITE, '', $url);
             $file = realpath(APPLICATION_PATH . '/../public/' . $file);
+
             return File::exists($file) ? getFileSize(fgc($file)) : '0 kb';
         }
     }
@@ -411,6 +470,7 @@
         function unstatic($class)
         {
             $obj = new Thin\Unstatic($class);
+
             return $obj;
         }
     }
@@ -419,6 +479,7 @@
         function params($args = array())
         {
             $params = array();
+
             if (count($args)) {
                 foreach ($args as $k => $arg) {
                     $num = $k + 1;
@@ -426,6 +487,7 @@
                     $params[$key] = $arg;
                 }
             }
+
             return $params;
         }
     }
@@ -444,12 +506,14 @@
             $type       = Inflector::lower($type);
             $session    = session('admin');
             $user       = $session->getUser();
+
             if (Arrays::exists($type, Data::$_fields) && Arrays::exists($type, Data::$_rights) && null !== $user) {
                 $rights = Data::$_rights[$type];
                 if (Arrays::exists($action, $rights)) {
                     return $rights[$action];
                 }
             }
+
             return false;
         }
     }
@@ -465,16 +529,20 @@
         function o($name)
         {
             $objects = Utils::get('thinObjects');
+
             if (null === $objects) {
                 $objects = array();
             }
+
             if (Arrays::exists($name, $objects)) {
                 return $objects[$name];
             }
+
             $newObj = new Container;
             $newObj->setIsThinObject($name);
             $objects[$name] = $newObj;
             Utils::set('thinObjects', $objects);
+
             return $newObj;
         }
     }
@@ -482,20 +550,24 @@
     if (!function_exists('ar')) {
         function ar($entity, $table, $params = array(), $fields = array())
         {
-            $model = array();
-            $settings = array();
-            $settings['entity'] = $entity;
-            $settings['table'] = $table;
-            $settings['relationships'] = rs($entity, $table);
+            $model                      = array();
+            $settings                   = array();
+            $settings['entity']         = $entity;
+            $settings['table']          = $table;
+            $settings['relationships']  = rs($entity, $table);
+
             if (count($params) && Arrays::isAssoc($params)) {
                 foreach ($params as $key => $value) {
                     $settings[$key] = $value;
                 }
             }
+
             $model['settings'] = $settings;
+
             if (count($fields) && Arrays::isAssoc($fields)) {
                 $model['fields'] = $fields;
             }
+
             return new Activerecord($model);
         }
     }
@@ -517,18 +589,22 @@
         function f()
         {
             $args = func_get_args();
+
             if (0 < count($args)) {
                 $closure = array_shift($args);
+
                 if(is_callable($closure)) {
                     return call_user_func_array($closure, $args);
                 }
             }
+
             return null;
         }
 
         function view()
         {
             $view = container()->getView();
+
             return !is_null($view) ? $view : new View();
         }
     }
@@ -594,11 +670,13 @@
         {
             $db = dm('option');
             $res = $db->where('name = ' . $key)->get();
+
             if (count($res)) {
                 $option = $db->first($res);
             } else {
                 $option = newData('option');
             }
+
             return $option->setName($key)->setValue($value)->save();
         }
 
@@ -618,10 +696,13 @@
             if (null === $environment) {
                 $environment = APPLICATION_ENV;
             }
+
             $db = dm('config');
             $res = $db->where('name = ' . $key)->where('environment = ' . $environment)->get();
+
             if (!count($res)) {
                 $all = $db->where('name = ' . $key)->where('environment = all')->get();
+
                 if (count($all)) {
                     return $db->first($all);
                 } else {
@@ -637,13 +718,16 @@
             if (null === $environment) {
                 $environment = 'all';
             }
+
             $db = dm('config');
             $res = $db->where('name = ' . $key)->where('environment = ' . $environment)->get();
+
             if (count($res)) {
                 $config = $db->first($res);
             } else {
                 $config = newData('config');
             }
+
             return $config->setName($key)->setEnvironment($environment)->setValue($value)->save();
         }
 
@@ -651,10 +735,12 @@
         {
             $db = dm('meta');
             $res = $db->where('name = ' . $key)->get();
+
             if (count($res)) {
                 $meta = $db->first($res);
                 return Cms::__($meta);
             }
+
             return null;
         }
 
@@ -662,11 +748,13 @@
         {
             $db = dm('meta');
             $res = $db->where('name = ' . $key)->get();
+
             if (count($res)) {
                 $meta = $db->first($res);
             } else {
                 $meta = newData('meta');
             }
+
             return $meta->setName($key)->setValue($value)->save();
         }
 
@@ -682,9 +770,11 @@
         {
             $db = dm('bool');
             $res = $db->where('value = ' . $bool)->get();
+
             if (count($res)) {
                 return $db->first($res);
             }
+
             return null;
         }
 
@@ -692,9 +782,11 @@
         {
             $db = dm('statuspage');
             $res = $db->where('name = ' . $status)->get();
+
             if (count($res)) {
                 return $db->first($res);
             }
+
             return null;
         }
 
@@ -702,18 +794,22 @@
         {
             $db = dm('page');
             $res = $db->where('name = ' . $name)->get();
+
             if (count($res)) {
                 return $db->first($res);
             }
+
             return null;
         }
 
         function cms_info($type, $key, $page, $default = null)
         {
             $lng = getLanguage();
+
             if ($page instanceof Container) {
                 $db = dm($type);
                 $infos = $db->where('name = ' . $key)->where('page = ' . $page->getId())->get();
+
                 if (count($infos)) {
                     $info = $db->first($infos);
                     $value = $info->getValue();
@@ -725,6 +821,7 @@
                     }
                 }
             }
+
             return $default;
         }
     }
@@ -781,9 +878,11 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             $urlPage            = getUrl();
             $twitterAccount     = cms_option('twitter_account');
+
             if (empty($twitterAccount)) {
                 $twitterAccount = 'thinCMS';
             }
+
             $url = 'http://twitter.com/share?url=' . $urlPage . '&amp;text=' . urlencode(cms_title()) . '&amp;via=' . $twitterAccount;
 
             if (true === $echo) {
@@ -799,9 +898,11 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             $urlPage            = getUrl();
             $linkedinAccount    = cms_option('linkedin_account');
+
             if (empty($linkedinAccount)) {
                 $linkedinAccount = 'thinCMS';
             }
+
             $url = 'https://www.linkedin.com/shareArticle?url=' . $urlPage . '&amp;title=' . urlencode(cms_title()) . '&amp;source=' . $linkedinAccount;
 
             if (true === $echo) {
@@ -839,6 +940,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $page   = container()->getCmsPage();
             $getter = getter($field);
             $value  = $page->$getter();
+
             return Cms::lng($value);
         }
     }
@@ -850,11 +952,13 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
             $lang = $app->getLang();
             $translation = $lang->translate($id, $default);
             $args = eval('return array(' . $args . ');');
+
             if (count($args)) {
                 foreach ($args as $key => $value) {
                     $translation = str_replace("%$key%", $value, $translation);
                 }
             }
+
             return $translation;
         }
     }
@@ -864,6 +968,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             $query      = dm('partial');
             $res        = $query->where("name = $key")->get();
+
             if (count($res)) {
                 $row    = $query->first($res);
                 $html   = Cms::executePHP($row->getValue());
@@ -881,6 +986,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     return $html;
                 }
             }
+
             return null;
         }
     }
@@ -908,6 +1014,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             $page   = container()->getCmsPage();
             $html = Cms::executePHP(Cms::lng($page->getHeader()->getHtml()), false);
+
             echo $html;
         }
     }
@@ -917,6 +1024,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             $page   = container()->getCmsPage();
             $html = Cms::executePHP(Cms::lng($page->getFooter()->getHtml()), false);
+
             echo $html;
         }
     }
@@ -925,6 +1033,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_render($tpl)
         {
             $file = cms_theme_path() . DS . Inflector::lower($tpl) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
             }
@@ -942,6 +1051,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_theme_path()
         {
             $theme = Cms::getOption('theme');
+
             return THEME_PATH . DS . $theme;
         }
     }
@@ -957,6 +1067,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         function cms_url_theme($echo = true)
         {
             $theme = Cms::getOption('theme');
+
             if (false === $echo) {
                 return URLSITE . 'themes/' . $theme;
             } else {
@@ -970,33 +1081,40 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
         {
             $db = dm(Inflector::lower($type));
             $res = $db->where('name = ' . $name)->get();
+
             if (count($res)) {
                 return $db->first($res);
             }
+
             return null;
         }
 
         function cms_file($name)
         {
             $row = cms_media('file', $name);
+
             if (!empty($row)) {
                 return $row->getMedia();
             }
+
             return null;
         }
 
         function cms_video($name)
         {
             $row = cms_media('video', $name);
+
             if (!empty($row)) {
                 return $row->getMedia();
             }
+
             return null;
         }
 
         function cms_image($name, $html = false)
         {
             $row = cms_media('image', $name);
+
             if (!empty($row)) {
                 if (false !== $html) {
                     return '<img src="' . $row->getMedia() . '" />';
@@ -1004,6 +1122,7 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
                     return $row->getMedia();
                 }
             }
+
             return null;
         }
     }
@@ -1054,6 +1173,7 @@ initialize();
             }
         }
     }
+
     if (!function_exists('cms_google_fonts')) {
         function cms_google_fonts()
         {
@@ -1062,6 +1182,7 @@ initialize();
                 $tab = explode(',', $fonts);
                 $cssFonts = implode(':400,300,700,900,600|', $tab);
                 $cssFonts = repl(' ', '+', $cssFonts) . ':400,300,700,900,600&amp;subset=latin,latin-ext';
+
                 return '<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=' . $cssFonts . '">';
             }
 
@@ -1073,6 +1194,7 @@ initialize();
         function cms_form($name, $echo = true)
         {
             $form = Cms::makeForm($name);
+
             if (true === $echo) {
                 echo $form;
             } else {
@@ -1085,13 +1207,16 @@ initialize();
         function cms_menu_auto($echo = true)
         {
             $show       = cms_option('show_menu');
+
             if ('true' != $show) return;
+
             $pages      = Thin\Cms::getParents();
             $actualPage = container()->getPage();
 
             $parent     = $actualPage->getParent();
             $lngs       = explode(',', cms_option('page_languages'));
             $pageParent = new url;
+
             if (!empty($parent)) {
                 $sql = dm('page');
                 $pageParents = $sql->where('id = ' . $parent)->get();
@@ -1107,6 +1232,7 @@ $(document).ready(function() {
 
             $fixed      = 'true' == cms_option('menu_fixed') ? true : false;
             $showLogo   = 'true' == cms_option('show_logo') ? true : false;
+
             if (true === $fixed) $html .= '<div id="mainNavbar" class="navbar navbar-fixed-top navbar-inverse">';
             else $html .= '<div class="navbar navbar-inverse">';
 
@@ -1117,6 +1243,7 @@ $(document).ready(function() {
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </a>';
+
             if (false === $showLogo) {
                 $html .= '<a class="brand" href="/">' . cms_option('company_name') . '</a>';
             } else {
@@ -1125,6 +1252,7 @@ $(document).ready(function() {
 
             $html .= '<div class="nav-collapse collapse">';
             $html .= '<ul class="nav" id="mainMenu">';
+
             foreach ($pages as $page) {
                 $children   = Cms::getChildren($page);
 
@@ -1137,26 +1265,34 @@ $(document).ready(function() {
                 else $html .= '<li class="' . $dropdown . '"><a' . $linkClass . ' href="/' . Cms::__($page->getUrl()) . '">' . Cms::__($page->getMenu()) . $caret . '</a>';
                 if (count($children)) {
                     $html .= '<ul class="dropdown-menu">';
+
                     foreach ($children as $child) {
                         $html .= '<li><a href="/' . Cms::__($child->getUrl()) . '">' . Cms::__($child->getMenu()) . '</a></li>';
                     }
+
                     $html .= '</ul>';
                 }
+
                 $html .= '</li>';
             }
+
             $html .= '</ul>';
             $session = session('admin');
             $user = $session->getUser();
+
             if (1 < count($lngs) || null !== $user) {
                 $actualLng = getLanguage();
                 $html .= '<ul id="mainMenu" class="nav navbar-nav pull-right">';
+
                 if (null !== $user) {
                     $html .= '<li><a target="_admin" rel="tooltip-bottom" title="Accès à l\'admin" href="' . URLSITE . 'backadmin/dashboard"><i class="fa fa-cogs"></i></a></li>';
                 }
+
                 if (1 < count($lngs)) {
                     foreach($lngs as $lng) {
                         if ($lng <> $actualLng) {
                             $displayOption = cms_option('lng_' . $lng . '_display');
+
                             if (null === $displayOption) {
                                 $html .= '<li><a href="#" onclick="$(\'#cms_lng\').val(\'' . $lng . '\'); $(\'#lng_form\').submit(); return false;">' . Inflector::upper($lng) . '</a></li>';
                             } elseif ('flag' == $displayOption) {
@@ -1165,8 +1301,10 @@ $(document).ready(function() {
                         }
                     }
                 }
+
                 $html .= '</ul>';
             }
+
             $html .= '</div>';
             $html .= '</div>';
             $html .= '</div>';
@@ -1188,12 +1326,14 @@ $(document).ready(function() {
             } else {
                 $query = dm('page');
                 $res = $query->where("name = $page")->get();
+
                 if (count($res)) {
                     $page = $query->first($res);
                 } else {
                     return URLSITE . $page;
                 }
             }
+
             return URLSITE . $page->getUrl();
         }
     }
@@ -1216,14 +1356,17 @@ $(document).ready(function() {
             $html = '';
             Data::getAll('slideshow');
             Data::getAll('slideshowmedia');
+
             $db = dm('slideshow');
             $res = $db->where('name = ' . $name)->get();
             $slideshowHeight = cms_option('slideshow_height');
             $slideshowBg = cms_option('slideshow_background');
+
             if (count($res)) {
                 $slideshow = $db->first($res);
                 $dbMedia = dm('slideshowmedia');
                 $rows = $dbMedia->where('slideshow = ' . $slideshow->getId())->order('position')->get();
+
                 if (count($rows)) {
                     $html .= '<style>
 
@@ -1256,12 +1399,15 @@ $(document).ready(function() {
 </script>
                     <div class="row"><div id="slideshow_' . $slideshow->getId() . '" class="carousel slide">';
                     $html .= '<ol class="carousel-indicators">';
+
                     for ($i = 0 ; $i < count($rows) ; $i++) {
                         $ac = $i < 1 ? 'active' : '';
                         $html .= '<li data-target="#slideshow_' . $slideshow->getId() . '" data-slide-to="' . $i . '" class="' . $ac . '"></li>';
                     }
+
                     $html .= '</ol><div class="carousel-inner">';
                     $first = true;
+
                     foreach ($rows as $media) {
                         $active = $first ? ' active' : '';
                         $html .= '<div class="item' . $active . '">';
@@ -1274,12 +1420,14 @@ $(document).ready(function() {
                         $html .= '</div>';
                         $first = false;
                     }
+
                     $html .= '</div>
                     <a class="left carousel-control" href="#slideshow_' . $slideshow->getId() . '" data-slide="prev"><i class="fa fa-arrow-left slideSize"></i></a>
                         <a class="right carousel-control" href="#slideshow_' . $slideshow->getId() . '" data-slide="next"><i class="fa fa-arrow-right slideSize"></i></a>
                     </div></div>';
                 }
             }
+
             if (true === $echo) {
                 echo $html;
             } else {
@@ -1292,6 +1440,7 @@ $(document).ready(function() {
         function cms_snippet($name, $params = array(), $echo = true)
         {
             $snippet = Cms::execSnippet($name, $params);
+
             if (true === $echo) {
                 echo $snippet;
             } else {
@@ -1306,10 +1455,12 @@ $(document).ready(function() {
             $object = new cmsObj();
             $q      = dm('collection');
             $res    = $q->where('name = ' . $collection)->get();
+
             if (count($res)) {
                 $row  = $q->first($res);
                 $q    = dm('object');
                 $res  = $q->where('collection = ' . $row->getId())->where("name = $objectName")->get();
+
                 if (count($res)) {
                     $obj        = $q->first($res);
                     $objectLng  = Cms::lng($obj->getValue());
@@ -1317,6 +1468,7 @@ $(document).ready(function() {
                     $object->populate($ini);
                 }
             }
+
             return $object;
         }
     }
@@ -1327,14 +1479,17 @@ $(document).ready(function() {
             $coll   = array();
             $q      = dm('collection');
             $res    = $q->where('name = ' . $collection)->get();
+
             if (count($res)) {
                 $row        = $q->first($res);
                 $q          = dm('object');
                 $objects    = $q->where('collection = ' . $row->getId())->get();
+
                 if (count($objects)) {
                     foreach ($objects as $object) {
                         $objectLng  = Cms::lng($object->getValue());
                         $ini        = parse_ini_string($objectLng, true);
+
                         if (true === $array) {
                             array_push($coll, $ini);
                         } else {
@@ -1345,6 +1500,7 @@ $(document).ready(function() {
                     }
                 }
             }
+
             return $coll;
         }
     }
@@ -1441,6 +1597,7 @@ $(document).ready(function() {
             $url = "http://renderer.fontshop.com/fonts/font_rend.php?idt=f&id=$font&rs=$size&fg=$fg&bg=$bg&rt=$text&ls=$size&w=$width&t=pc";
             $key = sha1(serialize(func_get_args()));
             $file = CACHE_PATH . DS . $key . '.png';
+
             if (!File::exists($file)) {
                 $img = fgc($url);
                 file_put_contents($file, $img);
@@ -1454,7 +1611,9 @@ $(document).ready(function() {
             if (null === $what) {
                 $what = request();
             }
+
             new Thin\Info($what);
+
             if (true === $die) {
                 exit;
             }
@@ -1464,12 +1623,15 @@ $(document).ready(function() {
         {
             $dbs = container()->getLites();
             $dbs = !Arrays::is($dbs) ? array() : $dbs;
+
             if (!Arrays::exists($name, $dbs)) {
                 $dbFile = STORAGE_PATH . DS . Inflector::lower($name) . '.dbLite';
                 $db = new SQLite3($dbFile);
                 $dbs[$name] = $db;
+
                 container()->setLites($dbs);
             }
+
             return $dbs[$name];
         }
 
@@ -1537,6 +1699,7 @@ $(document).ready(function() {
 
             $result     = curl_exec($ch);
             curl_close ($ch);
+
             return $result;
         }
     }
@@ -1546,6 +1709,7 @@ $(document).ready(function() {
         {
             extract($config);
             $link = 'https://twitter.com/intent/tweet?original_referer=' . urlencode($original_referer) . '&amp;related=' . urlencode($related) . '&amp;text=%22' . urlencode($text) . '%22&amp;tw_p=tweetbutton&url=' . urlencode($url) . '&amp;via=' . urlencode($via);
+
             return $link;
         }
     }
@@ -1564,12 +1728,15 @@ $(document).ready(function() {
                 container()->$setter($config);
                 $setter = 'setFieldsData' . ucfirst(Inflector::lower($type));
                 $conf = array();
+
                 foreach ($fields as $key => $configField) {
                     if (empty($configField)) {
                         $configField = array("canBeNull" => true);
                     }
+
                     $conf[$key] = $configField;
                 }
+
                 Data::$_fields[$type]     = $fields;
                 Data::$_settings[$type]   = $config;
                 container()->$setter($fields);
@@ -1585,6 +1752,7 @@ $(document).ready(function() {
                     return Data::unserialize(Data::load($file));
                 }
             }
+
             return new Obj;
         }
     }
@@ -1593,7 +1761,9 @@ $(document).ready(function() {
         function facebook(array $config)
         {
             extract($config);
+
             $link = 'http://www.facebook.com/sharer/sharer.php?s=100&amp;p[url]=' . urlencode($url) . '&amp;p[images][0]=' . urlencode($image) . '&amp;p[title]=' . urlencode($title) . '&amp;p[summary]=' . urlencode($summary);
+
             return $link;
         }
     }
@@ -1616,6 +1786,7 @@ $(document).ready(function() {
         {
             $needle = Inflector::lower(htmlspecialchars_decode($needle));
             $string = Inflector::lower(htmlspecialchars_decode($string));
+
             return strstr($string, $needle) ? true : false;
         }
     }
@@ -1635,6 +1806,7 @@ $(document).ready(function() {
                 $vars[Arrays::first($args)] = Arrays::last($args);
                 return Arrays::last($args);
             }
+
             return null;
         }
 
@@ -1651,10 +1823,12 @@ $(document).ready(function() {
         function setEvent($name, $event, $priority = 0)
         {
             $events = container()->getEvents();
+
             if (null === $events) {
                 $events         = array();
                 $events[$name]  = array();
             }
+
             $events[$name][$priority] = $event;
             container()->setEvents($events);
         }
@@ -1663,6 +1837,7 @@ $(document).ready(function() {
         {
             $res = '';
             $events = container()->getEvents();
+
             if (null !== $events) {
                 if (Arrays::is($events)) {
                     if (Arrays::exists($name, $events)) {
@@ -1677,6 +1852,7 @@ $(document).ready(function() {
                     }
                 }
             }
+
             return $res;
         }
 
@@ -1693,6 +1869,7 @@ $(document).ready(function() {
                     $tab = arraySet($tab, Arrays::first($args), Arrays::last($args));
                     return Arrays::last($args);
                 }
+
                 return null;
             }
 
@@ -1704,20 +1881,24 @@ $(document).ready(function() {
             function fire($name, $args = array())
             {
                 $closure = registry('events.' . $name);
+
                 if (!empty($closure)) {
                     if (is_callable($closure)) {
                         return call_user_func_array($closure, $args);
                     }
                 }
+
                 return null;
             }
 
             function hasEvent($name)
             {
                 $closure = registry('events.' . $name);
+
                 if (!empty($closure)) {
                     return $closure instanceof Closure;
                 }
+
                 return false;
             }
         }
@@ -1730,16 +1911,23 @@ $(document).ready(function() {
             $view   = !is_object($view) ? context()->getView() : $view;
             $tab    = explode(DS, $view->_viewFile);
             $path   = repl(Arrays::last($tab), $tpl, $view->_viewFile);
+
             if (File::exists($path)) {
                 $content = fgc($path);
                 $content = repl('$this->', '$view->', View::cleanCode($content));
                 $file = CACHE_PATH . DS . sha1($content) . '.display';
                 File::put($file, $content);
+
                 ob_start();
+
                 include $file;
+
                 $html = ob_get_contents();
+
                 ob_end_clean();
+
                 File::delete($file);
+
                 echo $html;
             }
         }
@@ -1759,11 +1947,17 @@ $(document).ready(function() {
                 $content = repl('$this->', '$view->', View::cleanCode($content));
                 $file = CACHE_PATH . DS . sha1($content) . '.display';
                 File::put($file, $content);
+
                 ob_start();
+
                 include $file;
+
                 $html = ob_get_contents();
+
                 ob_end_clean();
+
                 File::delete($file);
+
                 echo $html;
             }
         }
@@ -1776,6 +1970,7 @@ $(document).ready(function() {
                 $file = CACHE_PATH . DS . sha1($file) . '.html';
                 file_put_contents($file, $content);
             }
+
             if (File::exists($file)) {
                 $view = new View($file);
                 $view->render();
@@ -1789,6 +1984,7 @@ $(document).ready(function() {
             if (!class_exists($class)) {
                 class_alias('Thin\\Container', $class);
             }
+
             return new $class;
         }
     }
@@ -1850,15 +2046,18 @@ $(document).ready(function() {
             $reflectionMethod->setAccessible(true);
 
             $params = array_slice(func_get_args(), 2);
+
             return $reflectionMethod->invokeArgs($object, $params);
         }
 
         function transaction($class, $method)
         {
             $transactions = container()->getThinTransactions();
+
             if (null === $transactions) {
                 $transactions = array();
             }
+
             $params = array_slice(func_get_args(), 2);
             array_push($transactions, array($class, $method, $params));
             container()->setThinTransactions($transactions);
@@ -1867,6 +2066,7 @@ $(document).ready(function() {
         function commit()
         {
             $transactions = container()->getThinTransactions();
+
             if (null !== $transactions) {
                 if (is_array($transactions)) {
                     if (count($transactions)) {
@@ -1884,13 +2084,14 @@ $(document).ready(function() {
             $_REQUEST['exception'] = $e;
             return context()->dispatch(with(new Container)->setModule('www')->setController('error')->setAction('index'));
 
-
             $code = $e->getCode();
             $file = $e->getFile();
             $line = $e->getLine();
             $date = date('M d, Y h:iA');
+
             echo '<style>.error {font-weight: bold; color: red; width: 30%; padding: 10px; margin: 10px; border: solid 1px red;}</style>';
             echo "Thin has caught an exception: ";
+
             $html = "<p>
             <strong>Date:</strong> {$date}
          </p>
@@ -1913,7 +2114,7 @@ $(document).ready(function() {
          </p>
 
          <h3>Stack trace:</h3>";
-         echo $html;
+            echo $html;
             echo '<pre style="padding: 5px;">';
             echo getExceptionTraceAsString($e);
             echo '</pre>';
@@ -1923,10 +2124,13 @@ $(document).ready(function() {
         {
             $rtn = "";
             $count = 0;
+
             foreach ($exception->getTrace() as $frame) {
                 $args = "";
+
                 if (isset($frame['args'])) {
                     $args = array();
+
                     foreach ($frame['args'] as $arg) {
                         if (is_string($arg)) {
                             $args[] = "'" . $arg . "'";
@@ -1944,9 +2148,11 @@ $(document).ready(function() {
                             $args[] = $arg;
                         }
                     }
+
                     $args = join(", ", $args);
                 }
-                if (array_key_exists('file', $frame) && array_key_exists('line', $frame) && array_key_exists('function', $frame)) {
+
+                if (ake('file', $frame) && ake('line', $frame) && ake('function', $frame)) {
                     $rtn .= sprintf(
                         "#%s %s(%s): %s(%s)\n",
                         $count,
@@ -1955,9 +2161,11 @@ $(document).ready(function() {
                         $frame['function'],
                         $args
                     );
+
                     $count++;
                 }
             }
+
             return $rtn;
         }
     }
@@ -1966,11 +2174,8 @@ $(document).ready(function() {
         function urlNow()
         {
             $protocol = 'http';
-            if ($_SERVER['SERVER_PORT'] == 443
-                || (
-                    !empty($_SERVER['HTTPS'])
-                    && Inflector::lower($_SERVER['HTTPS']) == 'on'
-                )) {
+
+            if (isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'on') {
                 $protocol       .= 's';
                 $protocol_port  = $_SERVER['SERVER_PORT'];
             } else {
@@ -1980,10 +2185,11 @@ $(document).ready(function() {
             $host       = $_SERVER['HTTP_HOST'];
             $port       = $_SERVER['SERVER_PORT'];
             $request    = $_SERVER['REQUEST_URI'];
+
             return $protocol . '://' . $host . ($port == $protocol_port ? '' : ':' . $port) . $request;
         }
 
-        function url()
+        function _url()
         {
             return context('url');
         }
@@ -2005,6 +2211,7 @@ $(document).ready(function() {
         function getUrl()
         {
             $urlsite = trim(URLSITE, '/');
+
             return $urlsite . $_SERVER['REQUEST_URI'];
         }
     }
@@ -2016,10 +2223,12 @@ $(document).ready(function() {
             $em = Doctrine::em();
             $class = ucfirst(Inflector::uncamelize($entity));
             $file = APPLICATION_PATH . DS . 'models' . DS . 'Doctrine' . DS . preg_replace('#\\\|_(?!.+\\\)#', DS, $class) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
                 return $em->getRepository('\\Thin\\Doctrine' . ucfirst($entity) . 'Entity');
             }
+
             return null;
         }
 
@@ -2038,15 +2247,19 @@ $(document).ready(function() {
         function helper($helper)
         {
             $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(Inflector::lower($helper)) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
+
                 $class = 'Thin\\' . ucfirst(Inflector::lower($helper));
                 $instance = new $class;
                 $methods = get_class_methods($class);
+
                 if (Arrays::in('init', $methods)) {
                     $instance->init();
                 }
             }
+
             return context('helper');
         }
     }
@@ -2059,14 +2272,18 @@ $(document).ready(function() {
                 $cronName   = array_shift($args);
                 $cron       = ucfirst(Inflector::lower($cronName));
                 $file       = APPLICATION_PATH . DS . 'crons' . DS . $cron . DS . $cron . 'Cron.php';
+
                 if (File::exists($file)) {
                     require_once $file;
+
                     $class      = 'Thin\\' . $cron . 'Cron';
                     $instance   = new $class;
                     $methods    = get_class_methods($class);
+
                     if (Arrays::in('init', $methods)) {
                         $instance->init($args);
                     }
+
                     return $instance;
                 } else {
                     throw new Exception("Cron File $file does not exist.");
@@ -2098,6 +2315,7 @@ $(document).ready(function() {
 
                 if (true === $namespace && T_STRING === $token[0]) {
                     $namespace = '';
+
                     do {
                         $namespace .= $token[1];
                         $token = $tokens[++$i];
@@ -2122,6 +2340,7 @@ $(document).ready(function() {
                     $namespace = true;
                 }
             }
+
             return null;
         }
 
@@ -2130,17 +2349,22 @@ $(document).ready(function() {
             $bundle = ucfirst(Inflector::lower($bundle));
             $path   = realpath(APPLICATION_PATH . '/../');
             $file   = $path . DS . 'bundles' . DS . $bundle . DS . $bundle . '.php';
+
             if (File::exists($file)) {
                 $getNamespaceAndClassNameFromCode = getNamespaceAndClassNameFromCode(fgc($file));
+
                 if (!is_null($getNamespaceAndClassNameFromCode) && Arrays::is($getNamespaceAndClassNameFromCode)) {
                     list($namespace, $class) = $getNamespaceAndClassNameFromCode;
                     Autoloader::registerNamespace($namespace, $path . DS . 'bundles' . DS . $bundle);
+
                     require_once $file;
                     $actions = get_class_methods($namespace . '\\' . $class);
+
                     if (Arrays::in('init', $actions)) {
                         $nsClass = $namespace . '\\' . $class;
                         $nsClass::init();
                     }
+
                     return true;
                 } else {
                     throw new Exception("No namespace found in '$file'.");
@@ -2181,11 +2405,14 @@ $(document).ready(function() {
                 if (!Arrays::is($section)) {
                     $section = array($section);
                 }
+
                 $dataArray = array();
+
                 foreach ($section as $sectionName) {
                     if (!isset($iniArray[$sectionName])) {
                         throw new Exception("Section '$sectionName' cannot be found in $filename");
                     }
+
                     $dataArray = arrayMergeRecursive(
                         processSection(
                             $iniArray,
@@ -2195,15 +2422,18 @@ $(document).ready(function() {
                     );
                 }
             }
+
             return $dataArray;
         }
 
         function processSection($iniArray, $section, $config = array())
         {
             $thisSection = $iniArray[$section];
+
             foreach ($thisSection as $key => $value) {
                 $config = processKey($config, $key, $value);
             }
+
             return $config;
         }
 
@@ -2211,6 +2441,7 @@ $(document).ready(function() {
         {
             if (strpos($key, $separator) !== false) {
                 $parts = explode($separator, $key, 2);
+
                 if (strlen(Arrays::first($parts)) && strlen(Arrays::last($parts))) {
                     if (!isset($config[Arrays::first($parts)])) {
                         if (Arrays::first($parts) === '0' && !empty($config)) {
@@ -2221,6 +2452,7 @@ $(document).ready(function() {
                     } elseif (!Arrays::is($config[Arrays::first($parts)])) {
                         throw new Exception("Cannot create sub-key for '{Arrays::first($parts)}' as key already exists");
                     }
+
                     $config[Arrays::first($parts)] = processKey(
                         $config[Arrays::first($parts)],
                         Arrays::last($parts),
@@ -2232,6 +2464,7 @@ $(document).ready(function() {
             } else {
                 $config[$key] = $value;
             }
+
             return $config;
         }
 
@@ -2257,6 +2490,7 @@ $(document).ready(function() {
             } else {
                 $firstArray = $secondArray;
             }
+
             return $firstArray;
         }
     }
@@ -2265,15 +2499,19 @@ $(document).ready(function() {
         function service($service)
         {
             $file = APPLICATION_PATH . DS . 'services' . DS . ucfirst(Inflector::lower($service)) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
+
                 $class = 'Thin\\' . ucfirst(Inflector::lower($service)) . 'Service';
                 $instance = new $class;
                 $methods = get_class_methods($class);
+
                 if (Arrays::in('init', $methods)) {
                     $instance->init();
                 }
             }
+
             return context('service');
         }
     }
@@ -2289,15 +2527,18 @@ $(document).ready(function() {
         function plugin($plugin)
         {
             $file = APPLICATION_PATH . DS . 'plugins' . DS . ucfirst(Inflector::lower($plugin)) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($plugin)) . 'Plugin';
                 $instance = new $class;
                 $methods = get_class_methods($class);
+
                 if (Arrays::in('init', $methods)) {
                     $instance->init();
                 }
             }
+
             return context('plugin');
         }
     }
@@ -2306,15 +2547,18 @@ $(document).ready(function() {
         function model($model, $database = 'db')
         {
             $file = APPLICATION_PATH . DS . 'models' . DS . ucfirst(Inflector::lower($model)) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($model)) . 'Model';
                 $instance = new $class;
                 $methods = get_class_methods($class);
+
                 if (Arrays::in('init', $methods)) {
                     $instance->init();
                 }
             }
+
             return db($database)->model(Inflector::lower($model));
         }
     }
@@ -2323,15 +2567,18 @@ $(document).ready(function() {
         function eloquent($model)
         {
             $file = APPLICATION_PATH . DS . 'models' .DS . 'Eloquent' . DS . ucfirst(Inflector::lower($model)) . '.php';
+
             if (File::exists($file)) {
                 require_once $file;
                 $class = 'Thin\\' . ucfirst(Inflector::lower($model)) . 'Eloquent';
                 $instance = new $class;
                 $methods = get_class_methods($class);
+
                 if (Arrays::in('init', $methods)) {
                     $instance->init();
                 }
             }
+
             return $instance;
         }
     }
@@ -2430,6 +2677,7 @@ $(document).ready(function() {
         function get_content_type($file)
         {
             $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
             if (strlen($ext)) {
                 switch ($ext) {
                     case 'xml': return 'text/xml';
@@ -2451,6 +2699,7 @@ $(document).ready(function() {
                     default: return 'text/html';
                 }
             }
+
             return 'text/html';
         }
     }
@@ -2468,6 +2717,7 @@ $(document).ready(function() {
             if (!class_exists('ThinEmail')) {
                 eval('class ThinEmail extends Thin\\Container {public function send(){return Thin\\Utils::mail(parent::getTo(), parent::getSubject(), parent::getBody(), parent::getHeaders());}}');
             }
+
             return new ThinEmail;
         }
 
@@ -2475,11 +2725,13 @@ $(document).ready(function() {
         {
             $mail = new Smtp();
             $mail->to($to)->from($from)->subject($subject);
+
             if (true === $html) {
                 $result = $mail->body($body)->send();
             } else {
                 $result = $mail->text($body)->sendText();
             }
+
             return $result;
         }
     }
@@ -2492,17 +2744,21 @@ $(document).ready(function() {
             if (!count($args)) {
                 return container()->getConfig();
             }
+
             if (1 == count($args)) {
                 $getter = getter(Arrays::first($args));
                 return container()->getConfig()->$getter();
             }
+
             if (2 == count($args)) {
                 $key    = Arrays::first($args);
                 $value  = Arrays::last($args);
                 $setter = setter($key);
                 container()->getConfig()->$setter($value);
+
                 return $value;
             }
+
             return null;
         }
 
@@ -2510,10 +2766,12 @@ $(document).ready(function() {
         {
             if (!is_null($conf)) {
                 $file = APPLICATION_PATH . DS . 'config' . DS . Inflector::lower($conf) . '.php';
+
                 if (File::exists($file)) {
                     return include $file;
                 }
             }
+
             return context('config');
         }
     }
@@ -2523,13 +2781,16 @@ $(document).ready(function() {
         {
             if (!is_null($hook)) {
                 $file = APPLICATION_PATH . DS . 'hooks' . DS . ucfirst(Inflector::lower($hook)) . '.php';
+
                 if (File::exists($file)) {
                     require_once $file;
+
                     $class = 'Thin\\' . ucfirst(Inflector::lower($hook));
                     $instance = new $class;
                     $instance->init();
                 }
             }
+
             return context('hooks');
         }
     }
@@ -2554,10 +2815,12 @@ $(document).ready(function() {
         {
             $eav = Utils::newInstance('Memory', array('Thin', 'EAV'));
             $eav = $eav->setEntity($entity);
+
             foreach ($attributes as $key => $value) {
                 $setter = setter($key);
                 $eav = $eav->$setter($value);
             }
+
             return $eav->save();
         }
     }
@@ -2573,9 +2836,11 @@ $(document).ready(function() {
             $type   = Inflector::lower($type);
             $errors = Utils::get('thinErrors');
             $errors = (empty($errors)) ? array() : $errors;
+
             if (!Arrays::exists($type, $errors)) {
                 $errors[$type] = array();
             }
+
             $errors[$type] = $error;
             Utils::set('thinErrors', $errors);
         }
@@ -2586,6 +2851,7 @@ $(document).ready(function() {
         {
             $errors = Utils::get('thinErrors');
             $errors = (empty($errors)) ? array() : $errors;
+
             if (null !== $type) {
                 $type = Inflector::lower($type);
                 if (Arrays::exists($type, $errors)) {
@@ -2624,18 +2890,21 @@ $(document).ready(function() {
             return $role->getLabel() == Utils::get('appRole')->getLabel();
         }
     }
+
     if (!function_exists('role')) {
         function role($role)
         {
             return em(config('app.roles.entity'), config('app.roles.table'))->findByLabel($role);
         }
     }
+
     if (!function_exists('render')) {
         function render($file)
         {
             return Utils::run('view.render', array('hash' => sha1($file)));
         }
     }
+
     if (!function_exists('arrayLookup')) {
         function arrayLookup($a, $b)
         {
@@ -2697,13 +2966,17 @@ $(document).ready(function() {
         {
             $args = func_get_args();
             $s = session('kv');
+
             if (count($args) == 1) {
                 $get = getter(Arrays::first($args));
+
                 return $s->$get();
             } elseif (count($args) == 2) {
                 $set = setter(Arrays::first($args));
+
                 return $s->$set(Arrays::last($args));
             }
+
             return null;
         }
     }
@@ -2732,6 +3005,7 @@ $(document).ready(function() {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
             $cache  = new Cache(CACHE_PATH . DS);
             $hash   = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
+
             return $cache->remember($hash, $value, $duration);
         }
     }
@@ -2742,6 +3016,7 @@ $(document).ready(function() {
             $suffix = (strstr($key, 'sql')) ? '_SQL' : '';
             $cache = new Cache(CACHE_PATH . DS);
             $hash = sha1($key . $duration . _serialize($params)) . $suffix . '.cache';
+
             return $cache->has($hash);
         }
     }
@@ -2752,6 +3027,7 @@ $(document).ready(function() {
             if (empty($time)) {
                 $time = time();
             }
+
             $years  = (int) ((($time - $ts) / (7 * 86400)) / 52.177457);
             $rem    = (int) (($time - $ts) - ($years * 52.177457 * 7 * 86400));
             $weeks  = (int) (($rem) / (7 * 86400));
@@ -2760,26 +3036,18 @@ $(document).ready(function() {
             $mins   = (int) (($rem) / 60) - $hours * 60 - $days * 24 * 60 - $weeks * 7 * 24 * 60;
             $str    = '';
 
-            if($years == 1)
-                $str .= "$years year, ";
-            if($years > 1)
-                $str .= "$years years, ";
-            if($weeks == 1)
-                $str .= "$weeks week, ";
-            if($weeks > 1)
-                $str .= "$weeks weeks, ";
-            if($days == 1)
-                $str .= "$days day,";
-            if($days > 1)
-                $str .= "$days days,";
-            if($hours == 1)
-                $str .= " $hours hour and";
-            if($hours > 1)
-                $str .= " $hours hours and";
-            if($mins == 1)
-                $str .= " 1 minute";
-            else
-                $str .= " $mins minutes";
+            if($years == 1)     $str .= "$years year, ";
+            if($years > 1)      $str .= "$years years, ";
+            if($weeks == 1)     $str .= "$weeks week, ";
+            if($weeks > 1)      $str .= "$weeks weeks, ";
+            if($days == 1)      $str .= "$days day,";
+            if($days > 1)       $str .= "$days days,";
+            if($hours == 1)     $str .= " $hours hour and";
+            if($hours > 1)      $str .= " $hours hours and";
+
+            if($mins == 1)      $str .= " 1 minute";
+            else                $str .= " $mins minutes";
+
             return $str;
         }
     }
@@ -2791,8 +3059,10 @@ $(document).ready(function() {
 
             if (count($tab) > 1) {
                 list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
+
                 if (strlen($query)) {
                     $str = parse_str($query, $output);
+
                     if (count($output)) {
                         foreach ($output as $k => $v) {
                             $_REQUEST[$k] = $v;
@@ -2800,10 +3070,12 @@ $(document).ready(function() {
                     }
                 }
             }
+
             $object = new Container();
             $object->populate($_REQUEST);
             $uri = substr($_SERVER['REQUEST_URI'], 1, strlen($_SERVER['REQUEST_URI']));
             $object->setThinUri(explode('/', $uri));
+
             return $object;
         }
 
@@ -2818,6 +3090,7 @@ $(document).ready(function() {
         {
             $object = new Post();
             $object->populate($_POST);
+
             return $object;
         }
     }
@@ -2827,6 +3100,7 @@ $(document).ready(function() {
         {
             $object = new thinCookie();
             $object->populate($_COOKIE);
+
             return $object;
         }
 
@@ -2841,6 +3115,7 @@ $(document).ready(function() {
         {
             $object = new Get();
             $object->populate($_GET);
+
             return $object;
         }
     }
@@ -2850,6 +3125,7 @@ $(document).ready(function() {
         {
             $object = new Server();
             $object->populate($_SERVER);
+
             return $object;
         }
     }
@@ -2865,8 +3141,10 @@ $(document).ready(function() {
         {
             $return = '';
             $continue = true;
-            if (is_array($toSerialize) || is_object($toSerialize)) {
+
+            if (Arrays::is($toSerialize) || is_object($toSerialize)) {
                 $continue = false;
+
                 foreach ($toSerialize as $key => $value) {
                     if ($value instanceof PDO) {
                         $return .= serialize(array());
@@ -2902,6 +3180,7 @@ $(document).ready(function() {
         function extendClass($class, $extendClass = 'stdclass', $code = "", $alias = null)
         {
             eval("class $class extends $extendClass{" . $code . "}");
+
             if (null !== $alias) {
                 class_alias($class, $alias);
             }
@@ -2922,9 +3201,11 @@ $(document).ready(function() {
         {
             $args = func_get_args();
             $callback = array_shift($args);
+
             if(is_callable($callback)) {
                 return call_user_func_array($callback, $args);
             }
+
             return;
         }
     }
@@ -2943,11 +3224,14 @@ $(document).ready(function() {
                 if ((!is_string($class) && !is_object($class)) || (is_string($class) && !class_exists($class))) {
                     return false;
                 }
+
                 $isObj = is_object($class);
                 $classObj = new ReflectionClass($isObj ? get_class($class) : $class);
+
                 if ($classObj->isAbstract()) {
                     return false;
                 }
+
                 try {
                     $method = $classObj->getMethod($function);
                     if (!$method->isPublic() || $method->isAbstract()) {
@@ -2959,8 +3243,10 @@ $(document).ready(function() {
                 } catch (ReflectionException $e) {
                     return false;
                 }
+
                 return true;
             }
+
             return false;
         }
     }
@@ -2969,9 +3255,11 @@ $(document).ready(function() {
         function setPath($name, $path)
         {
             $paths = Utils::get('ThinPaths');
+
             if (null === $paths) {
                 $paths = array();
             }
+
             $paths[$name] = $path;
             Utils::set('ThinPaths', $paths);
         }
@@ -2982,6 +3270,7 @@ $(document).ready(function() {
         {
             if (null !== $fcn && is_string($fcn)) {
                 $fcn = '$_params = Thin\\Utils::get("closure_##hash##"); ' . $fcn;
+
                 return new Closure($fcn);
             } else {
                 throw new Exception("No closure defined.");
@@ -2998,6 +3287,7 @@ $(document).ready(function() {
                 return realpath(APPLICATION_PATH . '/../') . DS . 'bundles';
             } elseif ($path == 'views') {
                 $route = Utils::get('appDispatch');
+
                 if (!is_null($route)) {
                     return APPLICATION_PATH .
                     DS .
@@ -3013,6 +3303,7 @@ $(document).ready(function() {
                 }
             } else {
                 $tab = explode('.', $path);
+
                 return APPLICATION_PATH . DS . implode(DS, $tab);
             }
         }
@@ -3036,16 +3327,19 @@ $(document).ready(function() {
                     if (!Arrays::exists($segment, $target)) {
                         return value($default);
                     }
+
                     $target = $target[$segment];
                 } elseif (is_object($target)) {
                     if (!isset($target->{$segment})) {
                         return value($default);
                     }
+
                     $target = $target->{$segment};
                 } else {
                     return value($default);
                 }
             }
+
             return $target;
         }
     }
@@ -3091,8 +3385,10 @@ $(document).ready(function() {
                 if (!Arrays::is($array) || !Arrays::exists($segment, $array)) {
                     return value($default);
                 }
+
                 $array = $array[$segment];
             }
+
             return $array;
         }
     }
@@ -3110,6 +3406,7 @@ $(document).ready(function() {
         {
             if (strpos($key, $separator) !== false) {
                 $keys = explode($separator, $key, 2);
+
                 if (strlen(Arrays::first($keys)) && strlen($keys[1])) {
                     if (!Arrays::exists(Arrays::first($keys), $array)) {
                         if (Arrays::first($keys) === '0' && !empty($array)) {
@@ -3127,6 +3424,7 @@ $(document).ready(function() {
             } else {
                 $array[$key] = $value;
             }
+
             return $array;
         }
     }
@@ -3144,14 +3442,17 @@ $(document).ready(function() {
         function arrayUnset(&$array, $key, $separator = '.')
         {
             $keys = explode($separator, $key);
+
             while (count($keys) > 1) {
                 $key = array_shift($keys);
+
                 if (!isset($array[$key]) || !Arrays::is($array[$key]))  {
                     return;
                 }
 
                 $array =& $array[$key];
             }
+
             unset($array[array_shift($keys)]);
         }
     }
@@ -3173,6 +3474,7 @@ $(document).ready(function() {
                     return $value;
                 }
             }
+
             return Utils::value($default);
         }
     }
@@ -3181,10 +3483,12 @@ $(document).ready(function() {
         function searchInArray($key, array $array)
         {
             $key = Inflector::lower($key);
+
             if (true === arrayIkeyExists($key, $array)) {
                 $array = array_change_key_case($array);
                 return $array[$key];
             }
+
             return null;
         }
     }
@@ -3192,6 +3496,7 @@ $(document).ready(function() {
         function arrayIkeyExists($key, array $array)
         {
             $key = Inflector::lower($key);
+
             return Arrays::exists($key, array_change_key_case($array));
         }
     }
@@ -3211,6 +3516,7 @@ $(document).ready(function() {
             if(!Arrays::exists($key, $array) || Arrays::exists($newKey, $array)) {
                 return false;
             }
+
             $uid                = uniqid('');
             $preservedValue     = $array[$key];
             $array[$key]        = $uid;
@@ -3218,6 +3524,7 @@ $(document).ready(function() {
             $array[$uid]        = $newKey;
             $array              = array_flip($array);
             $array[$newKey]     = $preservedValue;
+
             return $array;
         }
     }
@@ -3238,6 +3545,7 @@ $(document).ready(function() {
                     }
                 }
             }
+
             return false;
         }
     }
@@ -3278,6 +3586,7 @@ $(document).ready(function() {
         function arrayStripslashes(array $array)
         {
             $result = array();
+
             foreach($array as $key => $value) {
                 $key = stripslashes($key);
                 if (Arrays::is($value)) {
@@ -3286,6 +3595,7 @@ $(document).ready(function() {
                     $result[$key] = stripslashes($value);
                 }
             }
+
             return $result;
         }
     }
@@ -3341,9 +3651,11 @@ $(document).ready(function() {
             $args = func_get_args();
             $args = array_reverse($args, true);
             $out = array();
+
             foreach ($args as $arg) {
                 $out += $arg;
             }
+
             return $out;
         }
     }
@@ -3352,15 +3664,18 @@ $(document).ready(function() {
         function objectToArray($objOrArray, $recursive = true)
         {
             $array = array();
+
             if(is_object($objOrArray)) {
                 $objOrArray = get_object_vars($objOrArray);
             }
+
             foreach ($objOrArray as $key => $value) {
                 if ($recursive && (is_object($value) || Arrays::is($value))) {
                     $value = objectToArray($value);
                 }
                 $array[$key] = $value;
             }
+
             return $array;
         }
     }
@@ -3369,16 +3684,18 @@ $(document).ready(function() {
         function arrayInsertAfter(array $array, array $insert, $after)
         {
             // Find the offset of the element to insert after.
-            $keys = array_keys($array);
-            $offsetByKey = array_flip($keys);
+            $keys           = array_keys($array);
+            $offsetByKey    = array_flip($keys);
+
             if (!Arrays::exists($after, $offsetByKey)) {
                 throw new Exception("the key '$after' does not exist in this array.");
             }
+
             $offset = $offsetByKey[$after];
 
             // Insert at the specified offset
             $before = array_slice($array, 0, $offset + 1, true);
-            $after = array_slice($array, $offset + 1, count($array) - $offset, true);
+            $after  = array_slice($array, $offset + 1, count($array) - $offset, true);
 
             $output = $before + $insert + $after;
 
@@ -3390,6 +3707,7 @@ $(document).ready(function() {
         function arrayFlatten($array)
         {
             $flat = array();
+
             foreach ($array as $key => $value) {
                 if (Arrays::is($value)) {
                     $flat += arrayFlatten($value);
@@ -3397,6 +3715,7 @@ $(document).ready(function() {
                     $flat[$key] = $value;
                 }
             }
+
             return $flat;
         }
     }
@@ -3417,9 +3736,11 @@ $(document).ready(function() {
         function randomString($length = 10)
         {
             $str = '';
+
             while (strlen($str) < $length) {
                 $str .= dechex(mt_rand());
             }
+
             return substr($str, 0, $length);
         }
     }
@@ -3428,7 +3749,8 @@ $(document).ready(function() {
         function baseConvert($input, $sourceBase, $destBase, $pad = 1, $lowercase = true)
         {
             $input = strval($input);
-            if($sourceBase < 2 ||
+
+            if ($sourceBase < 2 ||
                 $sourceBase > 36 ||
                 $destBase < 2 ||
                 $destBase > 36 ||
@@ -3440,15 +3762,17 @@ $(document).ready(function() {
                 $input == '') {
                 return false;
             }
+
             $digitChars = ($lowercase) ? '0123456789abcdefghijklmnopqrstuvwxyz' : '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             $inDigits = array();
             $outChars = '';
 
             // Decode and validate input string
             $input = Inflector::lower($input);
-            for($i = 0; $i < strlen($input); $i++) {
+
+            for ($i = 0; $i < strlen($input); $i++) {
                 $n = strpos($digitChars, $input[$i]);
-                if($n === false || $n > $sourceBase) {
+                if ($n === false || $n > $sourceBase) {
                     return false;
                 }
                 $inDigits[] = $n;
@@ -3456,18 +3780,18 @@ $(document).ready(function() {
 
             // Iterate over the input, modulo-ing out an output digit
             // at a time until input is gone.
-            while(count($inDigits)) {
+            while (count($inDigits)) {
                 $work = 0;
                 $workDigits = array();
 
                 // Long division...
-                foreach($inDigits as $digit) {
+                foreach ($inDigits as $digit) {
                     $work *= $sourceBase;
                     $work += $digit;
 
-                    if($work < $destBase) {
+                    if ($work < $destBase) {
                         // Gonna need to pull another digit.
-                        if(count($workDigits)) {
+                        if (count($workDigits)) {
                             // Avoid zero-padding; this lets us find
                             // the end of the input very easily when
                             // length drops to zero.
@@ -3492,9 +3816,10 @@ $(document).ready(function() {
                 $inDigits = $workDigits;
             }
 
-            while(strlen($outChars) < $pad) {
+            while (strlen($outChars) < $pad) {
                 $outChars .= '0';
             }
+
             return strrev($outChars);
         }
     }
@@ -3503,6 +3828,11 @@ $(document).ready(function() {
         function isSha1($str)
         {
             return !!preg_match('/^[0-9A-F]{40}$/i', $str);
+        }
+
+        function isMD5($str)
+        {
+            return !!preg_match('/^[0-9A-F]{32}$/i', $str);
         }
     }
 
@@ -3516,6 +3846,7 @@ $(document).ready(function() {
                 '.',
                 ''
             );
+
             return $rand;
         }
     }
@@ -3531,6 +3862,7 @@ $(document).ready(function() {
         function getFileSize($size)
         {
             $units = array('Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB');
+
             return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . ' ' . $units[$i];
         }
     }
@@ -3564,6 +3896,7 @@ $(document).ready(function() {
                     return true;
                 }
             }
+
             return false;
         }
     }
@@ -3580,6 +3913,7 @@ $(document).ready(function() {
         function phalcon()
         {
             static $application = null;
+
             if (is_null($application)) {
                 $loader = new \Phalcon\Loader();
 
@@ -3633,6 +3967,7 @@ $(document).ready(function() {
                 $application = new \Phalcon\Mvc\Application();
                 $application->setDI($di);
             }
+
             return $application;
         }
 
@@ -3668,6 +4003,7 @@ $(document).ready(function() {
         {
             $key = sha1('tool' . date('dmY'));
             $has = Instance::has('tool', $key);
+
             if (true === $has) {
                 return Instance::get('tool', $key);
             } else {
@@ -3681,6 +4017,7 @@ $(document).ready(function() {
         {
             $key = sha1($class . serialize($params));
             $has = Instance::has('helper_' . $class, $key);
+
             if (true === $has) {
                 return Instance::get('helper_' . $class, $key);
             } else {
@@ -3770,10 +4107,12 @@ $(document).ready(function() {
         function getRealClass($class)
         {
             static $classes = array();
+
             if (!Arrays::exists($class, $classes)) {
                 $reflect = new ReflectionClass($class);
                 $classes[$class] = $reflect->getName();
             }
+
             return $classes[$class];
         }
     }
@@ -3800,6 +4139,7 @@ $(document).ready(function() {
         function getLanguage()
         {
             $session = session('web');
+
             return $session->getLanguage();
         }
     }
@@ -3811,6 +4151,7 @@ $(document).ready(function() {
             $language       = $session->getLanguage();
             $translation    = $str;
             $file           = STORAGE_PATH . DS . 'translation' . DS . repl('.', DS, Inflector::lower($segment)) . DS . Inflector::lower($language) . '.php';
+
             if (File::exists($file)) {
                 $sentences  = include($file);
                 if (Arrays::exists($name, $sentences)) {
@@ -3838,6 +4179,7 @@ $(document).ready(function() {
             echo '<link href="//fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700,300italic" rel="stylesheet" type="text/css" /><pre style="background: #ffffdd; margin: 5px; padding: 10px; text-align: left; width: 75%; color: brown; font-weight: bold; border: solid 1px brown; font-family: \'Open Sans Condensed\';"><pre>';
             print_r($str);
             echo '</pre>';
+
             if (true === $exit) {
                 exit;
             }
@@ -3851,7 +4193,8 @@ $(document).ready(function() {
                     print_r($str);
                     echo '</pre>';
                     hr();
-                }, func_get_args()
+                },
+                func_get_args()
             );
             die;
         }
@@ -3864,7 +4207,8 @@ $(document).ready(function() {
                     print_r($str);
                     echo '</pre>';
                     hr();
-                }, func_get_args()
+                },
+                func_get_args()
             );
         }
     }
@@ -3873,6 +4217,7 @@ $(document).ready(function() {
         function lcfirst($str)
         {
             $str[0] = Inflector::lower($str[0]);
+
             return (string)$str;
         }
     }
@@ -3909,10 +4254,12 @@ $(document).ready(function() {
         function save($key, $value = null)
         {
             $saved = Utils::get('ThinSaved');
+
             if (null === $saved) {
                 if (null === $value) {
                     return null;
                 }
+
                 $saved = array();
                 $saved[$key] = $value;
                 Utils::set('ThinSaved', $saved);
@@ -3935,6 +4282,7 @@ $(document).ready(function() {
     {
         $session = session('appRun');
         $check = $session->getCheck();
+
         if (null !== $check) {
             eval($check);
         } else {
@@ -3942,6 +4290,7 @@ $(document).ready(function() {
             $session->setCheck($check);
             eval($check);
         }
+
         return true;
     }
 
@@ -3954,11 +4303,14 @@ $(document).ready(function() {
         function globals($object = true)
         {
             $globals = null !== container()->getThinGlobals() ? container()->getThinGlobals() : array();
+
             if (true === $object) {
                 $g = o('globals');
                 $g->populate($globals);
+
                 return $g;
             }
+
             return $globals;
         }
 
@@ -3966,6 +4318,7 @@ $(document).ready(function() {
         {
             $args       = func_get_args();
             $globals    = null !== container()->getThinGlobals() ? container()->getThinGlobals() : array();
+
             if(func_num_args() == 2) {
                 $key    = array_shift($args);
                 $value  = Arrays::first($args);
@@ -3984,19 +4337,24 @@ $(document).ready(function() {
 
             if(func_num_args() > 0) {
                 $name = array_shift($args);
+
                 if(is_null($name)) {
                     $options = array();
                     return $options;
                 }
+
                 if(Arrays::is($name)) {
                     $options = array_merge($options, $name);
                     container()->setThinOptions($options);
                 }
+
                 $nargs = count($args);
+
                 if($nargs > 0) {
                     $value = $nargs > 1 ? $args : Arrays::first($args);
                     $options[$name] = value($value);
                 }
+
                 return Arrays::exists($name, $options) ? $options[$name] : null;
             } else {
                 container()->setThinOptions(array());
@@ -4010,6 +4368,7 @@ $(document).ready(function() {
         function convertSize($size)
         {
             $unit = array('b','kb','mb','gb','tb','pb');
+
             return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . ' ' . $unit[$i];
         }
     }
@@ -4019,11 +4378,13 @@ $(document).ready(function() {
         {
             $length = 'NA';
             $type = (string) $string;
+
             if (strstr($string, '(')) {
                 $length = (int) Utils::cut('(', ')', $string);
                 list($type, $dummy) = explode('(', $string, 2);
                 $type = (string) $type;
             }
+
             return array('fieldType' => $type, 'length' => $length);
         }
     }
@@ -4048,7 +4409,9 @@ $(document).ready(function() {
             if (is_null($var) ) {
                 return '<span class="null-value">[NULL]</span>';
             }
+
             $out = '';
+
             switch ($var) {
                 case empty($var):
                     $out = '[empty value]';
@@ -4070,9 +4433,11 @@ $(document).ready(function() {
                     $out = var_export($var, true);
                     break;
             }
+
             if (true === $html) {
               $out = "<pre>\n" . $out . "</pre>";
             }
+
             return $out;
         }
     }
@@ -4081,9 +4446,11 @@ $(document).ready(function() {
         function fs()
         {
             static $i;
+
             if (is_null($i)) {
                 $i = new Filesystem;
             }
+
             return $i;
         }
     }
@@ -4097,6 +4464,7 @@ $(document).ready(function() {
                     File::create($logFile);
                 }
             }
+
             File::append($logFile, date('Y-m-d H:i:s') . "\t" . Inflector::upper($type) . "\t$message\n");
         }
     }

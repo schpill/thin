@@ -8,7 +8,7 @@
     class Container extends Object
     {
         protected $values = array();
-        protected $_token;
+        public $_token;
 
         public static function instance()
         {
