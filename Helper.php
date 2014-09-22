@@ -39,6 +39,25 @@
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
 
+    if (!function_exists('keep')) {
+        function keep(Closure $closure, $args = array(), $ttl = 3600)
+        {
+            $ref    = new ReflectionFunction($closure);
+            $key    = 'keep::' . sha1($ref->getFileName() . $ref->getStartLine());
+
+            $value = redis()->get($key);
+
+            if (!strlen($value)) {
+                $value = call_user_func_array($closure, $args);
+
+                redis()->set($key, $value);
+                redis()->expire($key, $ttl);
+            }
+
+            return $value;
+        }
+    }
+
     if (!function_exists('urlAction')) {
         function urlAction($action, $module = null, $controller = null)
         {
@@ -281,6 +300,7 @@
                             "port"      => $port
                         )
                     );
+
                     container()->setRedis($redis);
                 } catch (Exception $e) {
                     echo "Couldn't connected to Redis";
@@ -289,6 +309,7 @@
                     return null;
                 }
             }
+
             return $redis;
         }
     }
