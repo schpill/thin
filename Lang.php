@@ -28,13 +28,17 @@
             }
         }
 
-        public function translate($key, $default)
+        public function translate($key, $default, $html = true)
         {
             if ($this->locale != Config::get('application.language', DEFAULT_LANGUAGE)) {
                 $row = jmodel('translation')->where("key = $key")->where('lang = ' . $this->locale)->first();
 
                 if ($row) {
-                    return Html\Helper::display($row['value']);
+                    if ($html) {
+                        return Html\Helper::display($row['value']);
+                    } else {
+                        return $row['value'];
+                    }
                 }
             }
 
@@ -44,5 +48,32 @@
         public function getLocale()
         {
             return $this->locale;
+        }
+
+        public function machine($default, $html = true)
+        {
+            if ($this->locale != Config::get('application.language', DEFAULT_LANGUAGE)) {
+                $json = keep(function($str, $from, $to) {
+                    return dwn('http://api.mymemory.translated.net/get?q=' . urlencode($str) . '&langpair=' . $from . '|' . $to);
+                }, array($default, Config::get('application.language', DEFAULT_LANGUAGE), $this->locale));
+
+                $tab = json_decode($json, true);
+
+                $matches = isAke($josn, 'matches', false);
+
+                if (false !== $matches) {
+                    $row = Arrays::first($matches);
+
+                    $translation = isAke($row, 'translation', $default);
+
+                    if ($html) {
+                        return Html\Helper::display($translation);
+                    } else {
+                        return $translation;
+                    }
+                }
+            }
+
+            return $default;
         }
     }

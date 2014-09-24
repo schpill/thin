@@ -538,6 +538,25 @@
             return trim($text, $separator);
         }
 
+        public static function makeIndexes($str)
+        {
+            $words = static::urlize($str, ' ');
+
+            $words = explode(' ', $words);
+
+            $collection = array();
+
+            if (count($words)) {
+                foreach ($words as $word) {
+                    if (strlen($word) > 1 || is_numeric($word)) {
+                        array_push($collection, $word);
+                    }
+                }
+            }
+
+            return $collection;
+        }
+
         public static function unaccent($string)
         {
             if (!preg_match('/[\x80-\xff]/', $string)) {

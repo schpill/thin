@@ -855,21 +855,17 @@
             ? 0
             : Utils::get('SQLTotalDuration');
 
-            $queriesNoSQL = (null === Utils::get('NbQueriesNOSQL'))
-            ? 0
-            : Utils::get('NbQueriesNOSQL');
+            $queriesNoSQL = \Dbjson\Dbjson::$queries;
 
             $valQueriesNoSQL = ($queriesNoSQL < 2)
             ? 'NoSQL Query executed'
             : 'NoSQL Queries executed';
 
-            $SQLDurationNoSQL = (null === Utils::get('SQLTotalDurationNOSQL'))
-            ? 0
-            : Utils::get('SQLTotalDurationNOSQL');
+            $SQLDurationNoSQL = \Dbjson\Dbjson::$duration;
 
             $execPHPSQL         = $executionTime - $SQLDuration;
             $execPHPNoSQL       = $executionTime - $SQLDurationNoSQL;
-            $execPHP            = $executionTime - $SQLDuration;
+            $execPHP            = $executionTime - $SQLDuration - $SQLDurationNoSQL;
             $PCPhp              = round(($execPHP      / $executionTime) * 100, 2);
             $PCPhpSQL           = round(($execPHPSQL   / $executionTime) * 100, 2);
             $PCPhpNoSQL         = round(($execPHPNoSQL / $executionTime) * 100, 2);

@@ -38,12 +38,26 @@
     use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
+    use Dbjson\Cache as JCache;
+
+    if (!function_exists('jcache')) {
+        function jcache()
+        {
+            static $i;
+
+            if (null === $i) {
+                $i = new JCache;
+            }
+
+            return $i;
+        }
+    }
 
     if (!function_exists('keep')) {
         function keep(Closure $closure, $args = array(), $ttl = 3600)
         {
             $ref    = new ReflectionFunction($closure);
-            $key    = 'keep::' . sha1($ref->getFileName() . $ref->getStartLine());
+            $key    = 'keep::' . sha1($ref->getFileName() . $ref->getStartLine() . serialize($args));
 
             $value = redis()->get($key);
 
@@ -51,7 +65,10 @@
                 $value = call_user_func_array($closure, $args);
 
                 redis()->set($key, $value);
-                redis()->expire($key, $ttl);
+
+                if (0 < $ttl) {
+                    redis()->expire($key, $ttl);
+                }
             }
 
             return $value;
@@ -280,8 +297,6 @@
             $redis = container()->getRedis();
 
             if (null === $redis) {
-                // require_once "predis/autoload.php";
-                // PredisAutoloader::register();
                 $args = func_get_args();
 
                 if (count($args)) {
@@ -2239,7 +2254,13 @@ $(document).ready(function() {
 
     if (!function_exists('helper')) {
 
-        function repo($entity)
+        function repo($entity, $ns = 'Core')
+        {
+            $class = "JsonModel\\$ns\\" . ucfirst(Inflector::uncamelize($entity));
+            return with(new $class);
+        }
+
+        function repository($entity)
         {
             $em = Doctrine::em();
             $class = ucfirst(Inflector::uncamelize($entity));

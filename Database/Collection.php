@@ -30,7 +30,7 @@
             $items = array();
             $i = 0;
 
-            if (count($models)) {if (!is_array($models)) dd($models);
+            if (count($models)) {
                 foreach ($models as $model) {
                     $id = $i++;
 
