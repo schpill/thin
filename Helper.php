@@ -112,8 +112,9 @@
             return \Dbjson\Dbjson::instance($db, $table);
         }
 
-        function jmodel($table, $db = 'core')
+        function jmodel($table, $db = null)
         {
+            $db = is_null($db) ? SITE_NAME : $db;
             return \Dbjson\Dbjson::instance($db, $table);
         }
 

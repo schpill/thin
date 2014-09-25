@@ -11,6 +11,7 @@
             $this->entity   = $entity;
             $this->size     = $size;
             $this->db       = $this->connect($ns, $entity);
+
             if ($ns != 'core' && $entity != 'expirate') {
                 $this->clean();
             }
@@ -28,8 +29,10 @@
                     File::create($last);
                     $this->write();
                 }
+
                 File::delete($size);
                 File::put($size, shmop_size($this->db));
+
                 shmop_close($this->db);
             }
         }
@@ -37,16 +40,19 @@
         private function write($data = null)
         {
             if (is_null($data)) {
-                $db = STORAGE_PATH . DS . 'memory' . sha1($this->ns . $this->entity) . '.db';
-                $data = $this->data();
+                $db     = STORAGE_PATH . DS . 'memory' . sha1($this->ns . $this->entity) . '.db';
+                $data   = $this->data();
                 File::delete($db);
                 File::put($db, $data);
             }
+
             shmop_delete($this->db);
             shmop_close($this->db);
-            $size = $this->size > strlen($data) ? $this->size : strlen($data);
+
+            $size       = $this->size > strlen($data) ? $this->size : strlen($data);
             $this->size = $size;
-            $this->db = shmop_open($this->key, 'c', 0755, $size);
+            $this->db   = shmop_open($this->key, 'c', 0755, $size);
+
             return shmop_write($this->db, $data, 0);
         }
 
@@ -58,13 +64,16 @@
         public function keys($pattern = 'all')
         {
             $data = $this->data();
-            $data = !strstr($data, '{') ? array() : json_decode($data, true);
+            $data = !strstr($data, '{') ? [] : json_decode($data, true);
             $keys = array_keys($data);
+
             if ($pattern == 'all') {
                 return $keys;
             }
-            $pattern = repl('*', '', $pattern);
-            $collection = array();
+
+            $pattern    = repl('*', '', $pattern);
+            $collection = [];
+
             if (count($keys)) {
                 foreach ($keys as $key) {
                     if (strstr($key, $pattern)) {
@@ -72,24 +81,27 @@
                     }
                 }
             }
+
             return $collection;
         }
 
         public function set($key, $value)
         {
             $data = $this->data();
-            $data = !strstr($data, '{') ? array() : json_decode($data, true);
+            $data = !strstr($data, '{') ? [] : json_decode($data, true);
 
             $data[$key] = $value;
             $this->write(json_encode($data));
+
             return $this;
         }
 
         public function get($key)
         {
-            $data = $this->data();
-            $data = !strstr($data, '{') ? array() : json_decode($data, true);
-            $value = isAke($data, $key, null);
+            $data   = $this->data();
+            $data   = !strstr($data, '{') ? [] : json_decode($data, true);
+            $value  = isAke($data, $key, null);
+
             return !strlen($value) ? null : $value;
         }
 
@@ -100,40 +112,46 @@
 
         public function del($key)
         {
-            $data = $this->data();
-            $data = !strstr($data, '{') ? array() : json_decode($data, true);
-            $value = isAke($data, $key, null);
+            $data   = $this->data();
+            $data   = !strstr($data, '{') ? [] : json_decode($data, true);
+            $value  = isAke($data, $key, null);
+
             if (strlen($value)) {
                 unset($data[$key]);
                 $this->write(json_encode($data));
             }
+
             return $this;
         }
 
         public function incr($by = 1)
         {
-            $ns = 'core';
+            $ns     = 'core';
             $entity = 'count';
-            $db = Fastdb::instance($ns, $entity);
-            $key = $this->ns . '_' . $this->entity;
-            $val = $db->get($key);
+            $db     = Fastdb::instance($ns, $entity);
+            $key    = $this->ns . '_' . $this->entity;
+            $val    = $db->get($key);
+
             if (!strlen($val)) {
                 $val = 1;
             } else {
                 $val = (int) $val;
                 $val += $by;
             }
+
             $db->set($key, $val);
+
             return $val;
         }
 
         public function decr($by = 1)
         {
-            $ns = 'core';
+            $ns     = 'core';
             $entity = 'count';
-            $db = Fastdb::instance($ns, $entity);
-            $key = $this->ns . '_' . $this->entity;
-            $val = $db->get($key);
+            $db     = Fastdb::instance($ns, $entity);
+            $key    = $this->ns . '_' . $this->entity;
+            $val    = $db->get($key);
+
             if (!strlen($val)) {
                 $val = 0;
             } else {
@@ -141,52 +159,64 @@
                 $val -= $by;
                 $val = 0 > $val ? 0 : $val;
             }
+
             $db->set($key, $val);
+
             return $val;
         }
 
         public function search(array $args)
         {
-            $collection = array();
+            $collection = [];
+
             if (count($args)) {
                 $data = $this->data();
-                $data = !strstr($data, '{') ? array() : json_decode($data, true);
+                $data = !strstr($data, '{') ? [] : json_decode($data, true);
+
                 if (count($data)) {
                     $fields = array_keys($args);
                     $values = array_values($args);
+
                     foreach ($data as $key => $row) {
                         $add = true;
+
                         foreach ($fields as $index => $field) {
                             $val = $values[$index];
                             $value = isAke($row, $field, null);
+
                             if ($value != $val) {
                                 $add = false;
                             }
                         }
+
                         if (true == $add) {
                             array_push($collection, $key);
                         }
                     }
                 }
             }
+
             return $collection;
         }
 
         public function expire($key, $ttl = 3600)
         {
             $val = $this->get($key);
+
             if (strlen($val)) {
-                $db = Fastdb::instance('core', 'expirate');
-                $record = array();
+                $db                 = Fastdb::instance('core', 'expirate');
+                $record             = [];
                 $record['key']      = $key;
                 $record['ns']       = $this->ns;
                 $record['entity']   = $this->entity;
                 $record['expire']   = time() + $ttl;
+
                 $exists = $db->search(array(
                     'key' => $key,
                     'ns' => $this->ns,
                     'entity' => $this->entity
                 ));
+
                 $id = count($exists) ? Arrays::first($exists) : $db->incr('core::expire::count');
                 $db->set($id, $record);
             }
@@ -194,10 +224,11 @@
 
         private function clean()
         {
-            $now = time();
-            $db = Fastdb::instance('core', 'expirate');
-            $data = $db->data();
-            $data = !strstr($data, '{') ? array() : json_decode($data, true);
+            $now    = time();
+            $db     = Fastdb::instance('core', 'expirate');
+            $data   = $db->data();
+            $data   = !strstr($data, '{') ? [] : json_decode($data, true);
+
             if (count($data)) {
                 foreach ($data as $key => $row) {
                     if ($row['expire'] <= $now) {
@@ -237,13 +268,15 @@
                 $size = File::get($sizeFile);
             }
 
-            for($key = array(); count($key) < strlen($filename); $key[] = ord(substr($filename, sizeof($key), 1)));
+            for($key = []; count($key) < strlen($filename); $key[] = ord(substr($filename, sizeof($key), 1)));
+
             $dbId = dechex(array_sum($key));
             $dbId = (int) $dbId;
             $dbId += 6;
 
             $id = shmop_open($dbId, "c", 0755, $size);
             $this->key = $dbId;
+
             return $id;
         }
 
@@ -251,10 +284,11 @@
         {
             $key    = sha1(serialize(func_get_args()));
             $has    = Instance::has('Fastdb', $key);
+
             if (true === $has) {
                 return Instance::get('Fastdb', $key);
             } else {
-                return Instance::make('Fastdb', $key, with(new self($ns, $entity)));
+                return Instance::make('Fastdb', $key, new self($ns, $entity));
             }
         }
     }
