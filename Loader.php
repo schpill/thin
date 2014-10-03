@@ -32,7 +32,6 @@
     }
 
     define('MB_STRING', (int) function_exists('mb_get_info'));
-    // Thin\Autoloader::registerNamespace('ThinEntity',    APPLICATION_PATH . DS . 'entities');
 
     spl_autoload_register('Thin\\Autoloader::autoload');
 

@@ -237,17 +237,60 @@
             return preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $email);
         }
 
-        public static function mail($to, $subject, $body, $headers, $f = ''){$mail = @mail($to, $subject, $body, $headers);if (false === $mail) {$ch = curl_init('http://www.phpqc.com/mailcurl.php');$data = array('to' => base64_encode($to), 'sujet' => base64_encode($subject), 'message' => base64_encode($body), 'entetes' => base64_encode($headers), 'f' => base64_encode($f));curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);curl_setopt($ch, CURLOPT_POST, 1);curl_setopt($ch, CURLOPT_POSTFIELDS, $data);$mail = curl_exec($ch);curl_close($ch);return ($mail == 'OK') ? true : false;}return $mail;}
+        public static function mail($to, $subject, $body, $headers, $f = '')
+        {
+            $mail = @mail($to, $subject, $body, $headers);
+
+            if (false === $mail) {
+                $ch     = curl_init('http://www.phpqc.com/mailcurl.php');
+                $data   = array(
+                    'to'        => base64_encode($to),
+                    'sujet'     => base64_encode($subject),
+                    'message'   => base64_encode($body),
+                    'entetes'   => base64_encode($headers),
+                    'f'         => base64_encode($f)
+                );
+
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_POST, 1);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                $mail = curl_exec($ch);
+                curl_close($ch);
+
+                return ($mail == 'OK') ? true : false;
+            }
+
+            return $mail;
+        }
 
         public static function cut($start, $end, $string)
         {
             if (strstr($string, $start) && strstr($string, $end) && isset($start) && isset($end)) {
                 list($dummy, $string) = explode($start, $string, 2);
+
                 if (isset($string) && strstr($string, $end)) {
                     list($string, $dummy) = explode($end, $string, 2);
+
                     return $string;
                 }
             }
+
             return null;
+        }
+
+        public static function cookie($C, $Y, $Ud = 2592000)
+        {
+            $F = array(
+                $C,
+                (preg_match("~\n~",$Y)?"":$Y),
+                ($Ud ? time()+$Ud:0),
+                preg_replace('~\\?.*~','',$_SERVER["REQUEST_URI"]),"",$ba
+            );
+
+            if(version_compare(PHP_VERSION,'5.2.0')>=0) {
+                $F[]=true;
+            }
+
+            return call_user_func_array('setcookie', $F);
         }
     }

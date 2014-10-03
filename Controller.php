@@ -50,4 +50,10 @@
         {
             return context()->isPost($except);
         }
+
+        public function close()
+        {
+            $html = '<body onload="self.close();">';
+            die($html);
+        }
     }

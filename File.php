@@ -10,11 +10,13 @@
         {
             static::delete($file);
             $create = @touch($file);
+
             if (null !== $content) {
                 $fp = fopen($file, 'a');
                 fwrite($fp, $content);
                 fclose($fp);
             }
+
             umask(0000);
             chmod($file, 0777);
             return $create;
@@ -25,6 +27,7 @@
             $append = file_put_contents($file, $data, LOCK_EX | FILE_APPEND);
             umask(0000);
             chmod($file, 0777);
+
             return $append;
         }
 
@@ -43,6 +46,7 @@
             $put = file_put_contents($file, $data, LOCK_EX);
             umask(0000);
             chmod($file, 0777);
+
             return $put;
         }
 
@@ -51,6 +55,7 @@
             if (is_dir($file)) {
                 return static::rmdir($file);
             }
+
             if (true === static::exists($file)) {
                 return @unlink($file);
             }
@@ -66,6 +71,7 @@
             $copy = copy($file, $target);
             umask(0000);
             chmod($target, 0777);
+
             return $copy;
         }
 
@@ -107,6 +113,7 @@
         public static function mkdir($path, $chmod = 0777)
         {
             umask(0000);
+
             return (!is_dir($path)) ? mkdir($path, $chmod, true) : true;
         }
 
@@ -133,9 +140,11 @@
 
                 if ($item->isDir()) {
                     $path = $item->getRealPath();
+
                     if (!static::cpdir($path, $location, $delete, $options)) {
                         return false;
                     }
+
                     if (true === $delete) {
                         @rmdir($item->getRealPath());
                     }
@@ -143,6 +152,7 @@
                     if(!copy($item->getRealPath(), $location)) {
                         return false;
                     }
+
                     if (true === $delete) {
                         @unlink($item->getRealPath());
                     }
@@ -150,6 +160,7 @@
             }
 
             unset($items);
+
             if ($delete) {
                 @rmdir($source);
             }
@@ -160,6 +171,7 @@
         public static function chmodDir($directory, $chmod = 0777)
         {
             umask(0000);
+
             if (!is_dir($directory)) {
                 return false;
             }
@@ -180,6 +192,7 @@
         public static function rmdir($directory, $preserve = false)
         {
             umask(0000);
+
             if (!is_dir($directory)) {
                 return false;
             }
@@ -195,9 +208,11 @@
             }
 
             unset($items);
+
             if (false === $preserve) {
                 @rmdir($directory);
             }
+
             return true;
         }
 
@@ -277,7 +292,7 @@
                 } else {
                     throw new Exception('error while opening ' . $path);
                 }
-            }else{
+            } else {
                 throw new Exception($path . ' is not a directory');
             }
 
@@ -395,6 +410,7 @@
                 ob_flush();
                 sleep(1);
             }
+
             fclose($fp);
 
             exit;

@@ -85,6 +85,7 @@
                     'name'      => isset($email[1]) ? $email[1] : null,
                 );
             }
+
             return $this;
         }
 
@@ -104,6 +105,7 @@
                     'name'      => isset($email[1]) ? $email[1] : null,
                 );
             }
+
             return $this;
         }
 
@@ -131,6 +133,7 @@
                     );
                 }
             }
+
             return $this;
         }
 
@@ -158,6 +161,7 @@
                     );
                 }
             }
+
             return $this;
         }
 
@@ -185,6 +189,7 @@
                     );
                 }
             }
+
             return $this;
         }
 
@@ -197,12 +202,14 @@
         public function text($text)
         {
             $this->text = wordwrap(strip_tags($text), $this->wordwrap);
+
             return $this;
         }
 
         public function subject($subject)
         {
             $this->subject = $subject;
+
             return $this;
         }
 
@@ -219,6 +226,7 @@
                     $this->attachments[] = $p;
                 }
             }
+
             return $this;
         }
 
@@ -351,7 +359,9 @@
             // add to receipients
             if (!empty($this->to)) {
                 $string     = '';
+
                 foreach ($this->to as $r) $string .= $this->format($r) . ', ';
+
                 $string     = substr($string, 0, -2);
                 $headers[]  = 'To: ' . $string;
             }
@@ -359,7 +369,9 @@
             // add cc recipients
             if (!empty($this->cc)) {
                 $string     = '';
+
                 foreach ($this->cc as $r) $string .= $this->format($r) . ', ';
+
                 $string     = substr($string, 0, -2);
                 $headers[]  = 'CC: ' . $string;
             }
@@ -451,6 +463,7 @@
 
             // build headers string
             $email = '';
+
             foreach ($headers as $header) {
                 $email .= $header . $this->newLine;
             }
@@ -469,6 +482,7 @@
 
             // spin recipients...
             $recipients = $this->to + $this->cc + $this->bcc;
+
             foreach ($recipients as $r) {
                 // request
                 $this->request('RCPT TO: <' . $r['email'] . '>' . $this->newLine);
@@ -520,6 +534,7 @@
         {
             // get response
             $response = '';
+
             while ($str = fgets($this->connection, 4096)) {
                 $response .= $str;
                 if (substr($str, 3, 1) === ' ') {

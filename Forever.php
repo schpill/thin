@@ -11,16 +11,20 @@
         public function __construct($ns, $store = 'Thin\\Store')
         {
             $ns = 'thin_' . $ns;
-            $c = cookies()->$ns;
+            $c  = cookies()->$ns;
+
             if (null === $c) {
                 setcookie($ns, Utils::token(), strtotime('+1 year'));
             } else {
                 setcookie($ns, $c, strtotime('+1 year'));
             }
+
             $this->key = cookies()->$ns;
+
             if (empty($this->key)) {
                 throw new Exception("Cookies must be functional to execute this class.");
             }
+
             $this->model($ns);
             $this->db = new $store('thin_forever_' . $ns);
             $this->fetch();
@@ -29,9 +33,11 @@
         public static function instance($ns)
         {
             $i = isAke(static::$instances, $ns, null);
+
             if (empty($i)) {
                 $i = static::$instances[$ns] = new self($ns);
             }
+
             return $i;
         }
 
@@ -41,6 +47,7 @@
                 return $this->populate($this->db->findByKey($this->key));
             } else {
                 $row = $this->db->where('key = ' . $this->key)->where('name = ' . $name)->first();
+
                 if (true === $returnRow) {
                     return $row;
                 } else {
@@ -57,6 +64,7 @@
                     $this->values[$metas['name']] = $metas['value'];
                 }
             }
+
             return $this;
         }
 
@@ -64,10 +72,13 @@
         {
             if (!empty($name)) {
                 $row = $this->fetch($name);
+
                 if (!empty($row)) {
                     $row->trash();
                 }
+
                 $value = isAke($this->values, $name, null);
+
                 if (!empty($value)) {
                     unset($this->values[$name]);
                 }
@@ -76,6 +87,7 @@
                     $this->delete($k);
                 }
             }
+
             return $this;
         }
 
@@ -84,6 +96,7 @@
             if (!empty($name)) {
                 $row = $this->fetch($name, true);
                 $exists = !empty($row);
+
                 if (true === $exists) {
                     $this->update($row, $name);
                 } else {
@@ -94,6 +107,7 @@
                     $this->store($k);
                 }
             }
+
             return $this;
         }
 
@@ -102,6 +116,7 @@
             $value = isAke($this->values, $name, null);
             $row->$name = $value;
             $row->store();
+
             return $this;
         }
 
@@ -109,6 +124,7 @@
         {
             $value = isAke($this->values, $name, null);
             $this->db->make()->setName($name)->setValue($value)->store();
+
             return $this;
         }
 
@@ -123,6 +139,7 @@
                 'checkTuple'    => array('name', 'key'),
                 'functions'     => array()
             );
+
             data('thin_forever_' . $ns, $fields, $conf);
         }
 
@@ -131,16 +148,19 @@
             if (substr($f, 0, 3) == 'get') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($f, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 return isset($this->$var) ? $this->$var : null;
             } elseif (substr($f, 0, 3) == 'has') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($f, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 return isset($this->$var);
             } elseif (substr($f, 0, 3) == 'set') {
                 $value = Arrays::first($a);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($f, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 $this->$var = $value;
+
                 return $this;
             }
         }
@@ -149,6 +169,7 @@
         {
             $this->values[$k] = $v;
             $this->store($k);
+
             return $this;
         }
 

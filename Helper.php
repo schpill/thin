@@ -40,6 +40,19 @@
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
 
+    if (!function_exists('whereAreWe')) {
+        function whereAreWe()
+        {
+            $route = container()->getRoute();
+
+            if (!is_null($route) && $route instanceof Container) {
+                return $route->getModule() . '.' . $route->getController() . '.' . $route->getAction();
+            }
+
+            return 'unknown';
+        }
+    }
+
     if (!function_exists('jcache')) {
         function jcache()
         {
@@ -54,7 +67,7 @@
     }
 
     if (!function_exists('keep')) {
-        function keep(Closure $closure, $args = array(), $ttl = 3600)
+        function keep(Closure $closure, $args = array(), $ttl = 0)
         {
             $ref    = new ReflectionFunction($closure);
             $key    = 'keep::' . sha1($ref->getFileName() . $ref->getStartLine() . serialize($args));
@@ -116,6 +129,17 @@
         {
             $db = is_null($db) ? SITE_NAME : $db;
             return \Dbjson\Dbjson::instance($db, $table);
+        }
+
+        function adb($db, $table)
+        {
+            return \Dbarray\Dbarray::instance($db, $table);
+        }
+
+        function amodel($table, $db = null)
+        {
+            $db = is_null($db) ? SITE_NAME : $db;
+            return \Dbarray\Dbarray::instance($db, $table);
         }
 
         function coreCache()
@@ -3114,7 +3138,7 @@ $(document).ready(function() {
                 }
             }
 
-            $object = new Container();
+            $object = new Container;
             $object->populate($_REQUEST);
             $uri = substr($_SERVER['REQUEST_URI'], 1, strlen($_SERVER['REQUEST_URI']));
             $object->setThinUri(explode('/', $uri));
@@ -3131,7 +3155,7 @@ $(document).ready(function() {
     if (!function_exists('post')) {
         function post()
         {
-            $object = new Post();
+            $object = new Container;
             $object->populate($_POST);
 
             return $object;
@@ -3141,7 +3165,7 @@ $(document).ready(function() {
     if (!function_exists('cookies')) {
         function cookies()
         {
-            $object = new thinCookie();
+            $object = new Container;
             $object->populate($_COOKIE);
 
             return $object;
@@ -3149,14 +3173,25 @@ $(document).ready(function() {
 
         function forever($ns = 'user')
         {
-            return Forever::instance($ns);
+            $ns         = SITE_NAME . '_' . $ns;
+            $cookie     = cookies()->$ns;
+
+            if (null === $cookie) {
+                setcookie($ns, Utils::token(), strtotime('+1 year'), '/');
+            } else {
+                setcookie($ns, $cookie, strtotime('+1 year'), '/');
+            }
+
+            $key = cookies()->$ns;
+
+            return $key;
         }
     }
 
     if (!function_exists('gets')) {
         function gets()
         {
-            $object = new Get();
+            $object = new Container;
             $object->populate($_GET);
 
             return $object;
@@ -3166,7 +3201,7 @@ $(document).ready(function() {
     if (!function_exists('server')) {
         function server()
         {
-            $object = new Server();
+            $object = new Container;
             $object->populate($_SERVER);
 
             return $object;

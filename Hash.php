@@ -37,7 +37,7 @@
 
             $salt = substr(strtr(base64_encode($salt), '+', '.'), 0 , 22);
 
-            return crypt($value, '$2a$'.$work.'$'.$salt);
+            return crypt($value, '$2a$' . $work . '$' . $salt);
         }
 
         /**
