@@ -36,6 +36,15 @@
             return !is_null($this->token);
         }
 
+        public static function clean()
+        {
+            $oldies = jmodel('apiauth')->where('expire < ' . time())->exec(true);
+
+            if ($oldies) {
+                $oldies->delete();
+            }
+        }
+
         public static function check($resourceApi)
         {
             $token = request()->getToken();
