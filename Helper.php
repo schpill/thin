@@ -3371,6 +3371,8 @@ $(document).ready(function() {
                     DS .
                     'modules' .
                     DS .
+                    SITE_NAME .
+                    DS .
                     $route->getModule() .
                     DS .
                     'views' .

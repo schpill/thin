@@ -81,13 +81,13 @@
                     if (true === container()->getMultiSite()) {
                         $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
                     } else {
-                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
                     }
                 } else {
                     if (true === container()->getMultiSite()) {
                         $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
                     } else {
-                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
                     }
                 }
             }
@@ -127,12 +127,12 @@
                 if (true === container()->getMultiSite()) {
                     $viewFile = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
                 } else {
-                    $viewFile = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                    $viewFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
                 }
             }
 
             $viewFile = !File::exists($viewFile)
-            ? APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'partials' . DS . $partial
+            ? APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'partials' . DS . $partial
             : $viewFile;
 
             if (File::exists($viewFile)) {
@@ -470,7 +470,7 @@
 
             if (strstr($content, '@@layout')) {
                 $layout = Utils::cut("@@layout('", "')", $content);
-                $layoutFile = APPLICATION_PATH . DS . 'modules' . DS . $this->_module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
+                $layoutFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $this->_module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
                 if (File::exists($layoutFile)) {
                     $contentL = fgc($layoutFile);
                     $content = repl('@@content', repl("@@layout('$layout')", '', $content), $contentL);
