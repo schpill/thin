@@ -6,8 +6,8 @@
      *
      * @author      Gerald Plusquellec
      */
-
     namespace Thin;
+
     class Phonetic
     {
         private $_tolerance;
@@ -18,10 +18,22 @@
             if (1 < $tolerance) {
                 $tolerance = round(($tolerance / 100), 2);
             }
+
             $this->setTolerance($tolerance);
             $this->setSort($sort);
         }
 
+        public static function instance($tolerance = 0.2, $sort = true)
+        {
+            $key    = sha1(serialize(func_get_args()));
+            $has    = Instance::has('Phonetic', $key);
+
+            if (true === $has) {
+                return Instance::get('Phonetic', $key);
+            } else {
+                return Instance::make('Phonetic', $key, new self($tolerance, $sort));
+            }
+        }
 
         /**
         * Set fault tolerance for what is considered 'similar'.
@@ -30,10 +42,13 @@
         **/
         public function setTolerance($tolerance = 0.20)
         {
-            if($tolerance < 0 || $tolerance > 1) {
+            if ($tolerance < 0 || $tolerance > 1) {
                 return false;
             }
+
             $this->_tolerance = round($tolerance, 2);
+
+            return $this;
         }
 
 
@@ -45,6 +60,8 @@
         public function setSort($sort = true)
         {
             $this->_sort = $sort;
+
+            return $this;
         }
 
 
@@ -83,6 +100,7 @@
             if (empty($string) || empty($cmp)) {
                 return false;
             }
+
             if (strlen($string) > 255 || strlen($cmp) > 255) {
                 return false;
             }
@@ -108,7 +126,7 @@
             $finalScore     = (100 < $finalScore) ? 100 : $finalScore;
             $finalScore     = (0 > $finalScore) ? 0 : $finalScore;
 
-            if($finalScore / 100 >= $this->_tolerance) {
+            if ($finalScore / 100 >= $this->_tolerance) {
                 $grade = 1;
             } else {
                 $grade = 0;
@@ -116,10 +134,12 @@
 
             $proxMatch  = self::checkProx(self::_iconv($string), self::_iconv($comp));
             $pctg       = ($finalScore > $proxMatch) ? $finalScore : $proxMatch;
+
             if (strstr($string, ' ') && strstr($comp, ' ')) {
                 $matchWords = self::matchWords(self::_iconv($string), self::_iconv($comp));
                 $pctg       = ($matchWords > $pctg) ? $matchWords : $pctg;
             }
+
             $finalScore  = ($pctg > $bestScore) ? $pctg : $bestScore;
 
 
@@ -128,6 +148,7 @@
                 'score'     =>  $finalScore,
                 'similar'   =>  $grade
             );
+
             return $data;
         }
 
@@ -141,19 +162,24 @@
         **/
         public function phoneme($string = '', $language = 'french')
         {
-            $parts = explode(' ', $string);
-            $phonemes = array();
-            foreach($parts as $p) {
+            $parts      = explode(' ', $string);
+            $phonemes   = array();
+
+            foreach ($parts as $p) {
                 $p = $this->partCases(Inflector::lower($p));
                 $phon = $this->$language($p);
+
                 if ($phon != ' ' && strlen($phon)) {
                     array_push($phonemes, $phon);
                 }
             }
+
             if($this->_sort) {
                 sort($phonemes);
             }
+
             $string = implode(' ', $phonemes);
+
             return $string;
         }
 
@@ -177,7 +203,8 @@
                 'si',
                 'ni',
             );
-            if (in_array($word, $particular)) {
+
+            if (Arrays::in($word, $particular)) {
                 return '';
             }
 
@@ -242,7 +269,9 @@
                 metaphone('million'),
                 metaphone('billion')
             );
+
             $word = repl($others, $otherReplace, $word);
+
             return $word;
         }
 
@@ -268,7 +297,8 @@
         private function trimLast($string)
         {
             $length = strlen($string) - 1;
-            if (in_array($string{$length}, array('t', 'x'))) {
+
+            if (Arrays::in($string{$length}, array('t', 'x'))) {
                 $string = substr($string, 0, $length);
             }
         }
@@ -306,8 +336,10 @@
                  'y',
                  'z'
             );
+
             $num = array_search($val, $except);
             $num *= pow (22, - ($key + 1));
+
             return $num;
         }
 
@@ -318,9 +350,10 @@
         */
         private function getPhonex($string)
         {
-            $array = str_split($string);
-            $aNum = array_map(array ('self', 'mapNum'), array_values($array), array_keys($array));
-            $score = (float) array_sum($aNum) * 1000;
+            $array  = str_split($string);
+            $aNum   = array_map(array ('self', 'mapNum'), array_values($array), array_keys($array));
+            $score  = (float) array_sum($aNum) * 1000;
+
             return round($score, 3);
         }
 
@@ -413,51 +446,67 @@
             if ($string == 'CD')  {
                 return($string);
             }
+
             if ($string == 'BD')  {
                 return($string);
             }
+
             if ($string == 'BV')  {
                 return($string);
             }
+
             if ($string == 'TABAC')  {
                 return('TABA');
             }
+
             if ($string == 'FEU')  {
                 return('FE');
             }
+
             if ($string == 'FE')  {
                 return($string);
             }
+
             if ($string == 'FER')  {
                 return($string);
             }
+
             if ($string == 'FIEF')  {
                 return($string);
             }
+
             if ($string == 'FJORD')  {
                 return($string);
             }
+
             if ($string == 'GOAL')  {
                 return('GOL');
             }
+
             if ($string == 'FLEAU')  {
                 return('FLEO');
             }
+
             if ($string == 'HIER')  {
                 return('IER');
             }
+
             if ($string == 'HEU')  {
                 return('E');
             }
+
             if ($string == 'HE')  {
                 return('E');
             }
+
             if ($string == 'OS')  {
                 return($string);
             }
+
             if ($string == 'RIZ')  {
                 return('RI');
             }
+
             if ($string == 'RAZ')  {
                 return('RA');
             }
@@ -506,6 +555,7 @@
                 "EILET",
                 "AILOL"
             );
+
             $convMOut = array(
                 "DIAI",
                 "DION",
@@ -525,6 +575,7 @@
                 "EIET",
                 "AIOL"
             );
+
             $string = repl($convMIn, $convMOut, $string);
             $string = preg_replace('`([^AEIOUY])(SC|S)IEM([EA])`', '$1$2IAM$3', $string);   // IEM -> IAM
             $string = preg_replace('`^(SC|S)IEM([EA])`', '$1IAM$2', $string);               // IEM -> IAM
@@ -541,6 +592,7 @@
                 'UMBL',
                 'CIEN'
             );
+
             $convMOut = array(
                 'ONB',
                 'ANB',
@@ -553,6 +605,7 @@
                 'INBL',
                 'SIAN'
             );
+
             $string = repl($convMIn, $convMOut, $string);
 
             $string = preg_replace('`^ECHO$`', 'EKO', $string);     // cas particulier écho
@@ -571,6 +624,7 @@
             $string = preg_replace('`OMANIK`', 'OMANICH', $string);     // cas particulier  2/2
             $string = preg_replace('`ACHY([^D])`', 'AKI$1', $string);
             $string = preg_replace('`([AEIOU])C([BDFGJKLMNPQRTVWXZ])`', '$1K$2', $string); // voyelle, C, consonne sauf H
+
             $convPrIn  = array(
                 'EUCHA',
                 'YCHIA',
@@ -590,6 +644,7 @@
                 'LICHOS',
                 'LICHOC'
             );
+
             $convPrOut = array(
                 'EKA',
                 'IKIA',
@@ -609,6 +664,7 @@
                 'LIKOS',
                 'LIKOC'
             );
+
             $string = repl($convPrIn, $convPrOut, $string);
 
             $convPrIn  = array(
@@ -620,6 +676,7 @@
                 'WHA',
                 'WHO'
             );
+
             $convPrOut = array(
                 'OI',
                 'O',
@@ -629,6 +686,7 @@
                 'OUA',
                 'OU'
             );
+
             $string = repl($convPrIn, $convPrOut, $string);
 
             $convPrIn  = array(
@@ -699,6 +757,7 @@
                 'CHR',
                 'PTIA'
             );
+
             $convPrOut = array(
                 'NIES',
                 'NIET',
@@ -767,6 +826,7 @@
                 'KR',
                 'PSIA'
             );
+
             $string = repl($convPrIn, $convPrOut, $string);
 
             $string = preg_replace('`GU([^RLMBSTPZN])`', 'G$1', $string);
@@ -795,6 +855,7 @@
                 'LATION',
                 'SATIET'
             );
+
             $convPrOut = array(
                 'BUSIE',
                 'BUSIA',
@@ -817,6 +878,7 @@
                 'LASION',
                 'SASIET'
             );
+
             $string = repl($convPrIn, $convPrOut, $string);
             $string = preg_replace('`(.+)ANTI(AL|O)`', '$1ANSI$2', $string);
             $string = preg_replace('`(.+)INUTI([^V])`', '$1INUSI$2', $string);
@@ -852,6 +914,7 @@
                 'EIN',
                 'AINS'
             );
+
             $convNasOut = array(
                 'ONT',
                 'INB',
@@ -875,6 +938,7 @@
                 'AIN',
                 'INS'
             );
+
             $string = repl($convNasIn, $convNasOut, $string);
 
             $string = preg_replace('`AIN$`', 'IN', $string);
@@ -908,6 +972,7 @@
                 'OUA',
                 'OUENJ'
             );
+
             $convNasOut = array(
                 'O',
                 'E',
@@ -919,6 +984,7 @@
                 'OI',
                 'OUANJ'
             );
+
             $string = repl($convNasIn, $convNasOut, $string);
             $string = preg_replace('`AU([^E])`', 'O$1', $string);
 
@@ -1008,11 +1074,10 @@
 
                 if (preg_match("`[RFMLVSPJDF][AEIOU]`", $sBack)) {
                     if (strlen($sBack) == 3) {
-                        return(substr($sBack, 0, 2)); // mots de 3 lettres
+                        return substr($sBack, 0, 2); // mots de 3 lettres
                     }
 
-                    if (strlen($sBack) == 4)
-                        return(substr($sBack, 0, 3)); // mots de 4 lettres
+                    if (strlen($sBack) == 4) return substr($sBack, 0, 3); // mots de 4 lettres
                 }
 
                 if (strlen($sBack2) > 1) {
@@ -1034,16 +1099,16 @@
 
         private static function matchWords($w1, $w2)
         {
-            $w1 = self::_clean($w1);
-            $w2 = self::_clean($w2);
+            $w1     = self::_clean($w1);
+            $w2     = self::_clean($w2);
             $words1 = explode(' ', $w1);
             $words2 = explode(' ', $w2);
 
-            $firstW1 = current($words1);
-            $firstW2 = current($words2);
+            $firstW1 = Arrays::first($words1);
+            $firstW2 = Arrays::first($words2);
 
-            $lastW1 = end($words1);
-            $lastW2 = end($words2);
+            $lastW1 = Arrays::last($words1);
+            $lastW2 = Arrays::last($words2);
 
             $commonWords = array_intersect($words1, $words2);
             $pctg = (count($commonWords) / count($words2)) * 100;
@@ -1053,6 +1118,7 @@
         private static function _clean($str)
         {
             $str = Inflector::lower($str);
+
             $str = repl(' & ', ' et ', $str);
             $str = repl('...', '', $str);
             $str = repl('.', '', $str);
@@ -1066,7 +1132,7 @@
             $str = repl('-', '', $str);
             $str = repl('*', '', $str);
             $str = repl(' and ', ' et ', $str);
-            //*GP* $str = repl('jt', 'journal', $str);
+
             return $str;
         }
 
@@ -1087,6 +1153,7 @@
             $proxMatch = ($pctgDistance > $matchPhonetic) ? $pctgDistance : $matchPhonetic;
 
             $globalMatch = ($proxMatch + $matchNormal) / 2;
+
             return round($globalMatch, 2);
         }
 
@@ -1096,6 +1163,7 @@
             $sRight         = (strlen($w1) > strlen($w2)) ? $w2 : $w1;
             $nLeftLength    = strlen($sLeft);
             $nRightLength   = strlen($sRight);
+
             if ($nLeftLength == 0) {
                 return $nRightLength;
             } else if ($nRightLength == 0) {
@@ -1108,27 +1176,37 @@
                 return $nLeftLength - $nRightLength;
             } else {
                 $nsDistance = range(1, $nRightLength + 1);
-                for ($nLeftPos = 1 ; $nLeftPos <= $nLeftLength ; $nLeftPos++) {
-                    $cLeft = $sLeft[$nLeftPos - 1];
-                    $nDiagonal = $nLeftPos - 1;
-                    $nsDistance[0] = $nLeftPos;
-                    for ($nRightPos = 1 ; $nRightPos <= $nRightLength ; $nRightPos++) {
+
+                for ($nLeftPos = 1; $nLeftPos <= $nLeftLength; $nLeftPos++) {
+                    $cLeft                      = $sLeft[$nLeftPos - 1];
+                    $nDiagonal                  = $nLeftPos - 1;
+                    Arrays::first($nsDistance)  = $nLeftPos;
+
+                    for ($nRightPos = 1; $nRightPos <= $nRightLength; $nRightPos++) {
                         $cRight = $sRight[$nRightPos - 1];
                         $nCost = ($cRight == $cLeft) ? 0 : 1;
                         $nNewDiagonal = $nsDistance[$nRightPos];
-                        $nsDistance[$nRightPos] = min($nsDistance[$nRightPos] + 1, $nsDistance[$nRightPos - 1] + 1, $nDiagonal + $nCost);
+
+                        $nsDistance[$nRightPos] = min(
+                            $nsDistance[$nRightPos] + 1,
+                            $nsDistance[$nRightPos - 1] + 1,
+                            $nDiagonal + $nCost
+                        );
+
                         $nDiagonal = $nNewDiagonal;
                     }
                 }
+
                 return $nsDistance[$nRightLength];
             }
         }
 
         public static function _iconv($str)
         {
-            if (!u::isUtf8($str)) {
+            if (!Utils::isUtf8($str)) {
                 $str = utf8_encode($str);
             }
+
             setlocale(LC_CTYPE, 'fr_FR');
             return iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $str);
         }

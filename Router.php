@@ -16,11 +16,13 @@
             static::$_uri = $uri = trim($_SERVER['REQUEST_URI'], static::URI_DELIMITER);
 
             $containerRoute = static::containerRoute();
+
             if (null !== $containerRoute) {
                 return;
             }
 
             $defaultRoute = static::defaultRoute();
+
             if (null !== $defaultRoute) {
                 return;
             }
@@ -61,6 +63,7 @@
                 if (false === $found) {
                     $found = Cms::match($cmsRoutes);
                 }
+
                 if (true === $found && ake($url, $cmsRoutes)) {
                     $page      = $cmsRoutes[$url];
                     $status    = Inflector::lower($page->getStatuspage()->getName());
@@ -89,6 +92,7 @@
                             $page = ake($status, $cmsRoutes) ? $cmsRoutes[$status] : $cmsRoutes['home'];
                         }
                     }
+
                     if (true === $continue) {
                         return static::isCms($page);
                     }
@@ -100,10 +104,12 @@
             } else {
                 $file = APPLICATION_PATH . DS . 'config' . DS . 'routes.php';
             }
+
             if (File::exists($file)) {
                 $configRoutes   = include($file);
                 $routes         = $configRoutes['collection'];
                 $routes         += null !== container()->getRoutes() ? container()->getRoutes() : array();
+
                 foreach ($routes as $route) {
                     if (!$route instanceof Container) {
                         continue;
@@ -113,6 +119,7 @@
                         return static::make($route);
                     }
                 }
+
                 foreach ($routes as $route) {
                     if (!$route instanceof Container) {
                         continue;
@@ -131,6 +138,7 @@
                 static::make(container()->getNotFoundRoute());
                 return;
             }
+
             if (null === container()->getMapRoutes()) {
                 static::is404();
             } else {
@@ -146,6 +154,7 @@
                 array('Thin\\Router', 'matchesCallback'),
                 str_replace(')', ')?', (string) $path)
             );
+
             if (substr($path, -1) === '/') {
                 $patternAsRegex .= '?';
             }
@@ -154,11 +163,13 @@
             if (!preg_match($regex, $resourceUri, $paramValues)) {
                 return false;
             }
+
             foreach ($paramValues as $i => $value) {
                 if (!is_int($i) || $i === 0) {
                     unset($paramValues[$i]);
                 }
             }
+
             foreach (static::$_values as $k => $name) {
                 if (isset($paramValues[$k + 1])) {
                     $_REQUEST[$name] = urldecode($paramValues[$k + 1]);
@@ -173,21 +184,28 @@
             $uri    = $_SERVER['REQUEST_URI'];
             $routes = context('router')->getRoutes();
             $find   = false;
+
             if (!empty($routes)) {
                 foreach ($routes as $route) {
                     if (!$route instanceof Container) {
                         continue;
                     }
+
                     $name = $route->getName();
+
                     if (404 == $name) {
                         $route404 = $route;
                     }
+
                     $path = $route->getPath();
+
                     if (strlen($path) && $path == $uri) {
                         static::make($route);
                         $find = true;
+
                         break;
                     }
+
                     $matched = static::match($path, $route, $uri);
 
                     if (false === $matched || !count($matched)) {
@@ -196,15 +214,19 @@
                         if (null !== $route->getRedirect()) {
                             static::redirect($route->getRedirect());
                         }
+
                         static::make($route);
                         $find = true;
+
                         break;
                     }
                 }
             }
+
             if (false === $find) {
                 static::redirect($route404->getPath());
             }
+
             context()->setRoute($route);
         }
 
@@ -261,7 +283,9 @@
                                 'strict_variables'  => false
                             )
                         );
+
                         $core->setView($view);
+
                         require_once $controllerFile;
 
                         $controllerClass    = 'Thin\\' . Inflector::lower($controller) . 'Controller';
@@ -277,6 +301,7 @@
                         if (strstr($action, '-')) {
                             $words = explode('-', $action);
                             $newAction = '';
+
                             for ($i = 0; $i < count($words); $i++) {
                                 $word = trim($words[$i]);
                                 if ($i > 0) {
@@ -292,6 +317,7 @@
                         if (Arrays::in('init', $actions)) {
                             $controller->init();
                         }
+
                         if (Arrays::in('preDispatch', $actions)) {
                             $controller->preDispatch();
                         }
@@ -309,9 +335,11 @@
 
                         $params = null === $core->getViewParams() ? array() : $core->getViewParams();
                         echo $view->render($file, $params);
+
                         if (Arrays::in('postDispatch', $actions)) {
                             $controller->preDispatch();
                         }
+
                         /* stats */
                         if (null === $core->getNoShowStats() && null === $route->getNoShowStats()) {
                             echo View::showStats();
@@ -321,13 +349,16 @@
                             $view = new View($tpl);
                             $core->setView($view);
                         }
+
                         require_once $controllerFile;
 
                         $controllerClass    = 'Thin\\' . Inflector::lower($controller) . 'Controller';
                         $controller         = new $controllerClass;
+
                         if ($hasTpl) {
                             $controller->view   = $view;
                         }
+
                         $core->setController($controller);
 
 
@@ -338,13 +369,17 @@
                         if (strstr($action, '-')) {
                             $words = explode('-', $action);
                             $newAction = '';
+
                             for ($i = 0; $i < count($words); $i++) {
                                 $word = trim($words[$i]);
+
                                 if ($i > 0) {
                                     $word = ucfirst($word);
                                 }
+
                                 $newAction .= $word;
                             }
+
                             $action = $newAction;
                         }
 
@@ -353,6 +388,7 @@
                         if (Arrays::in('init', $actions)) {
                             $controller->init();
                         }
+
                         if (Arrays::in('preDispatch', $actions)) {
                             $controller->preDispatch();
                         }
@@ -367,6 +403,7 @@
                         }
 
                         $controller->$actionName();
+
                         if ($hasTpl) {
                             $controller->view->render();
                             /* stats */
@@ -374,12 +411,15 @@
                                 echo View::showStats();
                             }
                         }
+
                         if (Arrays::in('postDispatch', $actions)) {
                             $controller->preDispatch();
                         }
+
                         if (Arrays::in('quit', $actions)) {
                             $controller->quit();
                         }
+
                         exit;
                     }
                 } else {
@@ -396,6 +436,7 @@
         public static function matchesCallback($m)
         {
             static::$_values[] = $m[1];
+
             return '(.*)';
         }
 
@@ -428,6 +469,7 @@
             }
 
             if (!empty($route) && count($values)) {
+
                 foreach ($values as $key => $value) {
                     $getter = 'settings' . $key;
                     $settings = $route->$getter;
@@ -438,17 +480,21 @@
                         }
                     }
                 }
+
                 static::$_values = $values;
+
                 return true;
             }
 
             static::$_values = $values;
+
             return $values;
         }
 
         public static function make($route)
         {
             Utils::set('appDispatch', $route);
+
             if (null !== $route->param1) {
                 Router::assign($route);
             }
@@ -466,8 +512,10 @@
 
             if (count($tab) > 1) {
                 list($start, $query) = explode('?', $_SERVER['REQUEST_URI']);
+
                 if (strlen($query)) {
                     $str = parse_str($query, $output);
+
                     if (count($output)) {
                         foreach ($output as $k => $v) {
                             $_REQUEST[$k] = $v;
@@ -480,30 +528,36 @@
         public static function is404()
         {
             header('HTTP/1.0 404 Not Found');
+
             die(config('html_not_found'));
-            $dispatch = new Dispatch;
+
+            $dispatch = new Container;
             $dispatch->setModule('www');
             $dispatch->setController('static');
             $dispatch->setAction('is404');
+
             Utils::set('appDispatch', $dispatch);
         }
 
         private static function isCms($page)
         {
-            $dispatch = new Dispatch;
+            $dispatch = new Container;
             $dispatch->setModule('www');
             $dispatch->setController('static');
             $dispatch->setAction($page->getTemplate());
+
             Utils::set('appDispatch', $dispatch);
+
             container()->setPage($page);
         }
 
         public static function isError()
         {
-            $dispatch = new Dispatch;
+            $dispatch = new Container;
             $dispatch->setModule('www');
             $dispatch->setController('static');
             $dispatch->setAction('is-error');
+
             Utils::set('appDispatch', $dispatch);
         }
 
@@ -515,33 +569,44 @@
                     if (404 == $name) {
                         container()->setNotFoundRoute($route);
                     }
+
                     if (!$route instanceof Container) {
                         continue;
                     }
+
                     $path = $route->getPath();
+
                     if (strlen($path) && $path == static::$_uri) {
                         static::make($route);
+
                         return true;
                     }
+
                     if (!strlen($path) && !strlen(static::$_uri)) {
                         static::make($route);
+
                         return true;
                     }
+
                     $matched = static::match($path);
+
                     if (false === $matched || !count($matched)) {
                         continue;
                     } else {
                         static::make($route);
+
                         return true;
                     }
                 }
             }
+
             return null;
         }
 
         private static function defaultRoute()
         {
-            $tab            = explode('/', substr(static::$_uri, 1));
+            $tab = explode('/', substr(static::$_uri, 1));
+
             if (count($tab) > 1) {
                 if (3 != count($tab)) {
                     $module         = container()->getConfig()->getDefaultModule();
@@ -554,31 +619,39 @@
                     $controller     = Inflector::lower($controller);
                     $action         = Inflector::lower($action);
                 }
+
                 $action         = repl(array('.html', '.php', '.asp', '.jsp', '.cfm', '.py', '.pl'), array('', '', '', '', '', '', ''), $action);
+
                 if (true === container()->getMultiSite()) {
                     $moduleDir      = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module;
                 } else {
                     $moduleDir      = APPLICATION_PATH . DS . 'modules' . DS . $module;
                 }
+
                 $controllerDir  = $moduleDir . DS . 'controllers';
                 $controllerFile = $controllerDir . DS . $controller . 'Controller.php';
+
                 if (true === File::exists($controllerFile)) {
                     require_once $controllerFile;
+
                     $controllerClass    = 'Thin\\' . $controller . 'Controller';
                     $controllerInstance = new $controllerClass;
                     $actions            = get_class_methods($controllerInstance);
                     $actionName         = $action . 'Action';
 
                     if (Arrays::inArray($actionName, $actions)) {
-                        $dispatch = new Dispatch;
+                        $dispatch = new Container;
                         $dispatch->setModule($module);
                         $dispatch->setController($controller);
                         $dispatch->setAction(Inflector::uncamelize($action, '-'));
+
                         Utils::set('appDispatch', $dispatch);
+
                         return true;
                     }
                 }
             }
+
             return null;
         }
 
@@ -586,6 +659,7 @@
         {
             $isCMS      = null !== container()->getPage();
             $session    = session('web');
+
             if (true === $isCMS) {
                 if (count($_POST)) {
                     if (ake('cms_lng', $_POST)) {
@@ -603,10 +677,12 @@
             } else {
                 $route                  = Utils::get('appDispatch');
                 $language               = $session->getLanguage();
+
                 if (null === $language || $language != $route->getLanguage()) {
                     $language           = null === $route->getLanguage() ? options()->getDefaultLanguage() : $route->getLanguage();
                     $session->setLanguage($language);
                 }
+
                 $module                 = $route->getModule();
                 $controller             = $route->getController();
                 $action                 = $route->getAction();
@@ -621,9 +697,8 @@
                 $config['controller']   = $controller;
                 $config['action']       = $action;
 
-                $configLanguage         = new configLanguage();
+                $configLanguage         = new Container();
                 $configLanguage->populate($config);
-
 
                 container()->setLanguage(new Language($configLanguage));
             }
@@ -632,7 +707,9 @@
         public static function run()
         {
             Request::$route = $route = Utils::get('appDispatch');
+
             container()->setRoute($route);
+
             $render         = $route->getRender();
             $tplDir         = $route->getTemplateDir();
             $module         = $route->getModule();
@@ -646,6 +723,7 @@
                 $tplMotor = $route->getTemplateMotor();
                 $tplDir = empty($tplDir) ? APPLICATION_PATH . DS . SITE_NAME . DS . 'app' . DS . 'views' : $tplDir;
                 $tpl = $tplDir . DS . $render . '.phtml';
+
                 if (File::exists($tpl)) {
                     if ('Twig' == $tplMotor) {
                         if (!class_exists('Twig_Autoloader')) {
@@ -667,12 +745,16 @@
                                 'strict_variables'  => false
                             )
                         );
+
                         container()->setView($view);
+
                         if ($action instanceof Closure) {
                             $action($view);
                         }
+
                         $params = null === container()->getViewParams() ? array() : container()->getViewParams();
                         echo $view->render($file, $params);
+
                         /* stats */
                         if (null === container()->getNoShowStats() && null === $route->getNoShowStats()) {
                             echo View::showStats();
@@ -680,15 +762,19 @@
                     } else {
                         $view = new View($tpl);
                         container()->setView($view);
+
                         if ($action instanceof Closure) {
                             $action($view);
                         }
+
                         $view->render();
+
                         /* stats */
                         if (null === container()->getNoShowStats() && null === $route->getNoShowStats()) {
                             echo View::showStats();
                         }
                     }
+
                     return;
                 }
             }
@@ -696,23 +782,29 @@
             $module         = Inflector::lower($module);
             $controller     = Inflector::lower($controller);
             $action         = Inflector::lower($action);
+
             if (true === container()->getMultiSite()) {
                 $moduleDir = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module;
             } else {
                 $moduleDir = APPLICATION_PATH . DS . 'modules' . DS . $module;
             }
+
             if (!is_dir($moduleDir)) {
                 throw new Exception("The module '$module' does not exist.");
             }
+
             $controllerDir = $moduleDir . DS . 'controllers';
+
             if (!is_dir($controllerDir)) {
                 throw new Exception("The controller '$controller' does not exist.");
             }
 
             $controllerFile = $controllerDir . DS . $controller . 'Controller.php';
+
             if (!File::exists($controllerFile)) {
                 throw new Exception("The controller '$controllerFile' does not exist.");
             }
+
             require_once $controllerFile;
 
             $controllerClass    = 'Thin\\' . $controller . 'Controller';
@@ -726,6 +818,7 @@
             container()->setController($controller);
 
             $actions = get_class_methods($controllerClass);
+
             if (true === $isCms) {
                 if (!Arrays::inArray($action, $actions)) {
                     $action = 'page';
@@ -736,13 +829,17 @@
             if (strstr($action, '-')) {
                 $words = explode('-', $action);
                 $newAction = '';
+
                 for ($i = 0; $i < count($words); $i++) {
                     $word = trim($words[$i]);
+
                     if ($i > 0) {
                         $word = ucfirst($word);
                     }
+
                     $newAction .= $word;
                 }
+
                 $action = $newAction;
             }
 
@@ -751,6 +848,7 @@
             if (Arrays::in('init', $actions)) {
                 $controller->init();
             }
+
             if (Arrays::in('preDispatch', $actions)) {
                 $controller->preDispatch();
             }

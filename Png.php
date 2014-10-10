@@ -5,9 +5,9 @@
      */
     namespace Thin;
 
-    class Pdf
+    class Png
     {
-        public static function make($html, $name = 'document', $portrait = true)
+        public static function htmlToPng($html, $name = 'image')
         {
             $ch = curl_init('http://api.zendgroup.com/makepdf.php');
             curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)");
@@ -17,23 +17,30 @@
             $url = curl_exec($ch);
             curl_close($ch);
 
-            $orientation = (true === $portrait) ? 'Portrait' : 'Landscape';
-
-            $purl = 'http://195.154.233.154/api/pdf.php?url=' . urlencode($url) . '&orientation=' . $orientation;
+            $purl = 'http://195.154.233.154/api/png.php?url=' . urlencode($url);
 
             $pdf = fgc($purl);
 
-            header("Content-type: application/pdf");
-            header("Content-Disposition: attachment; filename=\"$name.pdf\"");
+            header("Content-type: image/png");
+            header("Content-Disposition: attachment; filename=\"$name.png\"");
             header("Pragma: no-cache");
             header("Expires: 0");
+
             die($pdf);
         }
 
-        public static function urlToPdf($url, $name = 'document', $portrait = true)
+        public static function urlToPng($url, $name = 'image')
         {
-            $html = fgc($url);
-            return static::make($html, $name, $portrait);
+            $purl = 'http://195.154.233.154/api/png.php?url=' . urlencode($url);
+
+            $pdf = fgc($purl);
+
+            header("Content-type: image/png");
+            header("Content-Disposition: attachment; filename=\"$name.png\"");
+            header("Pragma: no-cache");
+            header("Expires: 0");
+
+            die($pdf);
         }
     }
 

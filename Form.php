@@ -87,6 +87,7 @@
         protected static function action($action, $https = null)
         {
             $uri = (null === $action) ? URLSITE : $action;
+
             return (null === $https) ? $uri : repl('http://', 'https://', $uri);
         }
 
@@ -104,6 +105,7 @@
         {
             static::$labels[] = $name;
             $attributes = Html::attributes($attributes);
+
             return '<label for="' . $name . '"' . $attributes . '>' . Html\helper::display($value) . '</label>';
         }
 
@@ -118,18 +120,22 @@
         public static function buildLabel($name, $label = '', $required = false)
         {
             $out = '';
+
             if (!empty($label)) {
                 $class = 'control-label';
                 $requiredLabel = '.req';
                 $requiredSuffix = '<span class="required"><i class="icon-asterisk"></i></span>';
                 $requiredPrefix = '';
                 $requiredClass = 'labelrequired';
+
                 if (false !== $required) {
                     $label = $requiredPrefix . $label . $requiredSuffix;
                     $class .= ' ' . $requiredClass;
                 }
+
                 $out .= static::label($name, $label, array('class' => $class));
             }
+
             return $out;
         }
 
@@ -147,10 +153,13 @@
             $getter = 'get' . Inflector::camelize($name);
             $error = null;
             $actual = Session::instance('ThinForm')->getActual();
+
             if (null !== $actual) {
                 $error = $actual->getErrors()->$getter();
             }
+
             $class = 'control-group';
+
             if (!empty(static::$controlGroupError) && !empty($error)) {
                 $class .= ' ' . static::$controlGroupError;
             }
@@ -169,30 +178,38 @@
             $out .= ($checkbox === true) ? '</label>' : '';
             $out .= '</div>';
             $out .= '</div>' . PHP_EOL;
+
             return $out;
         }
 
         public static function input($type, $name, $value = null, $attributes = array(), $label = '', $checkbox = false)
         {
             $name = (isset($attributes['name'])) ? $attributes['name'] : $name;
+
             if (!Arrays::exists('required', $attributes)) {
                 $required = false;
             } else {
                 $required = $attributes['required'];
             }
+
             if (false === $required) {
                 unset($attributes['required']);
             }
+
             if (!Arrays::exists('id', $attributes)) {
                 $attributes['id'] = $name;
             }
+
             $id = static::id($name, $attributes);
             $class = '';
             $attributes = array_merge($attributes, compact('type', 'name', 'value', 'id'));
+
             if ($type == 'date') {
                 $class .= ' datepicker';
             }
+
             $field = '<input class="span6'.$class.'"' . Html::attributes($attributes) . ' />';
+
             return static::buildWrapper($field, $name, $label, $checkbox, $required);
         }
 
@@ -256,11 +273,13 @@
             if (!Arrays::exists('required', $attributes)) $attributes['required'] = false;
 
             $required = $attributes['required'];
+
             if (false === $required) {
                 unset($attributes['required']);
             }
 
             $field = '<textarea class="span6"' . Html::attributes($attributes) . '>' . Html::entities($value) . '</textarea>';
+
             return static::buildWrapper($field, $name, $label, false, $required);
         }
 
@@ -269,6 +288,7 @@
             $attributes['id'] = static::id($name, $attributes);
             $attributes['name'] = $name;
             $html = array();
+
             foreach ($options as $value => $display) {
                 if (is_array($display)) {
                     $html[] = static::optgroup($display, $value, $selected);
@@ -276,6 +296,7 @@
                     $html[] = static::option($value, $display, $selected);
                 }
             }
+
             if ( ! ake('required', $attributes)) $attributes['required'] = false;
 
             $required = $attributes['required'];
@@ -285,15 +306,18 @@
             }
 
             $field = '<select class="span6"' . Html::attributes($attributes) . '>' . implode('', $html) . '</select>';
+
             return static::buildWrapper($field, $name, $label, false, $required);
         }
 
         protected static function optgroup($options, $label, $selected)
         {
             $html = array();
+
             foreach ($options as $value => $display) {
                 $html[] = static::option($value, $display, $selected);
             }
+
             return '<optgroup label="' . Html::entities($label) . '">' . implode('', $html) . '</optgroup>';
         }
 
@@ -306,6 +330,7 @@
             }
 
             $attributes = array('value' => View::utf8($value), 'selected' => $selected);
+
             return '<option' . Html::attributes($attributes) . '>' . View::utf8($display) . '</option>';
         }
 
@@ -324,16 +349,20 @@
         protected static function checkable($type, $name, $value, $checked, $attributes, $label = '')
         {
             if ($checked) $attributes['checked'] = 'checked';
+
             $attributes['id'] = static::id($name, $attributes);
+
             return static::input($type, $name, $value, $attributes, $label, true);
         }
 
         public static function submit($value = null, $attributes = array(), $btnClass = 'btn')
         {
             $attributes['type'] = 'submit';
+
             if ($btnClass != 'btn') {
                 $btnClass = 'btn btn-' . $btnClass;
             }
+
             if ( ! isset($attributes['class']))  {
                 $attributes['class'] = $btnClass;
             } elseif (strpos($attributes['class'], $btnClass) === false) {
@@ -350,11 +379,13 @@
             if ($btnClass != 'btn') {
                 $btnClass = 'btn btn-' . $btnClass;
             }
+
             if ( ! isset($attributes['class']))  {
                 $attributes['class'] = $btnClass;
             } elseif (strpos($attributes['class'], $btnClass) === false) {
                 $attributes['class'] .= ' ' . $btnClass;
             }
+
             return static::button($value, $attributes);
         }
 
@@ -450,6 +481,7 @@
             if (Arrays::exists('id', $attributes)) {
                 return $attributes['id'];
             }
+
             if (Arrays::in($name, static::$labels)) {
                 return $name;
             }

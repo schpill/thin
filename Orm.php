@@ -121,17 +121,21 @@
         private function _getConnexion()
         {
             extract($this->_datas['config']['connexionInfos']);
+
             if (empty($dsn)) {
                 $dsn = "$adapter:dbname=$dbName;host=$host";
             } else {
                 $adapter = 'mysql';
             }
+
             $connexions = Utils::get('ORMConnexions');
+
             if (null === $connexions) {
                 $connexions = array();
             }
 
             $keyConnexion = sha1(serialize(array($dsn, $username, $password)));
+
             if (ake($keyConnexion, $connexions)) {
                 $db = $connexions[$keyConnexion];
             } else {
@@ -143,7 +147,9 @@
                 $connexions[$keyConnexion] = $db;
                 Utils::set('ORMConnexions', $connexions);
             }
+
             $this->_isConnected = true;
+
             return $db;
         }
 
@@ -151,16 +157,20 @@
         {
             extract($this->_datas['config']['connexionInfos']);
             $connexions = Utils::get('ORMConnexions');
+
             if (null === $connexions) {
                 $connexions = array();
             }
 
             $keyConnexion = sha1(serialize(array("$adapter:dbname=$dbName;host=$host", $username, $password)));
+
             if (ake($keyConnexion, $connexions)) {
                 $connexions[$keyConnexion] = null;
                 Utils::set('ORMConnexions', $connexions);
             }
+
             $this->_isConnected = false;
+
             return $this;
         }
 
@@ -383,10 +393,13 @@
             if(null === $value) {
                 return "NULL";
             }
+
             $db = $this->_getConnexion();
+
             if (is_string($value)) {
                 return $db->quote($value, $parameterType);
             }
+
             return $value;
         }
 

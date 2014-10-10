@@ -6,17 +6,24 @@
     class Context extends Customize
     {
         private static $instances   = array();
-        public $ns;
+        public $namespace;
+
+        public function __construct($namespace = '')
+        {
+            $this->namespace = $namespace;
+        }
 
         public static function instance($ns = 'core')
         {
-            $i = isAke(static::$instances, $ns, null);
-            if (is_null($i)) {
-                $i = new self;
-                $i->ns = $ns;
-                static::$instances[$ns] = $i;
+            $args   = func_get_args();
+            $key    = sha1(serialize($args));
+            $has    = Instance::has('Context', $key);
+
+            if (true === $has) {
+                return Instance::get('Context', $key);
+            } else {
+                return Instance::make('Context', $key, new self($ns));
             }
-            return $i;
         }
 
         public function __call($event, $args)

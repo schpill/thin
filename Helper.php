@@ -2282,6 +2282,21 @@ $(document).ready(function() {
         function repo($entity, $ns = 'Core')
         {
             $class = "JsonModel\\$ns\\" . ucfirst(Inflector::uncamelize($entity));
+
+            if (!class_exists($class)) {
+                $check = preg_replace('#\\\|_(?!.+\\\)#', DS, $class) . '.php';
+
+                $file = str_replace(
+                    'JsonModel',
+                    APPLICATION_PATH . DS . 'models' . DS . 'Repositories' . DS . 'Json',
+                    $check
+                );
+
+                if (is_readable($file)) {
+                    require_once $file;
+                }
+            }
+
             return with(new $class);
         }
 
@@ -2865,7 +2880,7 @@ $(document).ready(function() {
     if (!function_exists('auth')) {
         function auth($id = null)
         {
-            return new \AuthBundle\Auth($id);
+            return new \Auth\Auth($id);
         }
     }
 
