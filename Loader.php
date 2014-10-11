@@ -10,14 +10,14 @@
 
         set_exception_handler(function($exception) {
 
-            dd($exception);
+            vd($exception);
         });
 
         set_error_handler(function($type, $message, $file, $line) {
             $exception = new ErrorException($message, $type, 0, $file, $line);
 
             if (!startsWith($message, 'Undefined offset:')) {
-                dd($exception);
+                vd($exception);
             }
         });
 
@@ -25,10 +25,10 @@
             $exception = error_get_last();
 
             if($exception) {
-                dd($exception);
+                vd($exception);
             }
         });
     }
 
-    // spl_autoload_register('Thin\\Autoloader::autoload');
+    spl_autoload_register('Thin\\Autoloader::autoload');
 
