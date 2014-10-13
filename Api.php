@@ -54,44 +54,24 @@
             $token = request()->getToken();
 
             if (is_null($token)) {
-                header("HTTP/1.0 401 Unauthorized");
-
-                self::renderJson([
-                    'status' => 401,
-                    'message' => 'Unauthorized'
-                ]);
+                self::unauthorized();
             }
 
             $auth = jmodel('apiauth')->where('token = ' . $token)->first(true);
 
             if (empty($auth)) {
-                header("HTTP/1.0 401 Unauthorized");
-
-                self::renderJson([
-                    'status' => 401,
-                    'message' => 'Unauthorized'
-                ]);
+                self::unauthorized();
             } else {
                 $expire = $auth->expire;
 
                 if (time() > $expire) {
-                    header("HTTP/1.0 401 Unauthorized");
-
-                    self::renderJson([
-                        'status' => 401,
-                        'message' => 'Unauthorized'
-                    ]);
+                    self::unauthorized();
                 }
 
                 $resource = $auth->resource;
 
                 if ($resource != $resourceApi) {
-                    header("HTTP/1.0 401 Unauthorized");
-
-                    self::renderJson([
-                        'status' => 401,
-                        'message' => 'Unauthorized'
-                    ]);
+                    self::unauthorized();
                 }
 
                 return $auth;
@@ -101,33 +81,40 @@
         public static function can($auth, $resource, $action)
         {
             if (empty($auth)) {
-                self::renderJson([
-                    'status' => 401,
-                    'message' => 'Unauthorized'
-                ]);
+                self::unauthorized();
             }
 
             $rigth = jmodel('apiright')
-            ->where('resource = feed')
-            ->where('action = item')
+            ->where('resource = ' . $resource)
+            ->where('action = ' . $action)
             ->where('user_id = ' . $auth->user_id)
             ->first(true);
 
             if (empty($right)) {
-                self::renderJson([
-                    'status' => 401,
-                    'message' => 'Unauthorized'
-                ]);
+                self::unauthorized();
             }
 
             $can = $right->can;
 
             if (2 == $can) {
-                self::renderJson([
-                    'status' => 401,
-                    'message' => 'Unauthorized'
-                ]);
+                self::unauthorized();
             }
+        }
+
+        public static function render(array $data, $type = 'json')
+        {
+            header("HTTP/1.0 200 OK");
+
+            if ($type == 'json') {
+                self::renderJson($data);
+            } elseif ($type == 'xml') {
+                self::renderXml($data);
+            }
+        }
+
+        public static function result($result, $type = 'json')
+        {
+            self::render(['status' => 200, 'data' => $result], $type);
         }
 
         private static function renderJson(array $data)
@@ -135,5 +122,235 @@
             header('content-type: application/json; charset=utf-8');
 
             die(json_encode($data));
+        }
+
+        public static function ok()
+        {
+            header("HTTP/1.0 200 OK");
+
+            self::renderJson([
+                'status' => 200,
+                'message' => 'OK'
+            ]);
+        }
+
+        public static function created()
+        {
+            header("HTTP/1.0 201 Created");
+
+            self::renderJson([
+                'status' => 201,
+                'message' => 'Created'
+            ]);
+        }
+
+        public static function accepted()
+        {
+            header("HTTP/1.0 202 Accepted");
+
+            self::renderJson([
+                'status' => 202,
+                'message' => 'Accepted'
+            ]);
+        }
+
+        public static function partialContent()
+        {
+            header("HTTP/1.0 206 Partial Content");
+
+            self::renderJson([
+                'status' => 206,
+                'message' => 'Partial Content'
+            ]);
+        }
+
+        public static function movedPermanently()
+        {
+            header("HTTP/1.0 301 Moved Permanently");
+
+            self::renderJson([
+                'status' => 301,
+                'message' => 'Moved Permanently'
+            ]);
+        }
+
+        public static function notModified()
+        {
+            header("HTTP/1.0 304 Not Modified");
+
+            self::renderJson([
+                'status' => 304,
+                'message' => 'Not Modified'
+            ]);
+        }
+
+        public static function permanentRedirect()
+        {
+            header("HTTP/1.0 308 Permanent Redirect");
+
+            self::renderJson([
+                'status' => 308,
+                'message' => 'Permanent Redirect'
+            ]);
+        }
+
+        public static function badRequest()
+        {
+            header("HTTP/1.0 400 Bad Request");
+
+            self::renderJson([
+                'status' => 400,
+                'message' => 'Bad Request'
+            ]);
+        }
+
+        public static function unauthorized()
+        {
+            header("HTTP/1.0 401 Unauthorized");
+
+            self::renderJson([
+                'status' => 401,
+                'message' => 'Unauthorized'
+            ]);
+        }
+
+        public static function paymentRequired()
+        {
+            header("HTTP/1.0 402 Payment Required");
+
+            self::renderJson([
+                'status' => 402,
+                'message' => 'Payment Required'
+            ]);
+        }
+
+        public static function forbidden()
+        {
+            header("HTTP/1.0 403 Forbidden");
+
+            self::renderJson([
+                'status' => 403,
+                'message' => 'Forbidden'
+            ]);
+        }
+
+        public static function NotFound()
+        {
+            header("HTTP/1.0 404 Not Found");
+
+            self::renderJson([
+                'status' => 404,
+                'message' => 'Not Found'
+            ]);
+        }
+
+        public static function resourceNotAllowed()
+        {
+            header("HTTP/1.0 405 Resource Not Allowed");
+
+            self::renderJson([
+                'status' => 405,
+                'message' => 'Resource Not Allowed'
+            ]);
+        }
+
+        public static function notAcceptable()
+        {
+            header("HTTP/1.0 406 Not Acceptable");
+
+            self::renderJson([
+                'status' => 406,
+                'message' => 'Not Acceptable'
+            ]);
+        }
+
+        public static function conflict()
+        {
+            header("HTTP/1.0 409 Conflict");
+
+            self::renderJson([
+                'status' => 409,
+                'message' => 'Conflict'
+            ]);
+        }
+
+        public static function preconditionFailed()
+        {
+            header("HTTP/1.0 412 Precondition Failed");
+
+            self::renderJson([
+                'status' => 412,
+                'message' => 'Precondition Failed'
+            ]);
+        }
+
+        public static function badContentType()
+        {
+            header("HTTP/1.0 415 Bad Content Type");
+
+            self::renderJson([
+                'status' => 415,
+                'message' => 'Bad Content Type'
+            ]);
+        }
+
+        public static function requestedRangeNotSatisfiable()
+        {
+            header("HTTP/1.0 416 Requested Range Not Satisfiable");
+
+            self::renderJson([
+                'status' => 416,
+                'message' => 'Requested Range Not Satisfiable'
+            ]);
+        }
+
+        public static function expectationFailed()
+        {
+            header("HTTP/1.0 417 Expectation Failed");
+
+            self::renderJson([
+                'status' => 417,
+                'message' => 'Expectation Failed'
+            ]);
+        }
+
+        public static function internalServerError()
+        {
+            header("HTTP/1.0 500 Internal Server Error");
+
+            self::renderJson([
+                'status' => 500,
+                'message' => 'Internal Server Error'
+            ]);
+        }
+
+        public static function notImplemented()
+        {
+            header("HTTP/1.0 501 Not Implemented");
+
+            self::renderJson([
+                'status' => 501,
+                'message' => 'Not Implemented'
+            ]);
+        }
+
+        public static function badGateway()
+        {
+            header("HTTP/1.0 502 Bad Gateway");
+
+            self::renderJson([
+                'status' => 502,
+                'message' => 'Bad Gateway'
+            ]);
+        }
+
+        public static function serviceUnavailable()
+        {
+            header("HTTP/1.0 503 Service Unavailable");
+
+            self::renderJson([
+                'status' => 503,
+                'message' => 'Service Unavailable'
+            ]);
         }
     }

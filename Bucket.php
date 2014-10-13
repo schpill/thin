@@ -9,21 +9,30 @@
 
         public function __construct($bucket)
         {
-            $this->bucket = $bucket;
-            $this->session = session('data_bucket_' . $bucket);
-            $this->url = URLSITE . 'bucket/';
+            $this->bucket   = $bucket;
+            $this->session  = session('data_bucket_' . $bucket);
+            $this->url      = URLSITE . 'bucket/';
         }
 
         public function all($pattern)
         {
             $data = $this->session->getData();
+
             if (!is_null($data)) {
                 return $data;
             }
-            $this->call('all', array("pattern" => $pattern));
-            $tab = json_decode($this->response, true);
-            $res = isAke($tab, 'message');
+
+            $this->call(
+                'all',
+                array(
+                    "pattern" => $pattern
+                )
+            );
+
+            $tab        = json_decode($this->response, true);
+            $res        = isAke($tab, 'message');
             $collection = array();
+
             if (Arrays::is($res)) {
                 if (count($res)) {
                     foreach ($res as $key => $row) {
@@ -32,23 +41,35 @@
                     }
                 }
             }
+
             $this->session->setData($collection);
+
             return $collection;
         }
 
         public function keys($pattern)
         {
             $keys = $this->session->getKeys();
+
             if (!empty($keys)) {
                 $seg = isAke($keys, sha1($pattern));
+
                 if (!empty($seg)) {
                     return $seg;
                 }
             }
-            $this->call('keys', array("pattern" => $pattern));
-            $tab = json_decode($this->response, true);
-            $res = isAke($tab, 'message');
+
+            $this->call(
+                'keys',
+                array(
+                    "pattern" => $pattern
+                )
+            );
+
+            $tab        = json_decode($this->response, true);
+            $res        = isAke($tab, 'message');
             $collection = array();
+
             if (Arrays::is($res)) {
                 if (count($res)) {
                     foreach ($res as $row) {
@@ -56,11 +77,14 @@
                     }
                 }
             }
+
             if (empty($keys)) {
                 $keys = array();
             }
+
             $keys[sha1($pattern)] = $collection;
             $this->session->setKeys($keys);
+
             return $collection;
         }
 
@@ -68,20 +92,32 @@
         {
             $hash = sha1($key);
             $values = $this->session->getValues();
+
             if (!empty($values)) {
                 $value = isAke($values, $hash);
+
                 if (!empty($value)) {
                     return $value;
                 }
             }
-            $this->call('get', array("key" => $key));
-            $tab = json_decode($this->response, true);
-            $value = isAke($tab, 'message');
+
+            $this->call(
+                'get',
+                array(
+                    "key" => $key
+                )
+            );
+
+            $tab    = json_decode($this->response, true);
+            $value  = isAke($tab, 'message');
+
             if (empty($values)) {
                 $values = array();
             }
+
             $values[$hash] = $value;
             $this->session->setValues($values);
+
             return $value;
         }
 
@@ -89,24 +125,38 @@
         {
             $hash = sha1($key);
             $values = $this->session->getValues();
+
             if (empty($values)) {
                 $values = array();
             }
+
             $values[$hash] = $value;
             $this->session->setValues($values);
+
             return $this;
         }
 
         public function set($key, $value, $expire = 0)
         {
-            $this->call('set', array("key" => $key, "value" => $value, "expire" => $expire));
-            $hash = sha1($key);
+            $this->call(
+                'set',
+                array(
+                    "key" => $key,
+                    "value" => $value,
+                    "expire" => $expire
+                )
+            );
+
+            $hash   = sha1($key);
             $values = $this->session->getValues();
+
             if (empty($values)) {
                 $values = array();
             }
+
             $values[$hash] = $value;
             $this->session->setValues($values);
+
             return $this;
         }
 
@@ -117,35 +167,48 @@
 
         public function del($key)
         {
-            $this->call('del', array("key" => $key));
-            $hash = sha1($key);
+            $this->call(
+                'del',
+                array(
+                    "key" => $key
+                )
+            );
+
+            $hash   = sha1($key);
             $values = $this->session->getValues();
+
             if (empty($values)) {
                 $values = array();
             }
+
             $values[$hash] = null;
             $this->session->setValues($values);
             $this->session->setKeys(array());
             $this->session->setData(null);
+
             return $this;
         }
 
         public function incr($key, $by = 1)
         {
             $val = $this->get($key);
+
             if (!strlen($val)) {
                 $val = 1;
             } else {
                 $val = (int) $val;
                 $val += $by;
             }
+
             $this->set($key, $val);
+
             return $val;
         }
 
         public function decr($key, $by = 1)
         {
             $val = $this->get($key);
+
             if (!strlen($val)) {
                 $val = 0;
             } else {
@@ -153,7 +216,9 @@
                 $val -= $by;
                 $val = 0 > $bal ? 0 : $val;
             }
+
             $this->set($key, $val);
+
             return $val;
         }
 
@@ -164,24 +229,42 @@
 
         public function upload($file)
         {
-            $tab = explode(DS, $file);
-            $fileName = Arrays::last($tab);
-            $tab = explode('.', $fileName);
-            $extension = Inflector::lower(Arrays::last($tab));
-            $name = Utils::UUID() . '.' . $extension;
-            $data = fgc($file);
-            $this->call('upload', array("data" => $data, "name" => $name));
-            $tab = json_decode($this->response, true);
-            $res = isAke($tab, 'message');
+            $tab        = explode(DS, $file);
+            $fileName   = Arrays::last($tab);
+            $tab        = explode('.', $fileName);
+            $extension  = Inflector::lower(Arrays::last($tab));
+            $name       = Utils::UUID() . '.' . $extension;
+            $data       = File::read($file);
+
+            $this->call(
+                'upload',
+                array(
+                    "data" => $data,
+                    "name" => $name
+                )
+            );
+
+            $tab        = json_decode($this->response, true);
+            $res        = isAke($tab, 'message');
+
             return $res;
         }
 
         public function data($data, $extension)
         {
-            $name = Utils::UUID() . '.' . Inflector::lower($extension);
-            $this->call('upload', array("data" => $data, "name" => $name));
-            $tab = json_decode($this->response, true);
-            $res = isAke($tab, 'message', null);
+            $name   = Utils::UUID() . '.' . Inflector::lower($extension);
+
+            $this->call(
+                'upload',
+                array(
+                    "data" => $data,
+                    "name" => $name
+                )
+            );
+
+            $tab    = json_decode($this->response, true);
+            $res    = isAke($tab, 'message', null);
+
             return $res;
         }
 
@@ -190,11 +273,21 @@
             if (File::exists($file)) {
                 $tab    = explode(DS, $file);
                 $name   = date("Y_m_d_H_i_s") . '_' . Arrays::last($tab);
-                $this->call('upload', array("data" => fgc($file), "name" => $name));
+
+                $this->call(
+                    'upload',
+                    array(
+                        "data" => File::read($file),
+                        "name" => $name
+                    )
+                );
+
                 $tab    = json_decode($this->response, true);
                 $res    = isAke($tab, 'message');
+
                 return $res;
             }
+
             return false;
         }
 

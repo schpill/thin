@@ -580,6 +580,32 @@
             return new self($results);
         }
 
+        public function keep($keys, $returnCollection = true)
+        {
+            /* polymorphism */
+            $keys = !Arrays::is($keys)
+            ? strstr($keys, ',')
+                ? explode(',', repl(' ', '', $keys))
+                : [$keys]
+            : $keys;
+
+            $results = [];
+
+            if (count($this->_items)) {
+                foreach ($this->_items as $item) {
+                    $value = [];
+
+                    foreach ($keys as $key) {
+                        array_push($value, isAke($item, $key, null));
+                    }
+
+                    array_push($results, implode(' ', $value));
+                }
+            }
+
+            return true === $returnCollection ? new self($results) : $results;
+        }
+
         /**
          * Reverse items order.
          *

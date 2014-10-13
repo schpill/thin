@@ -31,13 +31,13 @@
                 $file = $path . preg_replace('#\\\|_(?!.+\\\)#', DS, str_replace($ns, '', $className)) . '.php';
 
                 if (is_readable($file)) {
-                    static::$calls++;
-
                     require_once $file;
 
                     static::$_classes[$className] = true;
 
                     $found = true;
+
+                    break;
                 }
             }
         }

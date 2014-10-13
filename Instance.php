@@ -11,6 +11,7 @@
             $instance = is_null($instance) ? $class : $instance;
             $instance = is_string($instance) ? new $instance : $instance;
             static::$instances[$class][$key] = $instance;
+
             return $instance;
         }
 
@@ -24,6 +25,7 @@
             $key = is_null($key) ? sha1($class) : $key;
             $classInstances = isAke(static::$instances, $class);
             $keyInstance    = isAke($classInstances, $key, null);
+
             return !is_null($keyInstance);
         }
 
@@ -32,6 +34,18 @@
             $key = is_null($key) ? sha1($class) : $key;
             $classInstances = isAke(static::$instances, $class);
             $keyInstance    = isAke($classInstances, $key, null);
+
             return $keyInstance;
+        }
+
+        public static function forget($class, $key = null)
+        {
+            $key = is_null($key) ? sha1($class) : $key;
+            $classInstances = isAke(static::$instances, $class);
+            $keyInstance    = isAke($classInstances, $key, null);
+
+            if (!is_null($keyInstance)) {
+                unset(static::$instances[$class][$key]);
+            }
         }
     }

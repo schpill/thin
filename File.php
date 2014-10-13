@@ -49,13 +49,34 @@
 
         public static function put($file, $data, $chmod = 0777)
         {
-            $put = file_put_contents($file, $data, LOCK_EX);
+            $result = file_put_contents($file, $data, LOCK_EX);
 
             umask(0000);
 
             chmod($file, 0777);
 
-            return $put;
+            return $result;
+        }
+
+        public static function putWithLock($file, $data, $chmod = 0777)
+        {
+            $fp = fopen($file, 'w');
+
+            if (!flock($fp, LOCK_EX)) {
+                throw new Exception("The file '$file' can not be locked.");
+            }
+
+            $result = fwrite($fp, $data);
+
+            flock($fp, LOCK_UN);
+
+            fclose($fp);
+
+            umask(0000);
+
+            chmod($file, 0777);
+
+            return $result !== false;
         }
 
         public static function delete($file)
@@ -65,8 +86,19 @@
             }
 
             if (true === static::exists($file)) {
-                return @unlink($file);
+                $fp = fopen($file, "w");
+
+                if (!flock($fp, LOCK_EX)) {
+                    throw new Exception("The file '$file' can not be removed.");
+                }
+
+                $status = @unlink($file);
+                fclose($fp);
+
+                return $status;
             }
+
+            return false;
         }
 
         public static function move($file, $target)
@@ -118,6 +150,11 @@
         public static function age($file)
         {
             return filemtime($file);
+        }
+
+        public static function is($file)
+        {
+            return is_file($file);
         }
 
         public static function mkdir($path, $chmod = 0777)
@@ -442,5 +479,21 @@
             exit;
 
             return ((connection_status() == 0) && !connection_aborted());
+        }
+
+        /* GP 12-10-2014 - Use this method vs file_get_contents to ensure the reading mode and improve the lock status */
+
+        public static function read($file, $default = false, $mode = 'rb')
+        {
+            if (static::exists($file)) {
+                $fp     = fopen($file, $mode);
+                $data   = fread($fp, static::size($file));
+
+                fclose($fp);
+
+                return $data;
+            }
+
+            return $default;
         }
     }

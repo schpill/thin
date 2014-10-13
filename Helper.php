@@ -40,6 +40,26 @@
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
 
+    if (!function_exists('customFields')) {
+        function customFields($table, $id)
+        {
+            $data = [];
+
+            $item = jmodel('item')->where('row_type = ' . $table)->where('row_id = ' . $id)->first(true);
+
+            if ($item) {
+                $data = repo('item')->getRow($item->id);
+                $data['item_id'] = $item->id;
+
+                unset($data['id']);
+                unset($data['created_at']);
+                unset($data['updated_at']);
+            }
+
+            return $data;
+        }
+    }
+
     if (!function_exists('whereAreWe')) {
         function whereAreWe()
         {
