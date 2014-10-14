@@ -3208,6 +3208,10 @@ $(document).ready(function() {
 
         function forever($ns = 'user')
         {
+            if (php_sapi_name() == 'cli' || PHP_SAPI == 'cli') {
+                return sha1(SITE_NAME . '::cli');
+            }
+
             $ns         = SITE_NAME . '_' . $ns;
             $cookie     = cookies()->$ns;
 
