@@ -25,6 +25,7 @@
     use Thin\App;
     use Thin\Facade;
     use Thin\Smtp;
+    use Thin\Di;
     use Thin\Entitydb;
     use Thin\Filesystem;
     use Thin\Dispatcher;
@@ -235,7 +236,7 @@
 
         function di()
         {
-            return phalcon()->getDI();
+            return with(new Di);
         }
 
         function db($db = 'db')
@@ -380,31 +381,26 @@
             return new Querydata($entity, $results);
         }
     }
+
     if (!function_exists('lng')) {
-        function lng($string, $params = array(), $echo = true)
+        function lng($context = 'web')
         {
-            $lng        = session('web')->getLanguage();
-            $default    = options()->getDefaultLanguage();
+            $language = session($context)->getLanguage();
 
-            if ($lng == $default) {
-                $translation = assignParams($string, $params);
-                if (true === $echo) {
-                    echo $translation;
-                } else {
-                    return $translation;
-                }
-            } else {
-                $getter = getter($lng);
-                $tab    = languages()->$getter();
-                $what   = Arrays::exists(sha1($string), $tab) ? $tab[sha1($string)] : $string;
-                $translation = assignParams($what, $params);
+            if (is_null($language)) {
+                $language = isAke(
+                    $_REQUEST,
+                    'thin_language',
+                    Config::get(
+                        'application.language',
+                        DEFAULT_LANGUAGE
+                    )
+                );
 
-                if (true === $echo) {
-                    echo $translation;
-                } else {
-                    return $translation;
-                }
+                session($context)->setLanguage($language);
             }
+
+            return $language;
         }
 
         function assignParams($string, $params = array())

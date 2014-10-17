@@ -3,77 +3,69 @@
 
     class Lang
     {
-        /**.
-         * The lang locale.
-         *
-         * @var string
-         */
-        private $locale;
-
-
-        public function __construct($locale = 'fr')
+        public static function get($id, $default, $args = [])
         {
-            $this->locale = $locale;
-        }
+            $defaultLng = Config::get(
+                'application.language',
+                DEFAULT_LANGUAGE
+            );
 
-        public static function instance($locale = 'fr')
-        {
-            $key    = sha1(serialize(func_get_args()));
-            $has    = Instance::has('Lang', $key);
-
-            if (true === $has) {
-                return Instance::get('Lang', $key);
-            } else {
-                return Instance::make('Lang', $key, with(new self($app)));
-            }
-        }
-
-        public function translate($key, $default, $html = true)
-        {
-            if ($this->locale != Config::get('application.language', DEFAULT_LANGUAGE)) {
-                $row = jmodel('translation')->where("key = $key")->where('lang = ' . $this->locale)->first();
-
-                if ($row) {
-                    if ($html) {
-                        return Html\Helper::display($row['value']);
-                    } else {
-                        return $row['value'];
-                    }
+            if ($defaultLng == lng()) {
+                /* on crée automatiquement les lignes en anglais */
+                if (!static::has($id, 'en')) {
+                    static::set($id, 'en', $default);
                 }
+
+                return static::assign($default, $args);
             }
 
-            return $default;
-        }
+            $row = jmodel('translation')->where("key = $id")->where('language = ' . lng())->first(true);
 
-        public function getLocale()
-        {
-            return $this->locale;
-        }
-
-        public function machine($default, $html = true)
-        {
-            if ($this->locale != Config::get('application.language', DEFAULT_LANGUAGE)) {
-                $json = keep(function($str, $from, $to) {
-                    return dwn('http://api.mymemory.translated.net/get?q=' . urlencode($str) . '&langpair=' . $from . '|' . $to);
-                }, array($default, Config::get('application.language', DEFAULT_LANGUAGE), $this->locale));
-
-                $tab = json_decode($json, true);
-
-                $matches = isAke($josn, 'matches', false);
-
-                if (false !== $matches) {
-                    $row = Arrays::first($matches);
-
-                    $translation = isAke($row, 'translation', $default);
-
-                    if ($html) {
-                        return Html\Helper::display($translation);
-                    } else {
-                        return $translation;
-                    }
-                }
+            if ($row) {
+                return static::assign($row->translation, $args);
             }
 
-            return $default;
+            return static::assign($default, $args);
+        }
+
+        public static function has($id, $lng)
+        {
+            $row = jmodel('translation')->where("key = $id")->where('language = ' . $lng)->first(true);
+
+            return $row ? true : false;
+        }
+
+        public static function set($id, $lng, $translation)
+        {
+            return jmodel('translation')->create()->setKey($id)->setLanguage($lng)->setTranslation($translation)->save();
+        }
+
+        public static function forget($id, $lng)
+        {
+            return static::remove($id, $lng);
+        }
+
+        public static function remove($id, $lng)
+        {
+            $row = jmodel('translation')->where("key = $id")->where('language = ' . $lng)->first(true);
+
+            if ($row) {
+                return $row->delete();
+            }
+
+            return false;
+        }
+
+        private static function assign($string, $params = [])
+        {
+            if (!count($params)) {
+                return $string;
+            }
+
+            foreach ($params as $k => $v) {
+                $string = str_replace("##$k##", $v, $string);
+            }
+
+            return $string;
         }
     }

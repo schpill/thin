@@ -151,6 +151,7 @@
                 if (!empty($var)) {
                     $var = setter($var . '_id');
                     $this->$var($value->id());
+
                     return $this;
                 }
             } elseif (substr($func, 0, 3) == 'get') {
@@ -553,7 +554,9 @@
                 }
             } else {
                 foreach ($datas as $k => $v) {
-                    if (Arrays::is($v)) {
+                    $id = isAke($datas, 'id', false);
+
+                    if (Arrays::is($v) && false === $id) {
                         $o = new self;
                         $o->populate($v);
                         $this->$k = $o;

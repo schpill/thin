@@ -196,6 +196,7 @@
         public function body($html)
         {
             $this->body = $html;
+
             return $this;
         }
 

@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+
     class Injection implements \ArrayAccess
     {
         /**
