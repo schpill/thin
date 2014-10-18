@@ -1803,6 +1803,7 @@ $(document).ready(function() {
             }
 
             $events[$name][$priority] = $event;
+
             container()->setEvents($events);
         }
 
