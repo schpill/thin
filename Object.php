@@ -428,7 +428,7 @@
                 if (false !== $dbjson) {
                     $key    = sha1('db' . $this->_token);
                     $cb     = isAke($this->values, $key);
-                    $db     = call_user_func_array($cb, array());
+                    $db     = call_user_func_array($cb, []);
                     $fields = $db->fields();
 
                     if (Arrays::in($func, $fields)) {

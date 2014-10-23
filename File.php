@@ -49,9 +49,9 @@
 
         public static function put($file, $data, $chmod = 0777)
         {
-            $result = file_put_contents($file, $data, LOCK_EX);
-
             umask(0000);
+
+            $result = file_put_contents($file, $data, LOCK_EX);
 
             chmod($file, 0777);
 

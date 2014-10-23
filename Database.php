@@ -33,7 +33,13 @@
             $this->db = new mysqli($host, $username, $password, $db);
             $this->table = $table;
             $this->database = $db;
+
             $this->map();
+        }
+
+        public function escape($string)
+        {
+            return $this->db->real_escape_string($string);
         }
 
         public function __call($fn, $args)
@@ -329,6 +335,7 @@
             } else {
                 $db = model($model);
             }
+
             $pk = $db->pk();
             $field = $db->table . '_id';
 
@@ -359,6 +366,7 @@
         {
             $key    = sha1(serialize(func_get_args()));
             $has    = Instance::has('Database', $key);
+
             if (true === $has) {
                 return Instance::get('Database', $key);
             } else {
@@ -376,6 +384,7 @@
             $start  = $this->getTime();
             $res    = $this->db->query($query);
             $this->incQueries($start);
+
             return $res;
         }
 
@@ -455,7 +464,7 @@
             return $this;
         }
 
-        public function fetch($query = null, $object = false)
+        public function fetch($query = null, $object = false, $justOne = false)
         {
             $start = $this->getTime();
 
@@ -485,7 +494,7 @@
 
             $this->incQueries($start);
 
-            return $collection;
+            return count($collection) == 1 && $justOne ? Arrays::first($collection) : $collection;
         }
 
         public function rows($object = false)
@@ -519,7 +528,7 @@
                   `id` int(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
                   `created_at` datetime NOT NULL,
                   `updated_at` datetime NOT NULL
-                ) COMMENT='Auto generated table $this->table' ENGINE='InnoDB' COLLATE 'utf8_general_ci';";
+                ) COMMENT = 'Auto generated table $this->table' ENGINE = 'InnoDB' COLLATE 'utf8_general_ci';";
 
                 $this->db->query($sql);
                 $query      = "SHOW COLUMNS FROM $this->database.$this->table";
@@ -1494,11 +1503,11 @@
         {
             /* polymorphism */
             if (is_string($condition)) {
-                $this->wheres[] = array($op, $condition);
+                $this->wheres[] = [$op, $condition];
             } elseif (Arrays::is($condition)) {
                 if (Arrays::isAssoc($condition)) {
                     foreach ($consition as $key => $value) {
-                        $this->wheres[] = array($op, "$key = $value");
+                        $this->wheres[] = [$op, "$key = $value"];
                     }
                 }
             }

@@ -139,9 +139,11 @@
             if(null === $value) {
                 return "NULL";
             }
+
             if (is_string($value)) {
                 return $this->db->quote($value, $parameterType);
             }
+
             return $value;
         }
 

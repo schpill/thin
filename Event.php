@@ -7,9 +7,9 @@
 
     class Event
     {
-        public static $events   = array();
-        public static $queued   = array();
-        public static $flushers = array();
+        public static $events   = [];
+        public static $queued   = [];
+        public static $flushers = [];
 
         public static function listeners($event)
         {
@@ -23,7 +23,7 @@
 
         public static function set($event, $callback, $once = false)
         {
-            static::$events[$event][] = array($callback, $once);
+            static::$events[$event][] = [$callback, $once];
         }
 
         public static function override($event, $callback)
@@ -32,7 +32,7 @@
             static::set($event, $callback);
         }
 
-        public static function queue($queue, $key, $data = array())
+        public static function queue($queue, $key, $data = [])
         {
             static::$queued[$queue][$key] = $data;
         }
@@ -47,12 +47,12 @@
             unset(static::$events[$event]);
         }
 
-        public static function first($event, $parameters = array())
+        public static function first($event, $parameters = [])
         {
             return head(static::run($event, $parameters));
         }
 
-        public static function until($event, $parameters = array())
+        public static function until($event, $parameters = [])
         {
             return static::run($event, $parameters, true);
         }
@@ -71,14 +71,14 @@
             }
         }
 
-        public static function fire($event, $parameters = array())
+        public static function fire($event, $parameters = [])
         {
             return static::run($event, $parameters);
         }
 
-        public static function run($events, $parameters = array(), $halt = false)
+        public static function run($events, $parameters = [], $halt = false)
         {
-            $responses = array();
+            $responses = [];
 
             $parameters = (array) $parameters;
 
@@ -101,14 +101,32 @@
                         }
                     }
                 } else {
-                    $error = (
-                        strstr($event, '.init')
-                        || strstr($event, '.before')
-                        || strstr($event, '.start')
-                        || strstr($event, '.done')
-                        || strstr($event, '.stop')
-                        || strstr($event, '.after')
-                    ) ? false : true;
+                    $authorizedEmptyEvents = [
+                        /* API */
+                        'put',
+                        'post',
+                        'get',
+                        'delete',
+                        'head',
+                        'patch',
+                        'options',
+
+                        /* CONTROLLERS */
+                        'init',
+                        'before',
+                        'start',
+                        'done',
+                        'stop',
+                        'after'
+                    ];
+
+                    $error = true;
+
+                    foreach ($authorizedEmptyEvents as $authorizedEmptyEvent) {
+                        if (fnmatch('*.' . $authorizedEmptyEvent . '*', $event)) {
+                            $error = false;
+                        }
+                    }
 
                     if (true === $error) {
                         throw new Exception("The event $event doesn't exist.");

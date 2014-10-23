@@ -17,7 +17,7 @@
             $exception = new \ErrorException($message, $type, 0, $file, $line);
 
             if (!startsWith($message, 'Undefined offset:')) {
-                vd($exception);
+                dd($exception);
             }
         });
 
@@ -25,7 +25,7 @@
             $exception = error_get_last();
 
             if($exception) {
-                vd($exception);
+                dd($exception);
             }
         });
     }

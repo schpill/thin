@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+
     class Config
     {
         /**
@@ -48,7 +49,7 @@
 
         public static function has($key)
         {
-            return !is_null(static::get($key));
+            return 'dummy' != static::get($key, 'dummy');
         }
 
         public static function forget($key)
