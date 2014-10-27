@@ -184,7 +184,7 @@
         private function renderCache($echo)
         {
             $key    = sha1($this->_viewFile) . '::viewCache';
-            $redis  = context()->redis();
+            $redis  = redis();
             $ttl    = container()->getViewCacheTtl();
 
             $ttl    = is_null($ttl) ? Config::get('application.view.cache', 7200) : $ttl;
@@ -211,7 +211,7 @@
                 require_once($path . '/env.php');
             }
 
-            $redis  = context()->redis();
+            $redis  = redis();
             $keys   = $redis->keys('*::viewCache');
 
             if (count($keys)) {
@@ -234,7 +234,7 @@
             $tpl = $page->getTpl();
 
             if (File::exists($tpl)) {
-                $content = fgc($tpl);
+                $content = File::read($tpl);
                 $content = repl('$this->', '$page->', $content);
                 $file = CACHE_PATH . DS . sha1($content) . '.display';
                 File::put($file, $content);
@@ -251,6 +251,7 @@
 
                 return $html;
             }
+
             return '';
         }
 
@@ -264,6 +265,7 @@
             if (false === $this->_compiled) {
                 $isExpired = true;
             }
+
             if (false === $isExpired) {
                 $file = $this->compiled();
             } else {
@@ -275,6 +277,7 @@
 
                 $file = $this->compiled($file);
             }
+
             if (null !== $this->_cache) {
                 $isCached = isCached($file, $this->_cache, (array)$this);
 
@@ -389,7 +392,7 @@
 
                 return $file;
             } else {
-                $redis = context()->redis();
+                $redis  = redis();
                 $keyAge = sha1($this->_viewFile) . '::age';
                 $keyTpl = sha1($this->_viewFile) . '::html';
 
@@ -431,6 +434,7 @@
                 return $url;
             }
         }
+
         public static function cleanCode($content)
         {
             $content = repl('<php>', '<?php ', self::lng($content));
@@ -466,13 +470,18 @@
 
         protected function makeCompile($file)
         {
-            $content = fgc($file);
+            $route = container()->getRoute();
+
+            $module = $route->module;
+
+            $content = File::read($file);
 
             if (strstr($content, '@@layout')) {
                 $layout = Utils::cut("@@layout('", "')", $content);
-                $layoutFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $this->_module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
+                $layoutFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
+
                 if (File::exists($layoutFile)) {
-                    $contentL = fgc($layoutFile);
+                    $contentL = File::read($layoutFile);
                     $content = repl('@@content', repl("@@layout('$layout')", '', $content), $contentL);
                 }
             }
@@ -614,6 +623,7 @@
             if (substr($func, 0, 3) == 'get') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 if (isset($this->$var)) {
                     return $this->$var;
                 } else {
@@ -624,6 +634,7 @@
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 $this->$var = $value;
+
                 return $this;
             }
 
@@ -689,8 +700,10 @@
                     foreach ($configAsset as $key => $value) {
                         $assetHtml .= " $key=\"$value\" ";
                     }
+
                     $assetHtml = Inflector::substr($assetHtml, 0, -1);
                 }
+
                 $assetHtml .= ' />' . "\n";
 
                 return $assetHtml;
@@ -914,6 +927,7 @@
                 return static::$urlsite;
             } else {
                 echo static::$urlsite;
+
                 return;
             }
         }
@@ -928,6 +942,7 @@
                 return $url;
             } else {
                 echo $url;
+
                 return;
             }
         }

@@ -2264,6 +2264,7 @@ $(document).ready(function() {
         {
             if (php_sapi_name() == 'cli') {
                 $script     = array_shift($args);
+                $siteName   = array_shift($args);
                 $cronName   = array_shift($args);
                 $cron       = ucfirst(Inflector::lower($cronName));
                 $file       = APPLICATION_PATH . DS . 'crons' . DS . $cron . DS . $cron . 'Cron.php';
