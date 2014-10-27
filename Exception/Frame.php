@@ -2,6 +2,7 @@
     namespace Thin\Exception;
     use InvalidArgumentException;
     use Serializable;
+    use \Thin\File;
 
     class Frame implements Serializable
     {
@@ -34,7 +35,7 @@
          */
         public function getFile($shortened = false)
         {
-            if(empty($this->frame['file'])) {
+            if (empty($this->frame['file'])) {
                 return null;
             }
 
@@ -44,16 +45,16 @@
             // @todo: This can be made more reliable by checking if we've entered
             // eval() in a previous trace, but will need some more work on the upper
             // trace collector(s).
-            if(preg_match('/^(.*)\((\d+)\) : eval\(\)\'d code$/', $file, $matches)) {
-                $file = $this->frame['file'] = $matches[1];
-                $this->frame['line'] = (int) $matches[2];
+            if (preg_match('/^(.*)\((\d+)\) : eval\(\)\'d code$/', $file, $matches)) {
+                $file = $this->frame['file']    = $matches[1];
+                $this->frame['line']            = (int) $matches[2];
             }
 
-            if($shortened && is_string($file)) {
+            if ($shortened && is_string($file)) {
                 // Replace the part of the path that all frames have in common, and add 'soft hyphens' for smoother line-breaks.
-                $dirname = dirname(dirname(dirname(dirname(__DIR__))));
-                $file = str_replace($dirname, "…", $file);
-                $file = str_replace("/", "/&shy;", $file);
+                $dirname    = dirname(dirname(dirname(dirname(__DIR__))));
+                $file       = str_replace($dirname, "…", $file);
+                $file       = str_replace("/", "/&shy;", $file);
             }
 
             return $file;
@@ -98,16 +99,16 @@
          */
         public function getFileContents()
         {
-            if($this->fileContentsCache === null && $filePath = $this->getFile()) {
+            if ($this->fileContentsCache === null && $filePath = $this->getFile()) {
 
                 // Return null if the file doesn't actually exist - this may
                 // happen in cases where the filename is provided as, for
                 // example, 'Unknown'
-                if(!is_file($filePath)) {
+                if (!File::exists($filePath)) {
                     return null;
                 }
 
-                $this->fileContentsCache = file_get_contents($filePath);
+                $this->fileContentsCache = File::read($filePath);
             }
 
             return $this->fileContentsCache;
@@ -144,7 +145,7 @@
         {
             $comments = $this->comments;
 
-            if($filter !== null) {
+            if ($filter !== null) {
                 $comments = array_filter($comments, function($c) use($filter) {
                     return $c['context'] == $filter;
                 });
@@ -184,11 +185,11 @@
          */
         public function getFileLines($start = 0, $length = null)
         {
-            if(null !== ($contents = $this->getFileContents())) {
+            if (null !== ($contents = $this->getFileContents())) {
                 $lines = explode("\n", $contents);
 
                 // Get a subset of lines from $start to $end
-                if($length !== null)
+                if ($length !== null)
                 {
                     $start  = (int) $start;
                     $length = (int) $length;
@@ -196,7 +197,7 @@
                         $start = 0;
                     }
 
-                    if($length <= 0) {
+                    if ($length <= 0) {
                         throw new InvalidArgumentException(
                             "\$length($length) cannot be lower or equal to 0"
                         );
@@ -219,7 +220,8 @@
         public function serialize()
         {
             $frame = $this->frame;
-            if(!empty($this->comments)) {
+
+            if (!empty($this->comments)) {
                 $frame['_comments'] = $this->comments;
             }
 
@@ -237,7 +239,7 @@
         {
             $frame = unserialize($serializedFrame);
 
-            if(!empty($frame['_comments'])) {
+            if (!empty($frame['_comments'])) {
                 $this->comments = $frame['_comments'];
                 unset($frame['_comments']);
             }
