@@ -24,7 +24,7 @@
         register_shutdown_function(function() {
             $exception = error_get_last();
 
-            if($exception) {
+            if ($exception && !strstr($exception->getMessage(), 'undefinedVariable')) {
                 dd($exception);
             }
         });

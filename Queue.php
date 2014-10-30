@@ -61,6 +61,7 @@
                 'priority' => $priority,
             );
             $this->getQueue()->insert($data, $priority);
+
             return $this;
         }
 
@@ -89,6 +90,7 @@
                     break;
                 }
             }
+
             if ($found) {
                 unset($this->items[$key]);
                 $this->queue = null;
@@ -99,8 +101,10 @@
                         $queue->insert($item['data'], $item['priority']);
                     }
                 }
+
                 return true;
             }
+
             return false;
         }
 
@@ -159,6 +163,7 @@
         public function getIterator()
         {
             $queue = $this->getQueue();
+
             return clone $queue;
         }
 
@@ -231,6 +236,7 @@
         public function setInternalQueueClass($class)
         {
             $this->queueClass = (string) $class;
+
             return $this;
         }
 
@@ -247,6 +253,7 @@
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -263,6 +270,7 @@
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -276,6 +284,7 @@
         {
             if (null === $this->queue) {
                 $this->queue = new $this->queueClass();
+
                 if (!$this->queue instanceof SplPriorityQueue) {
                     throw new Exception(sprintf(
                         'Queue expects an internal queue of type SplPriorityQueue; received "%s"',
@@ -283,6 +292,7 @@
                     ));
                 }
             }
+
             return $this->queue;
         }
 
