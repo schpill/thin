@@ -32,9 +32,9 @@
 
         public function __construct($socketIOUrl, $socketIOPath = 'socket.io', $protocol = 1, $read = true, $checkSslPeer = true, $debug = false)
         {
-            $this->socketIOUrl = $socketIOUrl.'/'.$socketIOPath.'/'.(string)$protocol;
-            $this->read = $read;
-            $this->debug = $debug;
+            $this->socketIOUrl  = $socketIOUrl . '/' . $socketIOPath . '/' . (string) $protocol;
+            $this->read         = $read;
+            $this->debug        = $debug;
             $this->parseUrl();
             $this->checkSslPeer = $checkSslPeer;
         }
@@ -48,6 +48,7 @@
         public function setHandshakeQuery(array $query)
         {
             $this->handshakeQuery = '?' . http_build_query($query);
+
             return $this;
         }
 
@@ -78,7 +79,7 @@
         public function keepAlive()
         {
             while (is_resource($this->fd)) {
-                if ($this->session['heartbeat_timeout'] > 0 && $this->session['heartbeat_timeout']+$this->heartbeatStamp-5 < time()) {
+                if ($this->session['heartbeat_timeout'] > 0 && $this->session['heartbeat_timeout'] + $this->heartbeatStamp - 5 < time()) {
                     $this->send(self::TYPE_HEARTBEAT);
                     $this->heartbeatStamp = time();
                 }
@@ -90,14 +91,15 @@
                     continue;
                 }
 
-                $res = $this->read();
-                $sess = explode(':', $res);
-                if ((int)$sess[0] === self::TYPE_EVENT) {
-                    unset($sess[0], $sess[1], $sess[2]);
+                $res    = $this->read();
+                $sess   = explode(':', $res);
+
+                if ((int) Arrays::first($sess) === self::TYPE_EVENT) {
+                    unset(Arrays::first($sess), $sess[1], $sess[2]);
 
                     $response = json_decode(implode(':', $sess), true);
                     $name = $response['name'];
-                    $data = $response['args'][0];
+                    $data = Arrays::first($response['args']);
 
                     $this->stdout('debug', 'Receive event "' . $name . '" with data "' . $data . '"');
 
@@ -137,12 +139,14 @@
             }
 
             // Use buffering to handle packet size > 16Kb
-            $read = 0;
-            $payload = '';
-            while ($read < $payload_len && ($buff = fread($this->fd, $payload_len-$read))) {
+            $read       = 0;
+            $payload    = '';
+
+            while ($read < $payload_len && ($buff = fread($this->fd, $payload_len - $read))) {
                 $read += strlen($buff);
                 $payload .= $buff;
             }
+
             $this->stdout('debug', 'Received ' . $payload);
 
             return $payload;
@@ -196,6 +200,7 @@
             $payload->setOpcode(Payload::OPCODE_TEXT)
                 ->setMask(true)
                 ->setPayload($raw_message);
+
             $encoded = $payload->encodePayload();
 
             fwrite($this->fd, $encoded);
@@ -394,6 +399,7 @@
                     $this->stdout('info', 'Server report us as connected !');
                 }
             }
+
             $this->heartbeatStamp = time();
         }
 

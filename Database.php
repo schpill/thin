@@ -13,19 +13,19 @@
         $query,
         $offset,
         $limit,
-        $map        = array(),
-        $args       = array(),
-        $results    = array(),
-        $wheres     = array(),
-        $fields     = array(),
-        $as         = array(),
-        $joins      = array(),
-        $havings    = array(),
-        $groupBys   = array(),
-        $orders     = array(),
+        $map        = [],
+        $args       = [],
+        $results    = [],
+        $wheres     = [],
+        $fields     = [],
+        $as         = [],
+        $joins      = [],
+        $havings    = [],
+        $groupBys   = [],
+        $orders     = [],
         $cache      = false;
 
-        public static $config       = array();
+        public static $config = [];
 
         public function __construct($db, $table, $host = 'localhost', $username = 'root', $password = '')
         {
@@ -390,9 +390,9 @@
 
         private function intersect($tab1, $tab2)
         {
-            $ids1       = array();
-            $ids2       = array();
-            $collection = array();
+            $ids1       = [];
+            $ids2       = [];
+            $collection = [];
 
             foreach ($tab1 as $row) {
                 $id = isAke($row, $this->pk(), null);
@@ -417,10 +417,10 @@
             return $collection;
         }
 
-        public function trick(Closure $condition, $op = 'AND', $results = array())
+        public function trick(Closure $condition, $op = 'AND', $results = [])
         {
             $data = !count($results) ? $this->fetch() : $results;
-            $res = array();
+            $res = [];
 
             if (count($data)) {
                 foreach ($data as $row) {
@@ -472,7 +472,7 @@
             ? "SELECT $this->database.$this->table.* FROM $this->database.$this->table"
             : $query;
 
-            $collection = array();
+            $collection = [];
             $res = $this->db->query($query);
 
             if (is_object($res)) {
@@ -539,7 +539,7 @@
             $relations  = isAke($settings, 'relations', false);
 
             if (false === $relations) {
-                $relations      = array();
+                $relations      = [];
                 $relationsQuery = "SELECT
 
                 REFERENCED_TABLE_NAME as foreignTable
@@ -559,7 +559,7 @@
                 self::$config["$this->database.$this->table"]['relations'] = $relations;
             }
 
-            $fields = $nullable = $keys = $default = array();
+            $fields = $nullable = $keys = $default = [];
             $pk = null;
 
             if (count($res)) {
@@ -589,7 +589,7 @@
             );
 
             if (false === $relations) {
-                $relations = array();
+                $relations = [];
             }
 
             if (count($keys)) {
@@ -634,14 +634,14 @@
 
         public function reset()
         {
-            $this->results  = array();
-            $this->wheres   = array();
-            $this->fields   = array();
-            $this->as       = array();
-            $this->joins    = array();
-            $this->havings  = array();
-            $this->groupBys = array();
-            $this->orders   = array();
+            $this->results  = [];
+            $this->wheres   = [];
+            $this->fields   = [];
+            $this->as       = [];
+            $this->joins    = [];
+            $this->havings  = [];
+            $this->groupBys = [];
+            $this->orders   = [];
             $this->limit    = null;
             $this->offset   = null;
             $this->query    = null;
@@ -950,7 +950,7 @@
                 return $object ? $this->row($row) : $row;
             }
 
-            return $object ? null : array();
+            return $object ? null : [];
         }
 
         public function findOneBy($field, $value, $object = false)
@@ -992,7 +992,7 @@
             if (true === $object) {
                 $row = count($res) ? $this->row(Arrays::first($res)) : null;
             } else {
-                $row = count($res) ? Arrays::first($res) : array();
+                $row = count($res) ? Arrays::first($res) : [];
             }
 
             $this->reset();
@@ -1026,7 +1026,7 @@
 
         public function select($fields, $object = false)
         {
-            $collection = array();
+            $collection = [];
             $fields = Arrays::is($fields) ? $fields : array($fields);
             $rows = $this->exec($object);
 
@@ -1042,7 +1042,7 @@
                             'id' => $row->id
                         )
                     )
-                    : array();
+                    : [];
 
                     foreach ($fields as $field) {
                         if (true === $object) {
@@ -1068,7 +1068,7 @@
             if (true === $object) {
                 return count($res) ? $this->row(Arrays::last($res)) : null;
             } else {
-                return count($res) ? Arrays::last($res) : array();
+                return count($res) ? Arrays::last($res) : [];
             }
         }
 
@@ -1100,7 +1100,7 @@
                 $this->results = $results;
             }
 
-            $collection = array();
+            $collection = [];
 
             if (count($this->results)) {
                 foreach ($this->results as $row) {
@@ -1349,7 +1349,7 @@
             }
 
             if (count($this->havings)) {
-                $sql = array();
+                $sql = [];
 
                 foreach ($query->havings as $having) {
                     $sql[] = 'AND '. $having['column'] . ' ' . $having['operator'] . ' ' . $having['value'];
@@ -1581,12 +1581,12 @@
             return $this->where($field . ' >= ' . $min)->where($field . ' <= ' . $max)->exec($object);
         }
 
-        public function firstOrNew($tab = array())
+        public function firstOrNew($tab = [])
         {
             return $this->firstOrCreate($tab, false);
         }
 
-        public function firstOrCreate($tab = array(), $save = true)
+        public function firstOrCreate($tab = [], $save = true)
         {
             if (count($tab)) {
                 foreach ($tab as $key => $value) {
@@ -1605,7 +1605,7 @@
             return !$save ? $item : $item->save();
         }
 
-        public function replace($compare = array(), $update = array())
+        public function replace($compare = [], $update = [])
         {
             $instance = $this->firstOrCreate($compare);
 
@@ -1663,12 +1663,12 @@
             return $count;
         }
 
-        public function create($tab = array())
+        public function create($tab = [])
         {
             return $this->row($tab);
         }
 
-        public function row($tab = array())
+        public function row($tab = [])
         {
             $fields = array_keys($this->map['fields']);
             $pk     = $this->pk();
@@ -1820,7 +1820,7 @@
                 return $db->where("$pk = $value")->first($object);
             };
 
-            $hydrate = function ($data = array()) use ($obj) {
+            $hydrate = function ($data = []) use ($obj) {
                 $data = empty($data) ? $_POST : $data;
 
                 if (Arrays::isAssoc($data)) {

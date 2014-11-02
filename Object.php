@@ -557,14 +557,18 @@
                     $id = isAke($datas, 'id', false);
 
                     if (Arrays::is($v) && false === $id) {
-                        $o = new self;
-                        $o->populate($v);
-                        $this->$k = $o;
+                        if (Arrays::isAssoc($v)) {
+                            $o = new self;
+                            $o->populate($v);
+                            $this->$k = $o;
+                        } else {
+                            $this->$k = $v;
+                        }
                     } else {
                         $this->$k = $v;
                     }
 
-                    if (!Arrays::inArray($k, $this->_fields)) {
+                    if (!Arrays::in($k, $this->_fields)) {
                         $this->_fields[] = $k;
                     }
                 }

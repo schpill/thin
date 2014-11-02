@@ -27,16 +27,19 @@
         public function __construct($entity)
         {
             $modelSettings = isAke(Data::$_settings, $entity);
+
             if (empty($modelSettings)) {
                 throw new Exception("Settings for $entity are missing.");
             }
 
             $modelFields = isAke(Data::$_fields, $entity);
+
             if (empty($modelFields)) {
                 throw new Exception("Fields for $entity are missing.");
             }
 
             $functions = isAke($modelSettings, "functions");
+
             if (!empty($functions)) {
                 foreach ($functions as $method => $closure) {
                     if ($closure instanceof Closure) {
@@ -47,6 +50,7 @@
             }
 
             $db = STORAGE_PATH . DS . "$entity.db";
+
             if (!File::exists($db)) {
                 File::put($db, '');
             }
@@ -66,6 +70,7 @@
         public function closure($name, Closure $closure)
         {
             $this->closures[$name] = $closure;
+
             return $this;
         }
 
@@ -79,30 +84,35 @@
             $object = o(sha1(time() . $this->settings['entity'] . session_id() . Utils::token()));
             $object->thin_litedb = $this;
             $object->id = null;
+
             if (count($data) && Arrays::isAssoc($data)) {
                 foreach ($this->settings['modelFields'] as $field => $infos) {
                     $value = ake($field, $data) ? $data[$field] : null;
                     $object->$field = $value;
                 }
             }
+
             return $object;
         }
 
         public function all()
         {
             $collection = $this->settings['session']->getData();
+
             return $this->collection($collection);
         }
 
         public function collection($tab)
         {
             $collection = array();
+
             if (count($tab)) {
                 foreach ($tab as $i => $row) {
                     $index = $i + 1;
                     $collection[] = $this->row($row, $index);
                 }
             }
+
             return $collection;
         }
 
@@ -124,6 +134,7 @@
             if (count($fields)) {
                 foreach ($fields as $field => $info) {
                     $val = $object->$field;
+
                     if (empty($val)) {
                         if (!Arrays::exists('canBeNull', $info)) {
                             if (!Arrays::exists('default', $info)) {
@@ -145,7 +156,9 @@
                     }
                 }
             }
+
             $object->thin_litedb = null;
+
             if (null === $object->id) {
                 $object->id = $this->nextId();
                 $object->date_create = time();
@@ -164,13 +177,17 @@
                     }
                 }
             }
+
             if (true === $create) {
                 $row = $this->makeRow($object);
                 $news[] = serialize($row);
             }
+
             File::delete($db);
             File::put($db, implode("\n", $news));
+
             $session->setData(file($db));
+
             return $object;
         }
 
@@ -179,17 +196,21 @@
             $fields = $this->settings['modelFields'];
             $o = $object;
             $new = $this->newRow();
+
             foreach ($fields as $field => $infos) {
                 $get = getter($field);
                 $new->$field = $o->$get();
             }
+
             $new->setThinLitedb(null);
+
             return $new;
         }
 
         public function nextId()
         {
             $all = $this->all();
+
             return count($all) + 1;
         }
 
@@ -201,18 +222,23 @@
             if (null !== $object->id) {
                 $all = $this->all();
                 $news = array();
+
                 foreach ($all as $i => $row) {
                     $index = $i + 1;
+
                     if ($index != $object->id) {
                         $row->thin_litedb = null;
                         $news[] = serialize($row);
                     }
                 }
+
                 File::delete($db);
                 File::put($db, implode("\n", $news));
                 $session->setData(file($db));
+
                 return true;
             }
+
             return false;
         }
 
@@ -221,17 +247,20 @@
             $object = unserialize($row);
             $object->id = $index;
             $object->thin_litedb = $this;
+
             return $object;
         }
 
         private function checkTuple($field)
         {
             $entity = $this->settings['entity'];
+
             if (null !== $this->object->id) {
                 $tuples = $this->raw("SELECT id FROM $entity WHERE " . $field . " = '" . SQLite3::escapeString($this->object->$field) . "' AND id != '" . $this->object->id . "'");
             } else {
                 $tuples = $this->query($field . ' = ' . $this->object->$field);
             }
+
             if (count($tuples)) {
                 throw new Exception("A row exists with value of $field = " . $this->object->$field);
             }
@@ -246,6 +275,7 @@
         {
             $collection = $this->query($condition);
             $this->resultsAnd($collection);
+
             return $this;
         }
 
@@ -258,6 +288,7 @@
         {
             $collection = $this->query($condition);
             $this->resultsOr($collection);
+
             return $this;
         }
 
@@ -270,6 +301,7 @@
         {
             $collection = $this->query($condition);
             $this->resultsXor($collection);
+
             return $this;
         }
 
@@ -285,6 +317,7 @@
             } else {
                 $this->results = $resultsAnd;
             }
+
             return $this;
         }
 
@@ -295,6 +328,7 @@
             } else {
                 $this->results = $resultsOr;
             }
+
             return $this;
         }
 
@@ -305,6 +339,7 @@
             } else {
                 $this->results = $resultsXor;
             }
+
             return $this;
         }
 
@@ -312,14 +347,17 @@
         {
             if (true === $this->cache) {
                 $cached = $this->cached($condition);
+
                 if (!empty($cached)) {
                     $this->count = count($cached);
                     return $cached;
                 }
             }
+
             $fields = $this->settings['modelFields'];
             $entity = $this->settings['entity'];
             $datas = $this->all();
+
             if (!strlen($condition) || !count($datas)) {
                 $results        = $datas;
             } else {
@@ -329,20 +367,24 @@
                 $where = "$field $op '" . SQLite3::escapeString($value) . "'";
                 $q = "SELECT id FROM $entity WHERE $where COLLATE NOCASE";var_dump($q);
                 $res = $db->query($q);
+
                 while ($row = $res->fetchArray()) {
                     $object = $this->find($row['id']);
                     array_push($results, $object);
                 }
             }
+
             if (true === $this->cache) {
                 $this->cached($keyCache, $results);
             }
+
             return $results;
         }
 
         public function groupBy($groupBy)
         {
             $this->groupBy = $groupBy;
+
             return $this;
         }
 
@@ -371,12 +413,14 @@
             $fields = $this->settings['modelFields'];
             $entity = $this->settings['entity'];
             $datas = $this->all();
+
             if (!count($datas)) {
                 return 0;
             } else {
                 $db = $this->prepare();
                 $q = "SELECT $op ($field) AS val FROM $entity";
                 $res = $db->query($q);
+
                 while ($row = $res->fetchArray()) {
                     return $row['val'];
                 }
@@ -392,6 +436,7 @@
         {
             $this->offset = $offset;
             $this->limit = $limit;
+
             return $this;
         }
 
@@ -405,6 +450,7 @@
             while ($row = $res->fetchArray()) {
                 array_push($collection, $this->find($row['id']));
             }
+
             return $collection;
         }
 
@@ -415,6 +461,7 @@
             $entity = $this->settings['entity'];
             $db = new SQLite3(':memory:');
             $q = "DROP TABLE IF EXISTS $entity; CREATE TABLE $entity (id INTEGER PRIMARY KEY, date_create";
+
             if (count($fields)) {
                 foreach ($fields as $field => $infos) {
                     $q .= ", $field";
@@ -425,11 +472,14 @@
             $q = "SELECT id FROM $entity";
             $res = $db->query($q);
             $next = true;
+
             while ($row = $res->fetchArray() && true === $next) {
                 $next = false;
             }
+
             if (true === $next) {
                 $index = 1;
+
                 foreach ($datas as $object) {
                     $q = "INSERT INTO $entity
                     (id, date_create)
@@ -442,9 +492,11 @@
                         WHERE id = '" . SQLite3::escapeString($object->id) . "'";
                         $db->exec($q);
                     }
+
                     $index++;
                 }
             }
+
             return $db;
         }
 
@@ -452,6 +504,7 @@
         {
             $results = empty($results) ? $this->results : $results;
             $this->ids = array();
+
             if (count($results)) {
                 foreach ($results as $row) {
                     array_push($this->ids, $row->getId());
@@ -478,6 +531,7 @@
                     $this->sort($orderField, $orderDirection);
                 }
             }
+
             return $this;
         }
 
@@ -489,8 +543,10 @@
             $this->ids();
             $fieldsEntity['date_create'] = array();
             $q = "SELECT id FROM $entity WHERE id IN ('" . implode("', '", $this->ids) . "') ORDER BY ";
+
             if (false === $multiSort) {
                 $type = Arrays::exists('type', $fieldsEntity[$orderField]) ? $fieldsEntity[$orderField]['type'] : null;
+
                 if ('data' == $type) {
                     $q = repl('SELECT id', 'SELECT ' . $entity . '.id', $q);
                     list($dummy, $foreignTable, $foreignField) = $fieldsEntity[$orderField]['contentList'];
@@ -499,18 +555,22 @@
                     ? Data::$_fields[$foreignTable]
                     : Data::noConfigFields($foreignTable);
                     $query = "DROP TABLE IF EXISTS $foreignTable; CREATE TABLE $foreignTable (id INTEGER PRIMARY KEY, date_create";
+
                     if (count($fields)) {
                         foreach ($fields as $field => $infos) {
                             $query .= ", $field";
                         }
                     }
+
                     $query .= ");";
                     $db->exec($query);
                     $lite = new self($foreignTable);
                     $datas = $lite->all();
+
                     foreach ($datas as $object) {
                         $query = "INSERT INTO $foreignTable (id, date_create) VALUES ('" . SQLite3::escapeString($object->id) . "', '" . SQLite3::escapeString($object->date_create) . "')";
                         $db->exec($query);
+
                         foreach ($fields as $field => $info) {
                             $value = is_object($object->$field) ? 'object' : $object->$field;
                             $query = "UPDATE $foreignTable SET $field = '". SQLite3::escapeString($value) ."' WHERE id = '" . SQLite3::escapeString($object->id) . "'";
@@ -521,10 +581,12 @@
                     $replace = " LEFT JOIN $foreignTable ON $entity.$orderField = $foreignTable.id  WHERE $entity.";
                     $q = repl(" WHERE ", $replace, $q);
                     $foreignFields = explode(',', $foreignField);
+
                     for ($i = 0; $i < count($foreignFields); $i++) {
                         $order = $foreignFields[$i];
                         $q .= "$foreignTable.$order $orderDirection, ";
                     }
+
                     $q = substr($q, 0, -2);
                 } else {
                     $q .= "$orderField $orderDirection";
@@ -532,20 +594,26 @@
             } else {
                 for ($i = 0; $i < count($orderField); $i++) {
                     $order = $orderField[$i];
+
                     if (Arrays::is($orderDirection)) {
                         $direction = isset($orderDirection[$i]) ? $orderDirection[$i] : 'ASC';
                     } else {
                         $direction = $orderDirection;
                     }
+
                     $q .= "$order $direction, ";
                 }
+
                 $q = substr($q, 0, -2);
             }
+
             $res = $db->query($q);
             $collection = array();
+
             while ($row = $res->fetchArray()) {
                 array_push($collection, $this->find($row['id']));
             }
+
             $this->results = $collection;
         }
 
@@ -570,42 +638,54 @@
                 if (null !== $this->groupBy) {
                     $groupBys   = array();
                     $ever       = array();
+
                     foreach ($results as $key => $object) {
                         $id = $object->getId();
                         $getter = getter($this->groupBy);
                         $obj = $object->$getter();
+
                         if ($obj instanceof Container) {
                             $id = $obj->getId();
                         }
+
                         if (!Arrays::in($id, $ever)) {
                             $groupBys[$key] = $this->find($id);
                             $ever[]         = $id;
                         }
                     }
+
                     $this->results = $groupBys;
                     $this->order($this->groupBy);
                     $results = $this->results;
                 }
+
                 if (0 < $this->limit) {
                     $max    = count($results);
                     $number = $this->limit - $this->offset;
+
                     if ($number > $max) {
                         $this->offset = $max - $this->limit;
+
                         if (0 > $this->offset) {
                             $this->offset = 0;
                         }
+
                         $this->limit = $max;
                     }
+
                     $results = array_slice($results, $this->offset, $this->limit);
                 }
             }
+
             $this->results = $results;
+
             return $results;
         }
 
         public function fetchOne($results = null)
         {
             $results = empty($results) ? $this->results : $results;
+
             return $this->first($results);
         }
 
@@ -613,10 +693,12 @@
         {
             if (count($results)) {
                 $row = Arrays::first($results);
+
                 if (is_object($row)) {
                     return $row;
                 }
             }
+
             return null;
         }
 
@@ -624,10 +706,12 @@
         {
             if (count($results)) {
                 $row = Arrays::last($results);
+
                 if (is_object($row)) {
                     return $row;
                 }
             }
+
             return null;
         }
 
@@ -635,12 +719,16 @@
         {
             $key = sha1($what);
             $file = CACHE_PATH . DS . $key . '_sql';
+
             if (!empty($data)) {
                 File::put($file, serialize($data));
+
                 return $data;
             }
+
             if (File::exists($file)) {
                 $age = time() - filemtime($file);
+
                 if ($age > $this->tts) {
                     File::delete($file);
                 } else {
@@ -652,12 +740,15 @@
         public function find($id)
         {
             $collection = $this->settings['session']->getData();
+
             if (isset($collection[$id - 1])) {
-            $obj =  unserialize($collection[$id - 1]);
-            $obj->id = $id;
-            $obj->thin_litedb = $this;
+                $obj =  unserialize($collection[$id - 1]);
+                $obj->id = $id;
+                $obj->thin_litedb = $this;
+
                 return $obj;
             }
+
             return $this->newRow();
         }
 
@@ -667,11 +758,13 @@
                 $value = Arrays::first($args);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 6)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 return $this->findBy($var, $value);
             } elseif (substr($method, 0, strlen('findOneBy')) == 'findOneBy') {
                 $value = Arrays::first($args);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 9)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 return $this->findBy($var, $value, true);
             }
         }
@@ -679,12 +772,14 @@
         public function tts($tts = 3600)
         {
             $this->tts = $tts;
+
             return $this;
         }
 
         public function cache($bool)
         {
             $this->cache = $bool;
+
             return $this;
         }
     }

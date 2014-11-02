@@ -1,310 +1,187 @@
 <?php
-
     namespace Thin;
 
-    use Countable;
-    use IteratorAggregate;
-    use Serializable;
-    use SplPriorityQueue;
+    use Closure;
+    use Dbjson\Dbjson as Db;
+    use Jeremeamia\SuperClosure\SerializableClosure;
 
-    /**
-     * Re-usable, serializable priority queue implementation
-     *
-     * SplQueue acts as a heap; on iteration, each item is removed from the
-     * queue. If you wish to re-use such a queue, you need to clone it first. This
-     * makes for some interesting issues if you wish to delete items from the queue,
-     * or, as already stated, iterate over it multiple times.
-     *
-     * This class aggregates items for the queue itself, but also composes an
-     * "inner" iterator in the form of an SplQueue object for performing
-     * the actual iteration.
-     */
-    class Queue implements Countable, IteratorAggregate, Serializable
+    class Queue
     {
-        const EXTR_DATA     = 0x00000001;
-        const EXTR_PRIORITY = 0x00000002;
-        const EXTR_BOTH     = 0x00000003;
-
-        /**
-         * Inner queue class to use for iteration
-         * @var string
-         */
-        protected $queueClass = 'SplPriorityQueue';
-
-        /**
-         * Actual items aggregated in the priority queue. Each item is an array
-         * with keys "data" and "priority".
-         * @var array
-         */
-        protected $items      = array();
-
-        /**
-         * Inner queue object
-         * @var SplQueue
-         */
-        protected $queue;
-
-        /**
-         * Insert an item into the queue
-         *
-         * Priority defaults to 1 (low priority) if none provided.
-         *
-         * @param  mixed $data
-         * @param  int $priority
-         * @return Queue
-         */
-        public function insert($data, $priority = 1)
+        public static function push(Closure $closure, $args = [], $when = 0)
         {
-            $priority = (int) $priority;
-            $this->items[] = array(
-                'data'     => $data,
-                'priority' => $priority,
-            );
-            $this->getQueue()->insert($data, $priority);
+            $closure = serialize(new SerializableClosure($closure));
 
-            return $this;
+            $db = Db::instance('system', 'task');
+
+            $new = $db->create([
+                'closure'   => $closure,
+                'args'      => serialize($args),
+                'when'      => $when
+            ])->save();
         }
 
-        /**
-         * Remove an item from the queue
-         *
-         * This is different than {@link extract()}; its purpose is to dequeue an
-         * item.
-         *
-         * This operation is potentially expensive, as it requires
-         * re-initialization and re-population of the inner queue.
-         *
-         * Note: this removes the first item matching the provided item found. If
-         * the same item has been added multiple times, it will not remove other
-         * instances.
-         *
-         * @param  mixed $datum
-         * @return bool False if the item was not found, true otherwise.
-         */
-        public function remove($datum)
+        public static function chain(array $closures, $args = [], $when = 0)
         {
-            $found = false;
-            foreach ($this->items as $key => $item) {
-                if ($item['data'] === $datum) {
-                    $found = true;
-                    break;
-                }
-            }
+            if (!empty($closures)) {
+                $serializedClosures = [];
 
-            if ($found) {
-                unset($this->items[$key]);
-                $this->queue = null;
-
-                if (!$this->isEmpty()) {
-                    $queue = $this->getQueue();
-                    foreach ($this->items as $item) {
-                        $queue->insert($item['data'], $item['priority']);
+                foreach ($closures as $closure) {
+                    if ($closure instanceof Closure) {
+                        array_push($serializedClosures, serialize(new SerializableClosure($closure)));
                     }
                 }
 
-                return true;
-            }
+                $callable = function () use ($serializedClosures, $args) {
+                    $first = true;
 
-            return false;
-        }
+                    foreach ($serializedClosures as $serializedClosure) {
+                        $closure = unserialize($serializedClosure);
 
-        /**
-         * Is the queue empty?
-         *
-         * @return bool
-         */
-        public function isEmpty()
-        {
-            return (0 === $this->count());
-        }
+                        if ($closure instanceof Closure) {
+                            if (true === $first) {
+                                $res    = call_user_func_array($closure, $args);
+                                $first  = false;
+                            } else {
+                                $cArgs  = array_merge([$res], $args);
+                                $res    = call_user_func_array($closure, $cArgs);
+                            }
+                        }
+                    }
+                };
 
-        /**
-         * How many items are in the queue?
-         *
-         * @return int
-         */
-        public function count()
-        {
-            return count($this->items);
-        }
-
-        /**
-         * Peek at the top node in the queue, based on priority.
-         *
-         * @return mixed
-         */
-        public function top()
-        {
-            return $this->getIterator()->top();
-        }
-
-        /**
-         * Extract a node from the inner queue and sift up
-         *
-         * @return mixed
-         */
-        public function extract()
-        {
-            return $this->getQueue()->extract();
-        }
-
-        /**
-         * Retrieve the inner iterator
-         *
-         * SplQueue acts as a heap, which typically implies that as items
-         * are iterated, they are also removed. This does not work for situations
-         * where the queue may be iterated multiple times. As such, this class
-         * aggregates the values, and also injects an SplQueue. This method
-         * retrieves the inner queue object, and clones it for purposes of
-         * iteration.
-         *
-         * @return SplQueue
-         */
-        public function getIterator()
-        {
-            $queue = $this->getQueue();
-
-            return clone $queue;
-        }
-
-        /**
-         * Serialize the data structure
-         *
-         * @return string
-         */
-        public function serialize()
-        {
-            return serialize($this->items);
-        }
-
-        /**
-         * Unserialize a string into a Queue object
-         *
-         * @param  string $data
-         * @return void
-         */
-        public function unserialize($data)
-        {
-            foreach (unserialize($data) as $item) {
-                $this->insert($item['data'], $item['priority']);
+                return static::push($callable, $args, $when);
             }
         }
 
-        /**
-         * Serialize to an array
-         *
-         * By default, returns only the item data, and in the order registered (not
-         * sorted). You may provide one of the EXTR_* flags as an argument, allowing
-         * the ability to return priorities or both data and priority.
-         *
-         * @param  int $flag
-         * @return array
-         */
-        public function toArray($flag = self::EXTR_DATA)
+        public static function bulk(array $closures, $args = [], $when = 0)
         {
-            switch ($flag) {
-                case self::EXTR_BOTH:
-                    return $this->items;
-                    break;
-                case self::EXTR_PRIORITY:
-                    return array_map(
-                        function ($item) {
-                            return $item['priority'];
-                        },
-                        $this->items
-                    );
-                case self::EXTR_DATA:
-                default:
-                    return array_map(
-                        function ($item) {
-                            return $item['data'];
-                        },
-                        $this->items
-                    );
-            }
-        }
-
-        /**
-         * Specify the internal queue class
-         *
-         * Please see {@link getIterator()} for details on the necessity of an
-         * internal queue class. The class provided should extend SplQueue.
-         *
-         * @param  string $class
-         * @return Queue
-         */
-        public function setInternalQueueClass($class)
-        {
-            $this->queueClass = (string) $class;
-
-            return $this;
-        }
-
-        /**
-         * Does the queue contain the given datum?
-         *
-         * @param  mixed $datum
-         * @return bool
-         */
-        public function contains($datum)
-        {
-            foreach ($this->items as $item) {
-                if ($item['data'] === $datum) {
-                    return true;
+            if (count($closures)) {
+                foreach ($closures as $closure) {
+                    if ($closure instanceof Closure) {
+                        static::push($closure, $args, $when);
+                    }
                 }
             }
-
-            return false;
         }
 
-        /**
-         * Does the queue have an item with the given priority?
-         *
-         * @param  int $priority
-         * @return bool
-         */
-        public function hasPriority($priority)
+        public static function later($timestamp, Closure $closure, $args = [])
         {
-            foreach ($this->items as $item) {
-                if ($item['priority'] === $priority) {
-                    return true;
+            static::push($closure, $args, $timestamp);
+        }
+
+        public static function pushMethod($method, $args = [], $when = 0)
+        {
+            $db = Db::instance('system', 'task');
+
+            list($class, $action) = explode('@', $method, 2);
+
+            $new = $db->create([
+                'class'     => $class,
+                'action'    => $action,
+                'args'      => serialize($args),
+                'when'      => $when
+            ])->save();
+        }
+
+        public static function bulkMethod(array $methods, $args = [], $when = 0)
+        {
+            if (count($mvcs)) {
+                foreach ($methods as $method) {
+                    if (strstr($method, '@')) {
+                        static::pushMethod($method, $args, $when);
+                    }
                 }
             }
-
-            return false;
         }
 
-        /**
-         * Get the inner priority queue instance
-         *
-         * @throws Exception\DomainException
-         * @return SplQueue
-         */
-        protected function getQueue()
+        public static function laterMethod($timestamp, $method, $args = [])
         {
-            if (null === $this->queue) {
-                $this->queue = new $this->queueClass();
+            static::pushMethod($method, $args, $timestamp);
+        }
 
-                if (!$this->queue instanceof SplPriorityQueue) {
-                    throw new Exception(sprintf(
-                        'Queue expects an internal queue of type SplPriorityQueue; received "%s"',
-                        get_class($this->queue)
-                    ));
+        public static function listen()
+        {
+            set_time_limit(0);
+
+            $db = Db::instance('system', 'task');
+
+            $tasks = $db->where('when < ' . time())->exec();
+
+            if (count($tasks)) {
+                foreach ($tasks as $task) {
+                    $isClosure = isAke($task, 'closure', false);
+
+                    if (false === $isClosure) {
+                        static::runMethod($task);
+                    } else {
+                        static::runClosure($task);
+                    }
                 }
             }
-
-            return $this->queue;
         }
 
-        /**
-         * Add support for deep cloning
-         *
-         * @return void
-         */
-        public function __clone()
+        private static function runMethod($task)
         {
-            if (null !== $this->queue) {
-                $this->queue = clone $this->queue;
+            $dbTask         = Db::instance('system', 'task');
+            $dbTaskInstance = Db::instance('system', 'taskinstance');
+            $dbTaskOver     = Db::instance('system', 'taskover');
+
+            $inInstance     = $dbTaskInstance->where('task_id = ' . $task['id'])->first(true);
+
+            if (empty($inInstance)) {
+                $inInstance = $dbTaskInstance->create(['task_id' => $task['id']])->save();
+
+                $class  = isAke($task, 'class', false);
+                $action = isAke($task, 'action', false);
+                $args   = isAke($task, 'args', []);
+
+                if (!empty($args)) {
+                    $args = unserialize($args);
+                }
+
+                if (false !== $class && false !== $action) {
+                    $results = call_user_func_array([$class, $action], $args);
+                    $inInstance->delete();
+
+                    $dbTaskOver->create([
+                        'task_id' => $task['id'],
+                        'results' => serialize($results)
+                    ])->save();
+
+                    $dbTask->find($task['id'])->delete();
+                }
+            }
+        }
+
+        private static function runClosure($task)
+        {
+            $dbTask         = Db::instance('system', 'task');
+            $dbTaskInstance = Db::instance('system', 'taskinstance');
+            $dbTaskOver     = Db::instance('system', 'taskover');
+
+            $inInstance     = $dbTaskInstance->where('task_id = ' . $task['id'])->first(true);
+
+            if (empty($inInstance)) {
+                $inInstance = $dbTaskInstance->create(['task_id' => $task['id']])->save();
+
+                $closure    = isAke($task, 'closure', false);
+                $args       = isAke($task, 'args', []);
+
+                if (!empty($args)) {
+                    $args = unserialize($args);
+                }
+
+                if (false !== $closure) {
+                    $results = call_user_func_array(unserialize($closure), $args);
+                    $inInstance->delete();
+
+                    $dbTaskOver->create([
+                        'task_id' => $task['id'],
+                        'results' => serialize($results)
+                    ])->save();
+
+                    $dbTask->find($task['id'])->delete();
+                }
             }
         }
     }

@@ -650,8 +650,12 @@
     }
 
     if (!function_exists('isAke')) {
-        function isAke($tab, $key, $default = array())
+        function isAke($tab, $key, $default = [])
         {
+            if (true === is_object($tab)) {
+                $tab = (array) $tab;
+            }
+
             return Arrays::is($tab) ?
                 Arrays::isAssoc($tab) ?
                     Arrays::exists($key, $tab) ?
@@ -3190,7 +3194,7 @@ $(document).ready(function() {
     if (!function_exists('extendClass')) {
         function extendClass($class, $extendClass = 'stdclass', $code = "", $alias = null)
         {
-            eval("class $class extends $extendClass{" . $code . "}");
+            eval("class $class extends $extendClass {" . $code . "}");
 
             if (null !== $alias) {
                 class_alias($class, $alias);
