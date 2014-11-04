@@ -356,6 +356,7 @@
         protected function expired()
         {
             $viewRedis = container()->getViewRedis();
+
             if (true !== $viewRedis) {
                 if (!File::exists($this->compiled()) || !File::exists($this->_viewFile)) {
                     return true;

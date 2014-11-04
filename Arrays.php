@@ -30,9 +30,37 @@
             return null;
         }
 
-        public static function set(array $array, $key, $value)
+        /**
+         * Set an array item to a given value using "dot" notation.
+         *
+         * If no key is given to the method, the entire array will be replaced.
+         *
+         * @param  array   $array
+         * @param  string  $key
+         * @param  mixed   $value
+         * @return array
+         */
+        public static function set(&$array, $key, $value)
         {
-            $array[$key] = $value;
+            if (is_null($key)) return $array = $value;
+
+            $keys = explode('.', $key);
+
+            while (count($keys) > 1) {
+                $key = array_shift($keys);
+
+                // If the key doesn't exist at this depth, we will just create an empty array
+                // to hold the next value, allowing us to create the arrays to hold final
+                // values at the correct depth. Then we'll keep digging into the array.
+                if ( ! isset($array[$key]) || ! is_array($array[$key]))  {
+                    $array[$key] = array();
+                }
+
+                $array =& $array[$key];
+            }
+
+            $array[array_shift($keys)] = $value;
+
             return $array;
         }
 
@@ -259,6 +287,7 @@
             }
 
             $array = array();
+
             for ($i = $step ; $i <= $max ; $i += $step) {
                 $array[$i] = $i;
             }
@@ -267,26 +296,87 @@
         }
 
         /**
-         * Retrieve a single key from an array. If the key does not exist in the
-         * array, the default value will be returned instead.
+         * Get an item from an array using "dot" notation.
          *
-         *     // Get the value "username" from $_POST, if it exists
-         *     $username = Arrays::get($_POST, 'username');
-         *
-         *     // Get the value "sorting" from $_GET, if it exists
-         *     $sorting = Arrays::get($_GET, 'sorting');
-         *
-         * @param   array   $array      array to extract from
-         * @param   string  $key        key name
-         * @param   mixed   $default    default value
-         * @return  mixed
+         * @param  array   $array
+         * @param  string  $key
+         * @param  mixed   $default
+         * @return mixed
          */
         public static function get($array, $key, $default = null)
         {
-            if (!static::exists($key, $array)) {
-                return $default;
+            if (is_null($key)) return $array;
+
+            if (isset($array[$key])) return $array[$key];
+
+            foreach (explode('.', $key) as $segment)
+            {
+                if ( ! is_array($array) || ! array_key_exists($segment, $array))
+                {
+                    return value($default);
+                }
+
+                $array = $array[$segment];
             }
-            return !empty($array[$key]) ? $array[$key] : $default;
+
+            return $array;
+        }
+        /**
+         * Get a value from the array, and remove it.
+         *
+         * @param  array   $array
+         * @param  string  $key
+         * @param  mixed   $default
+         * @return mixed
+         */
+        public static function pull(&$array, $key, $default = null)
+        {
+            $value = static::get($array, $key, $default);
+
+            static::forget($array, $key);
+
+            return $value;
+        }
+
+        /**
+         * Remove one or many array items from a given array using "dot" notation.
+         *
+         * @param  array  $array
+         * @param  array|string  $keys
+         * @return void
+         */
+        public static function forget(&$array, $keys)
+        {
+            $original =& $array;
+
+            foreach ((array) $keys as $key) {
+                $parts = explode('.', $key);
+
+                while (count($parts) > 1) {
+                    $part = array_shift($parts);
+
+                    if (isset($array[$part]) && is_array($array[$part])) {
+                        $array =& $array[$part];
+                    }
+                }
+
+                unset($array[array_shift($parts)]);
+
+                // clean up after each pass
+                $array =& $original;
+            }
+        }
+
+        /**
+         * Get a subset of the items from the given array.
+         *
+         * @param  array  $array
+         * @param  array|string  $keys
+         * @return array
+         */
+        public static function only($array, $keys)
+        {
+            return array_intersect_key($array, array_flip((array) $keys));
         }
 
         /**
@@ -521,6 +611,28 @@
         }
 
         /**
+         * Flatten a multi-dimensional associative array with dots.
+         *
+         * @param  array   $array
+         * @param  string  $prepend
+         * @return array
+         */
+        public static function dot($array, $prepend = '')
+        {
+            $results = array();
+
+            foreach ($array as $key => $value) {
+                if (is_array($value)) {
+                    $results = array_merge($results, static::dot($value, $prepend . $key . '.'));
+                } else {
+                    $results[$prepend.$key] = $value;
+                }
+            }
+
+            return $results;
+        }
+
+        /**
          * Creates a callable function and parameter list from a string representation.
          * Note that this function does not validate the callback string.
          *
@@ -562,39 +674,18 @@
         }
 
         /**
-         * Convert a multi-dimensional array into a single-dimensional array.
+         * Flatten a multi-dimensional array into a single level.
          *
-         *     $array = array('set' => array('one' => 'something'), 'two' => 'other');
-         *
-         *     // Flatten the array
-         *     $array = Arrays::flatten($array);
-         *
-         *     // The array will now be
-         *     array('one' => 'something', 'two' => 'other');
-         *
-         * [!!] The keys of array values will be discarded.
-         *
-         * @param   array   $array  array to flatten
-         * @return  array
-         * @since   3.0.6
+         * @param  array  $array
+         * @return array
          */
         public static function flatten($array)
         {
-            $isAssoc = static::isAssoc($array);
+            $return = array();
 
-            $flat = array();
-            foreach ($array as $key => $value) {
-                if (static::is($value)) {
-                    $flat = array_merge($flat, static::flatten($value));
-                } else {
-                    if ($isAssoc) {
-                        $flat[$key] = $value;
-                    } else {
-                        $flat[] = $value;
-                    }
-                }
-            }
-            return $flat;
+            array_walk_recursive($array, function($x) use (&$return) { $return[] = $x; });
+
+            return $return;
         }
 
         /**
@@ -858,12 +949,15 @@
         {
             foreach (explode($separator, $key) as $segment) {
                 $results = array();
+
                 foreach ($array as $value) {
                     $value = (array) $value;
                     $results[] = $value[$segment];
                 }
+
                 $array = array_values($results);
             }
+
             return array_values($results);
         }
 

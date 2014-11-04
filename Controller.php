@@ -1,5 +1,8 @@
 <?php
     namespace Thin;
+
+    use Closure;
+
     class Controller
     {
         public function __construct()
@@ -80,6 +83,18 @@
         public function close()
         {
             $html = '<body onload="self.close();">';
+
             die($html);
+        }
+
+        public function handle(Closure $closure, $args = [], $exit = true)
+        {
+            $res = call_user_func_array($closure, $args);
+
+            if ($exit) {
+                die($res);
+            } else {
+                return $res;
+            }
         }
     }

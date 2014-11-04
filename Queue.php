@@ -73,7 +73,7 @@
         {
             $db = Db::instance('system', 'task');
 
-            list($class, $action) = explode('@', $method, 2);
+            list($class, $action) = explode('::', $method, 2);
 
             $new = $db->create([
                 'class'     => $class,
@@ -87,7 +87,7 @@
         {
             if (count($mvcs)) {
                 foreach ($methods as $method) {
-                    if (strstr($method, '@')) {
+                    if (strstr($method, '::')) {
                         static::pushMethod($method, $args, $when);
                     }
                 }

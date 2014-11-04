@@ -103,7 +103,11 @@
 
         public static function move($file, $target)
         {
-            return rename($file, $target);
+            umask(0000);
+
+            static::put($target, static::read($file));
+
+            return static::delete($file);
         }
 
         public static function copy($file, $target)

@@ -1,5 +1,6 @@
 <?php
-	namespace Thin
+	namespace Thin;
+
 	class Archive
 	{
 		/**
@@ -36,10 +37,13 @@
 		public function __construct($archive, $create = false)
 		{
 			$this->_enabled	= (extension_loaded('zip')) ? true : false;
+
 			if (true === $this->_enabled && !empty($archive)) {
 				$this->_zip = new \ZipArchive;
+
 				return $this->open($archive, $create);
 			}
+
 			return false;
 		}
 
@@ -62,7 +66,7 @@
 		public function add($files, $string = false)
 		{
 			if (true === $this->_enabled) {
-				if (Arrays::isArray($files)) {
+				if (Arrays::is($files)) {
 					foreach ($files as $file) {
 						$this->_addFile((string)$file);
 					}
@@ -74,6 +78,7 @@
 					}
 				}
 			}
+
 			return false;
 		}
 
@@ -88,12 +93,15 @@
 				for ($i = 0; $i< $this->_zip->numFiles; ++$i) {
 					$this->_contents[$i] = $this->_zip->statIndex($i);
 					$comment = $this->_zip->getCommentIndex($i);
+
 					if ($comment) {
 						$this->_contents[$i]['comment'] = $comment;
 					}
 				}
+
 				return (!is_null($this->_contents)) ? $this->_contents : false;
 			}
+
 			return false;
 		}
 
@@ -106,7 +114,8 @@
 		public function delete($filename)
 		{
 			if (true === $this->_enabled && !empty($filename)) {
-				$index	= $this->_zip->locateName($filename, \ZIPARCHIVE::FL_NODIR);
+				$index	= $this->_zip->locateName($filename, \ZipArchive::FL_NODIR);
+
 				if ($index) {
 					return $this->deleteIndex((int)$index);
 				}
@@ -126,17 +135,20 @@
 		{
 			if (true === $this->_enabled) {
 				$archive = repl('/', DS, $archive);
+
 				if ($create) {
-					$this->_archive	= $this->_zip->open($archive, \ZIPARCHIVE::CREATE);
+					$this->_archive	= $this->_zip->open($archive, \ZipArchive::CREATE);
 				} else if (File::exists($archive)) {
 					$this->_archive	= $this->_zip->open($archive);
 				}
 
 				if ($this->_archive === true) {
 					$this->contents();
+
 					return true;
 				} else {
 					$this->error();
+
 					return false;
 				}
 			}
@@ -153,45 +165,46 @@
 		{
 			if (true === $this->_enabled) {
 				switch ($this->_archive) {
-					case \ZIPARCHIVE::ER_CRC:
+					case \ZipArchive::ER_CRC:
 						$message	= 'ZIP CRC error';
 						break;
-					case \ZIPARCHIVE::ER_EXISTS:
+					case \ZipArchive::ER_EXISTS:
 						$message	= 'ZIP archive already exists';
 						break;
-					case \ZIPARCHIVE::ER_INCONS:
+					case \ZipArchive::ER_INCONS:
 						$message	= 'ZIP archive inconsistency';
 						break;
-					case \ZIPARCHIVE::ER_INVAL:
+					case \ZipArchive::ER_INVAL:
 						$message	= 'Invalid arguments';
 						break;
-					case \ZIPARCHIVE::ER_MEMORY:
+					case \ZipArchive::ER_MEMORY:
 						$message	= 'Memory allocation failure';
 						break;
-					case \ZIPARCHIVE::ER_MULTIDISK:
+					case \ZipArchive::ER_MULTIDISK:
 						$message	= 'Multi-disk archives are not supported';
 						break;
-					case \ZIPARCHIVE::ER_NOENT:
+					case \ZipArchive::ER_NOENT:
 						$message	= 'File does not exist';
 						break;
-					case \ZIPARCHIVE::ER_NOZIP:
+					case \ZipArchive::ER_NOZIP:
 						$message	= 'Not a valid ZIP archive';
 						break;
-					case \ZIPARCHIVE::ER_OPEN:
+					case \ZipArchive::ER_OPEN:
 						$message	= 'Unable to open archive';
 						break;
-					case \ZIPARCHIVE::ER_READ:
+					case \ZipArchive::ER_READ:
 						$message	= 'ZIP file read error';
 						break;
-					case \ZIPARCHIVE::ER_SEEK:
+					case \ZipArchive::ER_SEEK:
 						$message	= 'ZIP file seek error';
 						break;
 					default:
-						$message = 'Unknown error: '.$this->_archive;
+						$message = 'Unknown error: ' . $this->_archive;
 				}
 			} else {
 				$message = 'ZIP library was not detected in your PHP installation';
 			}
+
 			trigger_error($message, E_USER_WARNING);
 			$this->_enabled = false;
 
@@ -209,6 +222,7 @@
 			if (true === $this->_enabled && !empty($target)) {
 				return $this->_zip->extractTo($target);
 			}
+
 			return false;
 		}
 
@@ -221,11 +235,13 @@
 		public function read($filename = false)
 		{
 			if (true === $this->_enabled && !empty($filename)) {
-				$index	= $this->_zip->locateName($filename, \ZIPARCHIVE::FL_NODIR);
+				$index	= $this->_zip->locateName($filename, \ZipArchive::FL_NODIR);
+
 				if ($index) {
 					return $this->_zip->getFromIndex((int)$index);
 				}
 			}
+
 			return false;
 		}
 
@@ -241,6 +257,7 @@
 			if (true === $this->_enabled) {
 				## not done yet
 			}
+
 			return false;
 		}
 
@@ -274,6 +291,7 @@
 					}
 				}
 			}
+
 			return false;
 		}
 

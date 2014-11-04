@@ -41,6 +41,66 @@
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
 
+    if (!function_exists('hashPath')) {
+        function hashPath($path, $key)
+        {
+            $parts = array_slice(str_split($hash = md5($key), 2), 0, 2);
+
+            return $path . DS . implode(DS, $parts) . DS . $hash;
+        }
+    }
+
+    if (!function_exists('configMerge')) {
+        /**
+         * Sensibly merge configuration arrays.
+         *
+         * @param  dynamic array
+         * @return array
+         */
+        function configMerge()
+        {
+            $result = [];
+
+            foreach (func_get_args() as $arg) {
+                foreach ($arg as $key => $value) {
+                    if (is_numeric($key)) {
+                        $result[] = $value;
+                    } elseif (array_key_exists($key, $result) && is_array($result[$key]) && is_array($value)) {
+                        $result[$key] = configMerge($result[$key], $value);
+                    } else {
+                        $result[$key] = $value;
+                    }
+                }
+            }
+
+            return $result;
+        }
+    }
+
+    if (!function_exists('appendConfig')) {
+        /**
+         * Assign high numeric IDs to a config item to force appending.
+         *
+         * @param  array  $array
+         * @return array
+         */
+        function appendConfig(array $array)
+        {
+            $start = 9999;
+
+            foreach ($array as $key => $value) {
+                if (is_numeric($key)) {
+                    $start++;
+
+                    $array[$start] = Arrays::pull($array, $key);
+                }
+            }
+
+            return $array;
+        }
+    }
+
+
     if (!function_exists('customFields')) {
         function customFields($table, $id)
         {

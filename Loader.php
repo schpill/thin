@@ -16,7 +16,7 @@
         set_error_handler(function($type, $message, $file, $line) {
             $exception = new \ErrorException($message, $type, 0, $file, $line);
 
-            if (!fnmatch('Undefined offset:*', $message)) {
+            if (!fnmatch('Undefined offset:*', $message) && !fnmatch('*StreamConnection.php*', $file)) {
                 dd('ERROR', $exception, debug_backtrace());
             }
         });
