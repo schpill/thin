@@ -500,4 +500,21 @@
 
             return $default;
         }
+
+        public static function readLines($file, $start, $end)
+        {
+            if (static::exists($file)) {
+                $content = file($file);
+
+                $back = [];
+
+                for ($i = $start - 1; $i < $end; $i++) {
+                    array_push($back, $content[$i]);
+                }
+
+                return implode('', $back);
+            }
+
+            return null;
+        }
     }

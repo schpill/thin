@@ -1,0 +1,36 @@
+<?php
+    namespace Thin;
+
+    class Input
+    {
+        public static function __callStatic($method, $args)
+        {
+            $auth = ['GET', 'POST', 'COOKIE', 'SESSION', 'SERVER', 'REQUEST'];
+
+            $method = Inflector::upper($method);
+
+            if (Arrays::in($method, $auth) && count($args) > 0) {
+                $default = isset($args[1]) ? $args[1] : null;
+
+                return isAke(self::tab($method), Arrays::first($args), $default);
+            } else {
+                throw new Exception("Wrong parameters.");
+            }
+        }
+
+        private static function tab($method)
+        {
+            switch ($method) {
+                case 'GET':
+                    return $_GET;
+                case 'POST':
+                    return $_POST;
+                case 'SESSION':
+                    return $_SESSION;
+                case 'SERVER':
+                    return $_SERVER;
+                case 'REQUEST':
+                    return $_REQUEST;
+            }
+        }
+    }

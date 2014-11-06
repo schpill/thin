@@ -1134,16 +1134,19 @@
          */
         public static function is($pattern, $value)
         {
-            // Asterisks are translated into zero-or-more regular expression wildcards
-            // to make it convenient to check if the URI starts with a given pattern
-            // such as "library/*". This is only done when not root.
-            if ($pattern !== '/') {
-                $pattern = repl('*', '(.*)', $pattern) . '\z';
-            } else {
-                $pattern = '^/$';
+            if (sha1($pattern) == sha1($value)) {
+                return true;
             }
 
-            return preg_match('#' . $pattern . '#', $value);
+            $pattern = preg_quote($pattern, '#');
+
+            // Asterisks are translated into zero-or-more regular expression wildcards
+            // to make it convenient to check if the strings starts with the given
+            // pattern such as "library/*", making any string check convenient.
+
+            $pattern = str_replace('\*', '.*', $pattern) . '\z';
+
+            return (bool) preg_match('#^' . $pattern . '#', $value);
         }
 
 
