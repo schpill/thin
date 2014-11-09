@@ -40,6 +40,7 @@
         public function set($key, $value)
         {
             $this->values[$this->normalizeKey($key)] = $value;
+
             return $this;
         }
 
@@ -108,6 +109,7 @@
         public function remove($key)
         {
             unset($this->values[$this->normalizeKey($key)]);
+
             return $this;
         }
 

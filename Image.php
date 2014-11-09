@@ -4,16 +4,17 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
     class Image
     {
         protected static $_adapterOptions = array(
-            'preserveAlpha' => true,
-            'alphaMaskColor' => array(
+            'preserveAlpha'     => true,
+            'alphaMaskColor'    => array(
                 255,
                 255,
                 255
             ),
-            'preserveTransparency' => true,
+            'preserveTransparency'  => true,
             'transparencyMaskColor' => array(
                 0,
                 0,

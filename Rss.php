@@ -4,6 +4,7 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
     class Rss
     {
         public $title;
@@ -35,9 +36,11 @@
             if(is_null($date)) {
                 $date = time();
             }
+
             if(!ctype_digit($date)) {
                 $date = strtotime($date);
             }
+
             $this->pubDate = date('D, d M Y H:i:s O', $date);
         }
 
@@ -94,7 +97,9 @@
         public function serve($contentType = 'application/xml')
         {
             $xml = $this->out();
+
             header("Content-type: $contentType");
+
             echo $xml;
         }
 
@@ -102,6 +107,7 @@
         {
             $out  = '<?xml version="1.0" encoding="utf-8"?>' . "\n";
             $out .= '<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">' . "\n";
+
             return $out;
         }
 
@@ -115,6 +121,7 @@
             $s = empty($_SERVER['HTTPS']) ? '' : ($_SERVER['HTTPS'] == 'on') ? 's' : '';
             $protocol = substr(Inflector::lower($_SERVER['SERVER_PROTOCOL']), 0, strpos(Inflector::lower($_SERVER['SERVER_PROTOCOL']), '/')) . $s;
             $port = ($_SERVER['SERVER_PORT'] == '80') ? '' : (":".$_SERVER['SERVER_PORT']);
+
             return $protocol . "://" . $_SERVER['HTTP_HOST'] . $port . $_SERVER['REQUEST_URI'];
         }
 
@@ -123,6 +130,7 @@
             if($this->useCDataTags) {
                 $str = '<![CDATA[' . $str . ']]>';
             }
+
             return $str;
         }
     }

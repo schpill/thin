@@ -124,8 +124,14 @@
             $return = array();
 
             foreach ($row as $column) {
-                $return[] = $this->getEnclosure() .
-                str_replace($this->getEnclosure(), str_repeat($this->getEnclosure(), 2), $column) .
+                $return[] = $this->getEnclosure() . str_replace(
+                    $this->getEnclosure(),
+                    str_repeat(
+                        $this->getEnclosure(),
+                        2
+                    ),
+                    $column
+                ) .
                 $this->getEnclosure();
             }
 
@@ -150,7 +156,7 @@
         {
             $lineBreak = $this->getLineBreak();
 
-            if (in_array($lineBreak, array("\r\n", "\n"))) {
+            if (Arrays::in($lineBreak, array("\r\n", "\n"))) {
                 return $lineBreak;
             }
 
@@ -294,5 +300,4 @@
                 throw new Exception("Cannot open file $this");
             }
         }
-
     }

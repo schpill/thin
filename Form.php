@@ -4,10 +4,12 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
     class Form
     {
         public static $labels = array();
         public static $macros = array();
+
         const spoofer = '_method';
 
         /**
@@ -60,7 +62,7 @@
                 $attributes['id'] = md5(static::action($action, $https));
             }
 
-            $attributes['method'] =  static::method($method);
+            $attributes['method'] = static::method($method);
             $attributes['action'] = static::action($action, $https);
 
             if (true === $upload) {
@@ -88,7 +90,7 @@
         {
             $uri = (null === $action) ? URLSITE : $action;
 
-            return (null === $https) ? $uri : repl('http://', 'https://', $uri);
+            return (null === $https) ? $uri : str_replace('http://', 'https://', $uri);
         }
 
         public static function close()
@@ -465,6 +467,7 @@
         public static function image($url, $name = null, $attributes = array())
         {
             $attributes['src'] = $url;
+
             return static::input('image', $name, null, $attributes);
         }
 

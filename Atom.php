@@ -1,6 +1,7 @@
 <?php
+	namespace Thin;
 
-	class Rss
+	class Atom
 	{
 		private $document, $channel;
 
@@ -26,7 +27,15 @@
 			$this->document = new \DOMDocument('1.0', 'UTF-8');
 
 			// create our rss feed
-			$rss = $this->element('rss', null, array('version' => '2.0', 'xmlns:atom' => 'http://www.w3.org/2005/Atom'));
+			$rss = $this->element(
+				'rss',
+				null,
+				array(
+					'version' 		=> '2.0',
+					'xmlns:atom' 	=> 'http://www.w3.org/2005/Atom'
+				)
+			);
+
 			$this->document->appendChild($rss);
 
 			// create channel
@@ -60,11 +69,16 @@
 			$this->channel->appendChild($copyright);
 
 			// atom self link
-			$atom = $this->element('atom:link', null, array(
-				'href' => $url,
-				'rel' => 'self',
-				'type' => 'application/rss+xml'
-			));
+			$atom = $this->element(
+				'atom:link',
+				null,
+				array(
+					'href' 	=> $url,
+					'rel' 	=> 'self',
+					'type' 	=> 'application/rss+xml'
+				)
+			);
+
 			$this->channel->appendChild($atom);
 		}
 
@@ -86,7 +100,13 @@
 			$item->appendChild($description);
 
 			// date
-			$date = $this->element('pubDate', date(DATE_RSS, strtotime($date)));
+			$date = $this->element(
+				'pubDate',
+				date(
+					DATE_RSS,
+					strtotime($date)
+				)
+			);
 			$item->appendChild($date);
 		}
 
@@ -95,5 +115,4 @@
 			// dump xml tree
 			return $this->document->saveXML();
 		}
-
 	}

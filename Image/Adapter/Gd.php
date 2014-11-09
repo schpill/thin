@@ -5,6 +5,7 @@
      */
 
     namespace Thin\Image\Adapter;
+
     class Gd extends Abstract
     {
         /**
@@ -60,6 +61,7 @@
         public function open($image)
         {
             $information = @getimagesize($image);
+
             if (!$information) {
                 throw new \Thin\Exception(sprintf('Could not load image %s', $image));
             }
@@ -69,17 +71,18 @@
             }
 
             $loader = $this->_imgLoaders[$information['mime']];
+
             if (!function_exists($loader)) {
                 throw new \Thin\Exception(sprintf('Function %s not available. Please enable the GD extension.', $loader));
             }
 
             $this->_source = $loader($image);
+
             if (null === $this->_source) {
                 throw new \Thin\Exception(sprintf('Could not load the file %s', $image));
             }
 
-            if (function_exists('imageantialias'))
-                imageantialias($this->_source, true);
+            if (function_exists('imageantialias')) imageantialias($this->_source, true);
 
             $this->_sourceWidth = $information[0];
             $this->_sourceHeight = $information[1];
@@ -98,8 +101,9 @@
             }
 
             $this->_source = imagecreatefromstring($image);
-             if (function_exists('imageantialias'))
-                imageantialias($this->_source, true);
+
+            if (function_exists('imageantialias')) imageantialias($this->_source, true);
+
             $this->_reloadSize();
             $this->_sourceMime = $mime;
             $this->_generateThumb();
@@ -179,15 +183,17 @@
 
         protected function _copyToThumb($dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h)
         {
-            imagecopyresampled($this->_thumb,
-                               $this->_source,
-                               $dst_x, $dst_y,
-                               $src_x,
-                               $src_y,
-                               $dst_w,
-                               $dst_h,
-                               $src_w,
-                               $src_h);
+            imagecopyresampled(
+                $this->_thumb,
+                $this->_source,
+                $dst_x, $dst_y,
+                $src_x,
+                $src_y,
+                $dst_w,
+                $dst_h,
+                $src_w,
+                $src_h
+            );
 
             return $this;
         }
@@ -197,8 +203,8 @@
          */
         protected function _reloadSize()
         {
-            $this->_sourceWidth = imagesx($this->_source);
-            $this->_sourceHeight = imagesy($this->_source);
+            $this->_sourceWidth     = imagesx($this->_source);
+            $this->_sourceHeight    = imagesy($this->_source);
 
             return $this;
         }
@@ -208,10 +214,13 @@
             if ($this->_sourceMime == 'image/png' && $this->_options['preserveAlpha'] === true) {
                 $result = imagealphablending($this->_thumb, false);
 
-                $colorTransparent = imagecolorallocatealpha($this->_thumb,
-                                                            $this->_options['alphaMaskColor'][0],
-                                                            $this->_options['alphaMaskColor'][1],
-                                                            $this->_options['alphaMaskColor'][2], 0);
+                $colorTransparent = imagecolorallocatealpha(
+                    $this->_thumb,
+                    $this->_options['alphaMaskColor'][0],
+                    $this->_options['alphaMaskColor'][1],
+                    $this->_options['alphaMaskColor'][2],
+                    0
+                );
 
                 imagefill($this->_thumb, 0, 0, $colorTransparent);
                 imagesavealpha($this->_thumb, true);
@@ -219,10 +228,12 @@
 
             // preserve transparency in GIFs... this is usually pretty rough...
             if ($this->_sourceMime == 'image/gif' && $this->_options['preserveTransparency'] === true) {
-                $colorTransparent = imagecolorallocate($this->_thumb,
-                                                       $this->_options['transparencyMaskColor'][0],
-                                                       $this->_options['transparencyMaskColor'][1],
-                                                       $this->_options['transparencyMaskColor'][2]);
+                $colorTransparent = imagecolorallocate(
+                    $this->_thumb,
+                    $this->_options['transparencyMaskColor'][0],
+                    $this->_options['transparencyMaskColor'][1],
+                    $this->_options['transparencyMaskColor'][2]
+                );
 
                 imagecolortransparent($this->_thumb, $colorTransparent);
                 imagetruecolortopalette($this->_thumb, true, 256);
@@ -238,20 +249,13 @@
             $width = imagesx( $img );
             $height = imagesy( $img );
 
-            if($width == $height)
-            {
+            if ($width == $height) {
                 $newwidth = $thumbwidth;
                 $newheight = $thumbheight;
-            }
-
-            else if ($width > $height)
-            {
+            } else if ($width > $height) {
                 $newwidth = $thumbwidth;
                 $newheight = $thumbheight;
-            }
-
-            else
-            {
+            } else {
                 $newheight = $thumbheight;
                 $newwidth = $thumbwidth;
             }

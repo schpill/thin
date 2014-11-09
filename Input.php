@@ -5,7 +5,7 @@
     {
         public static function __callStatic($method, $args)
         {
-            $auth = ['GET', 'POST', 'COOKIE', 'SESSION', 'SERVER', 'REQUEST'];
+            $auth = ['GET', 'POST', 'COOKIE', 'SESSION', 'SERVER', 'REQUEST', 'GLOBALS'];
 
             $method = Inflector::upper($method);
 
@@ -31,6 +31,8 @@
                     return $_SERVER;
                 case 'REQUEST':
                     return $_REQUEST;
+                case 'GLOBALS':
+                    return $GLOBALS;
             }
         }
     }

@@ -5,6 +5,7 @@
      */
 
     namespace Thin;
+
     final class Assert
     {
         public static function isTrue($boolean)
@@ -40,6 +41,7 @@
         public static function isIndexExists($array, $key)
         {
             $checkArray = static::isArray($array);
+
             if (false === $checkArray) {
                 return false;
             }
@@ -65,6 +67,7 @@
         public static function isNotEmptyArray(&$variable)
         {
             $checkArray = static::isArray($variable);
+
             if (false === $checkArray) {
                 return false;
             }
@@ -80,6 +83,7 @@
         public static function isPositiveInteger($variable)
         {
             $checkInteger = static::checkInteger($variable);
+
             if (false === $checkInteger) {
                 return false;
             }
@@ -204,7 +208,10 @@
 
         public static function checkContain($needle, $chain)
         {
-            return contain($needle, $chain);
+            $needle = Inflector::lower($needle);
+            $chain  = Inflector::lower($chain);
+
+            return fnmatch('*' . $needle . '*', $chain);
         }
 
         public static function isUrl($url)
