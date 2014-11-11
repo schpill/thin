@@ -421,8 +421,8 @@
                     $model  = model($table);
 
                     return true === $many
-                    ? $model->where($db->table . '_id = ' . $this->id())->exec($object)
-                    : $model->where($db->table . '_id = ' . $this->id())->first($object);
+                    ? $model->where($db->table . '_id = ' . $this->id)->exec($object)
+                    : $model->where($db->table . '_id = ' . $this->id)->first($object);
                 }
 
                 if (false !== $dbjson) {
@@ -452,18 +452,26 @@
                         $table  = $func;
                     }
 
-                    $object = count($argv) == 1 ? Arrays::first($argv) : false;
+                    $object = count($argv) == 1 ? Arrays::first($argv) : true;
                     $model  = jdb($db->db, $table);
 
                     return true === $many
-                    ? $model->where($db->table . '_id = ' . $this->id())->exec($object)
-                    : $model->where($db->table . '_id = ' . $this->id())->first($object);
+                    ? $model->where($db->table . '_id = ' . $this->id)->exec($object)
+                    : $model->where($db->table . '_id = ' . $this->id)->first($object);
                 }
 
                 return null;
             }
 
-            return call_user_func_array($func, array_merge(array($this->getArrayCopy()), $argv));
+            return call_user_func_array(
+                $func,
+                array_merge(
+                    array(
+                        $this->getArrayCopy()
+                    ),
+                    $argv
+                )
+            );
         }
 
         public function __invoke($key, $value)
@@ -486,6 +494,7 @@
                     $this->$k = $v;
                 }
             }
+
             if (isset($this->$key)) {
                 if (isset($this->thin_type)) {
                     $type = $this->thin_type;
@@ -506,6 +515,45 @@
                 return $this->$key;
             }
 
+            if (isset($this->_token) && isset($this->values)) {
+                $keyJson    = sha1('touch' . $this->_token);
+                $dbjson     = isAke($this->values, $keyJson, false);
+
+                if (false !== $dbjson) {
+                    $keyT   = sha1('db' . $this->_token);
+                    $cb     = isAke($this->values, $keyT, false);
+
+                    if (false !== $cb) {
+                        $db     = call_user_func_array($cb, []);
+                        $fields = $db->fields();
+
+                        if (Arrays::in($key, $fields)) {
+                            if (!count($argv)) {
+                                return $this->$key;
+                            };
+                        }
+
+                        $tab    = str_split($key);
+                        $many   = false;
+
+                        if (Arrays::last($tab) == 's') {
+                            array_pop($tab);
+                            $table  = implode('', $tab);
+                            $many   = true;
+                        } else {
+                            $table  = $func;
+                        }
+
+                        $object = true;
+                        $model  = jdb($db->db, $table);
+
+                        return true === $many
+                        ? $model->where($db->table . '_id = ' . $this->id)->exec($object)
+                        : $model->where($db->table . '_id = ' . $this->id)->first($object);
+                    }
+                }
+            }
+
             return null;
         }
 
@@ -515,9 +563,9 @@
                 return;
             }
 
-            $this->values = isset($this->values) ? $this->values : array();
-            $this->$key = $value;
-            $this[$key] = $value;
+            $this->values       = isset($this->values) ? $this->values : array();
+            $this->$key         = $value;
+            $this[$key]         = $value;
             $this->values[$key] = $value;
 
             if (!Arrays::in($key, $this->_fields)) {

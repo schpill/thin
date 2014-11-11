@@ -21,6 +21,8 @@
         private static function tab($method)
         {
             switch ($method) {
+                case 'COOKIE':
+                    return $_COOKIE;
                 case 'GET':
                     return $_GET;
                 case 'POST':

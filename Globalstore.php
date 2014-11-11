@@ -2,51 +2,51 @@
     namespace Thin;
 
     /**
-     * A storage using SESSION.
+     * A storage using GLOBALS.
      */
-    class Sessionstore
+    class Globalstore
     {
         public $key, $keyTimeOut;
 
         public function __construct($db = null, $table = null)
         {
-            $db     = is_null($db) ? 'session' : $db;
+            $db     = is_null($db) ? 'global' : $db;
             $table  = is_null($table) ? 'store' : $table;
 
             $this->key          = "$db::$table";
             $this->keyTimeOut   = "$db::$table::ttl";
 
-            if (!isset($_SESSION[$this->key])) {
-                $_SESSION[$this->key] = [];
+            if (!isset($GLOBALS[$this->key])) {
+                $GLOBALS[$this->key] = [];
             }
 
-            if (!isset($_SESSION[$this->keyTimeOut])) {
-                $_SESSION[$this->keyTimeOut] = [];
+            if (!isset($GLOBALS[$this->keyTimeOut])) {
+                $GLOBALS[$this->keyTimeOut] = [];
             }
         }
 
         public static function instance($db, $table)
         {
-            $db     = is_null($db) ? 'session' : $db;
+            $db     = is_null($db) ? 'global' : $db;
             $table  = is_null($table) ? 'store' : $table;
 
             $key    = sha1($db . $table);
-            $has    = Instance::has('SessionStore', $key);
+            $has    = Instance::has('GlobalStore', $key);
 
             if (true === $has) {
-                return Instance::get('SessionStore', $key);
+                return Instance::get('GlobalStore', $key);
             } else {
-                return Instance::make('SessionStore', $key, new self($db, $table));
+                return Instance::make('GlobalStore', $key, new self($db, $table));
             }
         }
 
         public function set($key, $data, $ttl = 0)
         {
-            $_SESSION[$this->key][$key] = $data;
+            $GLOBALS[$this->key][$key] = $data;
 
             $ttl = 0 < $ttl ? time() + $ttl : $ttl;
 
-            $_SESSION[$this->keyTimeOut][$key] = $ttl;
+            $GLOBALS[$this->keyTimeOut][$key] = $ttl;
 
             return $this;
         }
@@ -95,7 +95,7 @@
         {
             $this->clean();
 
-            $tab = isAke($_SESSION, $this->key, []);
+            $tab = isAke($GLOBALS, $this->key, []);
 
             return isAke($tab, $key, $default);
         }
@@ -113,8 +113,8 @@
         public function del($key)
         {
             if ($this->has($key)) {
-                unset($_SESSION[$this->key][$key]);
-                unset($_SESSION[$this->keyTimeOut][$key]);
+                unset($GLOBALS[$this->key][$key]);
+                unset($GLOBALS[$this->keyTimeOut][$key]);
             }
 
             return $this;
@@ -126,7 +126,7 @@
 
             $this->clean();
 
-            $tab = isAke($_SESSION, $this->key, []);
+            $tab = isAke($GLOBALS, $this->key, []);
 
             if (count($tab)) {
                 foreach ($tab as $key => $value) {
@@ -148,27 +148,27 @@
 
         public function flush()
         {
-            unset($_SESSION[$this->key]);
-            unset($_SESSION[$this->keyTimeOut]);
+            unset($GLOBALS[$this->key]);
+            unset($GLOBALS[$this->keyTimeOut]);
 
             return $this;
         }
 
-        public function duplicate(Sessionstore $to)
+        public function duplicate(Globalstore $to)
         {
-            $_SESSION[$to->key]         = $_SESSION[$this->key];
-            $_SESSION[$to->keyTimeOut]  = $_SESSION[$this->keyTimeOut];
+            $GLOBALS[$to->key]         = $GLOBALS[$this->key];
+            $GLOBALS[$to->keyTimeOut]  = $GLOBALS[$this->keyTimeOut];
 
-            unset($_SESSION[$this->key]);
-            unset($_SESSION[$this->keyTimeOut]);
+            unset($GLOBALS[$this->key]);
+            unset($GLOBALS[$this->keyTimeOut]);
 
             return $this;
         }
 
         private function clean()
         {
-            $tab    = isAke($_SESSION, $this->key, []);
-            $ttlTab = isAke($_SESSION, $this->keyTimeOut, []);
+            $tab    = isAke($GLOBALS, $this->key, []);
+            $ttlTab = isAke($GLOBALS, $this->keyTimeOut, []);
 
             if (count($tab)) {
                 foreach ($tab as $key => $value) {
@@ -176,8 +176,8 @@
 
                     if ($ttl > 0) {
                         if (time() > $ttl) {
-                            unset($_SESSION[$this->key][$key]);
-                            unset($_SESSION[$this->keyTimeOut][$key]);
+                            unset($GLOBALS[$this->key][$key]);
+                            unset($GLOBALS[$this->keyTimeOut][$key]);
                         }
                     }
                 }

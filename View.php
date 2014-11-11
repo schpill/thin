@@ -68,26 +68,29 @@
                 $route      = Utils::get('appDispatch');
                 /* polymorphism */
                 $route      = !$route instanceof Container ? container()->getRoute() : $route;
-                $module     = $route->getModule();
-                $controller = $route->getController();
-                $action     = $route->getAction();
 
-                $this->_module   = $module;
-                $isTranslate = Utils::get('isTranslate');
+                if ($route instanceof Container) {
+                    $module     = $route->getModule();
+                    $controller = $route->getController();
+                    $action     = $route->getAction();
 
-                if (true === $isTranslate) {
-                    $lng = getLanguage();
+                    $this->_module   = $module;
+                    $isTranslate = Utils::get('isTranslate');
 
-                    if (true === container()->getMultiSite()) {
-                        $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                    if (true === $isTranslate) {
+                        $lng = getLanguage();
+
+                        if (true === container()->getMultiSite()) {
+                            $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                        } else {
+                            $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
+                        }
                     } else {
-                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($lng) . DS . Inflector::lower($action) . '.phtml';
-                    }
-                } else {
-                    if (true === container()->getMultiSite()) {
-                        $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
-                    } else {
-                        $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                        if (true === container()->getMultiSite()) {
+                            $this->_viewFile   = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                        } else {
+                            $this->_viewFile   = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . Inflector::lower($controller) . DS . Inflector::lower($action) . '.phtml';
+                        }
                     }
                 }
             }
@@ -528,14 +531,32 @@
                     'action="/'
                 ),
                 array(
-                    'src="/' . $base_uri . '',
-                    'href="/' . $base_uri . '',
-                    'action="/' . $base_uri . ''
+                    'src="/' . $base_uri,
+                    'href="/' . $base_uri,
+                    'action="/' . $base_uri
                 ),
                 $content
             );
 
-            return self::lng($content);
+            return $content;
+        }
+
+        public function t($str, $args = [], $echo = true)
+        {
+            $id = sha1($str . serialize(array_keys($args)));
+
+            $translation = Lang::get($id, $str, $args);
+
+            if (true === $echo) {
+                echo $translation;
+            } else {
+                return $translation;
+            }
+        }
+
+        public function i18n($str, $args = [], $echo = true)
+        {
+            return $this->t($str, $args, $echo);
         }
 
         public static function lng($content)

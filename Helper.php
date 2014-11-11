@@ -3274,8 +3274,8 @@ $(document).ready(function() {
     if (!function_exists('call')) {
         function call()
         {
-            $args = func_get_args();
-            $callback = array_shift($args);
+            $args       = func_get_args();
+            $callback   = array_shift($args);
 
             if(is_callable($callback)) {
                 return call_user_func_array($callback, $args);
@@ -3300,8 +3300,8 @@ $(document).ready(function() {
                     return false;
                 }
 
-                $isObj = is_object($class);
-                $classObj = new ReflectionClass($isObj ? get_class($class) : $class);
+                $isObj      = is_object($class);
+                $classObj   = new ReflectionClass($isObj ? get_class($class) : $class);
 
                 if ($classObj->isAbstract()) {
                     return false;

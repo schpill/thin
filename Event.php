@@ -85,8 +85,23 @@
             foreach ((array) $events as $event) {
                 if (true === static::listeners($event)) {
                     foreach (static::$events[$event] as $callbackPack) {
+                        $response = null;
+
                         list($callback, $once) = $callbackPack;
-                        $response = call_user_func_array($callback, $parameters);
+
+                        if (is_callable($callback)) {
+                            $response = call_user_func_array($callback, $parameters);
+                        } else {
+                            if (fnmatch('*::*', $callback)) {
+                                list($class, $method) = explode('::', $callback, 2);
+
+                                if (!fnmatch('*\\\*', $class)) {
+                                    $class = 'Thin\\' . $class;
+                                }
+
+                                $response = call_user_func_array([$class, $method], $parameters);
+                            }
+                        }
 
                         if ($halt && !is_null($response)) {
                             return $response;
