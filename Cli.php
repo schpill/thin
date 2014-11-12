@@ -14,6 +14,11 @@
                 'fg'    => 'green',
                 'bold'  => true
             ),
+            'SUCCESS'   => array(
+                'fg'    => 'white',
+                'bg'    => 'green',
+                'bold'  => true
+            ),
             'COMMENT'   => array(
                 'fg'    => 'yellow'
             ),
@@ -55,6 +60,7 @@
         {
             $method = Arrays::first($args);
             $argv   = array_slice($args, 1);
+
             if (method_exists($this, $method)) {
                 call_user_func_array(array($this, $method), $argv);
             } else {
@@ -106,17 +112,19 @@
 
             foreach ($this->options as $option => $value) {
                 $paramOpt = isAke($parameters, $option, null);
+
                 if (!empty($paramOpt)) {
                     $codes[] = $value;
                 }
             }
+
             return "\033[" . implode(';', $codes) . 'm' . $text . "\033[0m";
         }
 
         public static function args($args)
         {
-            $collection = array();
-            array_shift($args);
+            $collection = [];
+
             if (count($args)) {
                 foreach ($args as $arg) {
                     if (strstr($arg, '=')) {
@@ -127,6 +135,7 @@
                     }
                 }
             }
+
             return $collection;
         }
 
@@ -134,6 +143,7 @@
         {
             $tasks = glob(APPLICATION_PATH . DS . 'tasks' . DS . '*.php');
             $collection = array();
+
             if (count($tasks)) {
                 foreach ($tasks as $task) {
                     $task = str_replace(
@@ -144,9 +154,11 @@
                         '',
                         $task
                     );
+
                     array_push($collection, $task);
                 }
             }
+
             return $collection;
         }
     }

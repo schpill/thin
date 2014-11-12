@@ -228,7 +228,7 @@
                 return false;
             }
 
-            exec("chmod $chmod $directory");
+            // exec("chmod $chmod -R $directory");
 
             $items = new \FilesystemIterator($directory);
 
@@ -236,6 +236,7 @@
                 if (true === $item->isDir()) {
                     static::chmodDir($item->getRealPath(), $chmod);
                 } else {
+                    umask(0000);
                     @chmod($item->getRealPath(), $chmod);
                 }
             }
