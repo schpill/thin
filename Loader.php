@@ -100,25 +100,25 @@
         });
     }
 
-    register_tick_function(function() {
-        static $m = 0;
+    // register_tick_function(function() {
+    //     static $m = 0;
 
-        $mNow = memory_get_usage();
+    //     $mNow = memory_get_usage();
 
-        if ($mNow > $m) {
-            $GLOBALS['max_memory'] = $mNow;
-        }
+    //     if ($mNow > $m) {
+    //         $GLOBALS['max_memory'] = $mNow;
+    //     }
 
-        $backtrace  = debug_backtrace();
-        $line       = $backtrace[0]['line'] - 1;
-        $file       = $backtrace[0]['file'];
+    //     $backtrace  = debug_backtrace();
+    //     $line       = $backtrace[0]['line'] - 1;
+    //     $file       = $backtrace[0]['file'];
 
-        if ($file == __FILE__) return;
+    //     if ($file == __FILE__) return;
 
-        $GLOBALS['dbg_stack'] = $backtrace;
-    });
+    //     $GLOBALS['dbg_stack'] = $backtrace;
+    // });
 
-    declare(ticks = 1);
+    // declare(ticks = 1);
 
     spl_autoload_register('Thin\\Autoloader::autoload');
 
@@ -126,7 +126,8 @@
     {
         $back   = '';
 
-        $traces = Thin\Input::globals('dbg_stack', []);
+        // $traces = Thin\Input::globals('dbg_stack', []);
+        $traces = debug_backtrace();
 
         if (count($traces)) {
             foreach($traces as $trace) {

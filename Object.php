@@ -528,9 +528,7 @@
                         $fields = $db->fields();
 
                         if (Arrays::in($key, $fields)) {
-                            if (!count($argv)) {
-                                return $this->$key;
-                            };
+                            return null;
                         }
 
                         $tab    = str_split($key);

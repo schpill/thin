@@ -2858,7 +2858,7 @@ $(document).ready(function() {
     if (!function_exists('auth')) {
         function auth($id = null)
         {
-            return new \Auth\Auth($id);
+            return \Auth\Auth::instance($id);
         }
     }
 
