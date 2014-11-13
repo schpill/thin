@@ -48,11 +48,13 @@
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 $return = static::get($var);
+
                 return $return;
             } elseif (substr($method, 0, 3) == 'set') {
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
                 $value = current($args);
+
                 return static::set($var, $value);
             }
         }
@@ -62,7 +64,9 @@
             if (!is_object($object)) {
                 throw new Exception("The param sent is not an object.");
             }
+
             $array = array();
+
             foreach ($object as $key => $value) {
                 if (is_object($value)) {
                     $array[$key] = static::toArray($value);
@@ -70,6 +74,7 @@
                     $array[$key] = static::value($value);
                 }
             }
+
             return $array;
         }
 
@@ -125,6 +130,7 @@
                     return new $class($params[0], $params[1], $params[2], $params[3], $params[4]);
                 default:
                     $refClass = new \ReflectionClass($class);
+
                     return $refClass->newInstanceArgs($params);
             }
         }
@@ -132,10 +138,12 @@
         public static function cleanCache($force = false)
         {
             $cacheFiles = glob(CACHE_PATH . DS . '*', GLOB_NOSORT);
-            $cacheFiles += glob(TMP_PUBLIC_PATH . DS . '*', GLOB_NOSORT);
+            // $cacheFiles += glob(TMP_PUBLIC_PATH . DS . '*', GLOB_NOSORT);
             $minToKeep = !$force ? time() - 12 * 3600 : time();
+
             foreach ($cacheFiles as $cacheFile) {
                 $age = File::modified($cacheFile);
+
                 if ($age < $minToKeep) {
                     $tabFile = explode(DS, $cacheFile);
                     ThinLog(Arrays::last($tabFile) . ' => ' . date('d/m/Y H:i:s', $age), null, 'suppression cache');
@@ -173,6 +181,7 @@
                     }
                 }
             }
+
             return $array1;
         }
 
@@ -181,6 +190,7 @@
             if (!is_string($string)) {
                 return false;
             }
+
             return !strlen(
                 preg_replace(
                       ',[\x09\x0A\x0D\x20-\x7E]'
@@ -203,6 +213,7 @@
             if ($extended) {
                 $string = repl('\\', '\\\\', $string);
             }
+
             return repl($char, '\\' . $char, $string);
         }
 
@@ -215,6 +226,7 @@
             } catch (\RuntimeException $e) {
                 return false;
             }
+
             return $response->getContent();
         }
 

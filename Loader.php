@@ -10,7 +10,7 @@
         error_reporting(-1);
 
         set_exception_handler(function($exception) {
-            vd('EXCEPTION', $exception, $GLOBALS['dbg_stack']);
+            vd('EXCEPTION', $exception, debug_backtrace());
         });
 
         set_error_handler(function($type, $message, $file, $line) {

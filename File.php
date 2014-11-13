@@ -79,9 +79,9 @@
             return $result !== false;
         }
 
-        public static function delete($file)
+        public static function delete($file, $deleteDir = false)
         {
-            if (is_dir($file)) {
+            if (is_dir($file) && true === $deleteDir) {
                 return static::rmdir($file);
             }
 
