@@ -321,6 +321,7 @@
 
             return $array;
         }
+
         /**
          * Get a value from the array, and remove it.
          *
@@ -999,5 +1000,10 @@
                 $results[$innerKey] = $innerValue;
             }
             return $results;
+        }
+
+        public static function pick($tab, $key, $default = null)
+        {
+            return isAke($tab, $key, $default);
         }
     }

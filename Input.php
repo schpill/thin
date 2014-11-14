@@ -13,6 +13,8 @@
                 $default = isset($args[1]) ? $args[1] : null;
 
                 return isAke(self::tab($method), Arrays::first($args), $default);
+            } elseif (Arrays::in($method, $auth) && count($args) == 0) {
+                return self::tab($method);
             } else {
                 throw new Exception("Wrong parameters.");
             }
