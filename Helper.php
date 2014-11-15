@@ -1812,9 +1812,24 @@ $(document).ready(function() {
          * @param mixed $object
          * @return mixed
          */
-        function with($object)
+        function with($object, $args = [])
         {
-            return $object;
+            return $object instanceof Closure ? call_user_func_array($object, $args) : $object;
+        }
+
+        function chain()
+        {
+            $closures   = func_get_args();
+            $res        = null;
+
+            foreach ($closures as $closure) {
+                /* polymorphism */
+                $args   = !Arrays::is($res) ? [$res] : $res;
+
+                $res    = call_user_func_array($closure, $args);
+            }
+
+            return $res;
         }
     }
 
@@ -1824,7 +1839,7 @@ $(document).ready(function() {
             $needle = Inflector::lower(htmlspecialchars_decode($needle));
             $string = Inflector::lower(htmlspecialchars_decode($string));
 
-            return strstr($string, $needle) ? true : false;
+            return fnmatch("*$needle*", $string);
         }
     }
 
@@ -1841,6 +1856,7 @@ $(document).ready(function() {
                 }
             } else if (2 == $numArgs) {
                 $vars[Arrays::first($args)] = Arrays::last($args);
+
                 return Arrays::last($args);
             }
 
@@ -1882,6 +1898,7 @@ $(document).ready(function() {
                         if (Arrays::is($events[$name])) {
                             for ($i = 0 ; $i < count($events[$name]) ; $i++) {
                                 $func = $events[$name][$i];
+
                                 if ($func instanceof Closure) {
                                     $res .= call_user_func_array($func, $params);
                                 }
@@ -1898,6 +1915,7 @@ $(document).ready(function() {
             function registry()
             {
                 static $tab = array();
+
                 $args       = func_get_args();
                 $nb         = count($args);
 
@@ -1905,6 +1923,7 @@ $(document).ready(function() {
                     return arrayGet($tab, Arrays::first($args));
                 } elseif ($nb == 2) {
                     $tab = arraySet($tab, Arrays::first($args), Arrays::last($args));
+
                     return Arrays::last($args);
                 }
 
@@ -2004,8 +2023,8 @@ $(document).ready(function() {
         function partial($file)
         {
             if (strstr($file, 'http://')) {
-                $content = fgc($file);
-                $file = CACHE_PATH . DS . sha1($file) . '.html';
+                $content    = fgc($file);
+                $file       = CACHE_PATH . DS . sha1($file) . '.html';
                 file_put_contents($file, $content);
             }
 
@@ -2033,7 +2052,7 @@ $(document).ready(function() {
             $reflection = new ReflectionClass($className);
             $properties = $reflection->getProperties();
 
-            return "O:" . strlen($className) . ":\"" . $className. "\":" . count($properties) . ':{' . serializeProperties($reflection, $properties) ."}";
+            return "O:" . strlen($className) . ":\"" . $className . "\":" . count($properties) . ':{' . serializeProperties($reflection, $properties) . "}";
         }
 
         function instantiator($className)
@@ -2079,8 +2098,8 @@ $(document).ready(function() {
 
         function callNotPublicMethod($object, $methodName)
         {
-            $reflectionClass = new ReflectionClass($object);
-            $reflectionMethod = $reflectionClass->getMethod($methodName);
+            $reflectionClass    = new ReflectionClass($object);
+            $reflectionMethod   = $reflectionClass->getMethod($methodName);
             $reflectionMethod->setAccessible(true);
 
             $params = array_slice(func_get_args(), 2);
@@ -2098,6 +2117,7 @@ $(document).ready(function() {
 
             $params = array_slice(func_get_args(), 2);
             array_push($transactions, array($class, $method, $params));
+
             container()->setThinTransactions($transactions);
         }
 
@@ -2106,11 +2126,15 @@ $(document).ready(function() {
             $transactions = container()->getThinTransactions();
 
             if (null !== $transactions) {
-                if (is_array($transactions)) {
+                if (Arrays::is($transactions)) {
                     if (count($transactions)) {
-                        foreach (static::$_transactions as $transaction) {
+                        foreach ($transactions as $transaction) {
                             list($class, $method, $params) = $transaction;
-                            $commit = call_user_func_array(array($class, $method), $params);
+
+                            $commit = call_user_func_array(
+                                [$class, $method],
+                                $params
+                            );
                         }
                     }
                 }
