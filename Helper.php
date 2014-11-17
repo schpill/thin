@@ -4285,7 +4285,9 @@ $(document).ready(function() {
                 exit;
             }
         }
+    }
 
+    if (!function_exists('dd')) {
         function dd()
         {
             array_map(
