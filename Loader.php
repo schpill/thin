@@ -100,26 +100,6 @@
         });
     }
 
-    // register_tick_function(function() {
-    //     static $m = 0;
-
-    //     $mNow = memory_get_usage();
-
-    //     if ($mNow > $m) {
-    //         $GLOBALS['max_memory'] = $mNow;
-    //     }
-
-    //     $backtrace  = debug_backtrace();
-    //     $line       = $backtrace[0]['line'] - 1;
-    //     $file       = $backtrace[0]['file'];
-
-    //     if ($file == __FILE__) return;
-
-    //     $GLOBALS['dbg_stack'] = $backtrace;
-    // });
-
-    // declare(ticks = 1);
-
     spl_autoload_register('Thin\\Autoloader::autoload');
 
     function displayCodeLines()

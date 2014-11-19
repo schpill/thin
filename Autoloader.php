@@ -42,7 +42,8 @@
             }
 
             if (fnmatch('Thin\\\Db*', $className) && !class_exists($className)) {
-                $db = Inflector::uncamelize(str_replace('Thin\\Db', '', $className));
+                $className  = str_replace(SITE_NAME, '', $className);
+                $db         = Inflector::uncamelize(str_replace(['Thin\\Db', 'Thin\\Db\\'], '', $className));
 
                 if (fnmatch('*_*', $db)) {
                     list($database, $table) = explode('_', $db, 2);
