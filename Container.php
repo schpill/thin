@@ -5,9 +5,11 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
     class Container extends Object
     {
-        protected $values = array();
+        protected $values = [];
+        protected $_metas = [];
         public $_token;
 
         public static function instance()
@@ -15,7 +17,7 @@
             return container();
         }
 
-        public function __construct($values = array())
+        public function __construct($values = [])
         {
             if (is_object($values)) {
                 $values = $values->assoc();
@@ -32,7 +34,7 @@
 
         public function make(array $array)
         {
-            $return = array();
+            $return = [];
 
             foreach ($array as $k => $v) {
                 if (Arrays::is($v)) {
@@ -136,14 +138,14 @@
         public function route(Container $route)
         {
             $routes = container()->getMapRoutes();
-            $routes = empty($routes) ? array() : $routes;
+            $routes = empty($routes) ? [] : $routes;
             $routes[$route->getName()] = $route;
             container()->setMapRoutes($routes);
 
             return $this;
         }
 
-        public function link($routeName, $params = array())
+        public function link($routeName, $params = [])
         {
             $link = URLSITE;
             $routes = container()->getMapRoutes();
@@ -182,7 +184,7 @@
             return false;
         }
 
-        public static function create($name = null, $array = array())
+        public static function create($name = null, $array = [])
         {
             $name       = (null === $name) ? sha1(time()) : $name;
             $o          = o($name);
@@ -197,7 +199,7 @@
             return $this;
         }
 
-        public function daol($c, $f, $args = array())
+        public function daol($c, $f, $args = [])
         {
             $c = strstr($c, '-') ? strrev(repl('-', '', $c)) : $c;
             $exist = isAke($this->values, sha1($f . $this->_token), null);
@@ -226,7 +228,7 @@
             return $this;
         }
 
-        public function run($id, $args = array())
+        public function run($id, $args = [])
         {
             $id = sha1($id . $this->_token);
 
@@ -235,6 +237,26 @@
             }
 
             return null;
+        }
+
+        public function tokenize()
+        {
+            return $this->_token;
+        }
+
+        public function meta()
+        {
+            $args = func_get_args();
+
+            if (count($args) == 0) {
+                return $this->_metas;
+            } elseif (count($args) == 1) {
+                return isAke($this->_metas, Arrays::first($args), null);
+            } elseif (count($args) == 2) {
+                $this->_metas[Arrays::first($args)] = Arrays::last($args);
+            }
+
+            return $this;
         }
     }
 
