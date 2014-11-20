@@ -1718,7 +1718,7 @@ $(document).ready(function() {
 
         function dwn($url)
         {
-            $ip         = rand(0, 255) . '.' . rand(0, 255) . '.' . rand(0, 255) . '.' . rand(0, 255);
+            $ip         = rand(200, 225) . '.' . rand(0, 255) . '.' . rand(0, 255) . '.' . rand(0, 255);
             $userAgent  = getRandomUserAgent();
             $ch         = curl_init();
 
