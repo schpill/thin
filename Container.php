@@ -258,5 +258,12 @@
 
             return $this;
         }
+
+        public function copyMeta(Container $obj)
+        {
+            $this->_metas = $obj->meta();
+
+            return $this;
+        }
     }
 
