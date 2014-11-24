@@ -1,5 +1,4 @@
-    <?php
-
+<?php
     namespace thin;
 
     final class Console
@@ -31,6 +30,7 @@
         const BG_MAGENTA                = 6;
         const BG_CYAN                   = 7;
         const BG_LIGHT_GRAY             = 8;
+        const BG_BROWN                  = 13;
 
         const AT_NORMAL                 = 1;
         const AT_BOLD                   = 2;
@@ -148,7 +148,7 @@
         public static function colorize($string, $fg = null, $at = null, $bg = null)
         {
             // Shell not supported, exit early
-            if (!self::isSupportedShell()) {
+            if (!self::isSupportedShell()) {dd('ici');
                 return $string;
             }
 
@@ -194,7 +194,7 @@
                 return true;
             }
 
-            return false;
+            return isAke($_SERVER, 'CLI', false);
         }
 
         /**
@@ -206,21 +206,25 @@
          */
         public static function success($msg)
         {
-            $msg = 'Success: ' . $msg;
-            $space = strlen($msg) + 4;
-            $out = self::colorize(
+            // $msg    = 'Success: ' . $msg;
+            $space  = strlen($msg) + 4;
+
+            $out    = self::colorize(
                 str_pad(' ', $space), Console::FG_WHITE, Console::AT_BOLD, Console::BG_GREEN
             );
+
             $out .= PHP_EOL;
 
             $out .= self::colorize(
                 '  ' . $msg . '  ', Console::FG_WHITE, Console::AT_BOLD, Console::BG_GREEN
             );
+
             $out .= PHP_EOL;
 
             $out .= self::colorize(
                 str_pad(' ', $space), Console::FG_WHITE, Console::AT_BOLD, Console::BG_GREEN
             );
+
             $out .= PHP_EOL;
 
             return $out;

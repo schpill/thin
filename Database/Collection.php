@@ -12,6 +12,7 @@
     use Thin\Arrays;
     use Thin\Exception;
     use Thin\Inflector;
+    use Dbjson\Model;
 
     class Collection implements IteratorAggregate, ArrayAccess, Countable
     {
@@ -34,9 +35,9 @@
                 foreach ($models as $model) {
                     $id = $i++;
 
-                    if ($model instanceof Container) {
+                    if ($model instanceof Container || $model instanceof Model) {
                         if ($model->exists()) {
-                            $id = (int) $model->id();
+                            $id = (int) $model->id;
                         } else {
                             $model->setTempId($id);
                         }
@@ -60,7 +61,7 @@
         public function add($items)
         {
             if ($items && $items instanceof Container) {
-                $id = (int) $items->id();
+                $id = (int) $items->id;
                 $this->_items[$id] = $items;
             } elseif (Arrays::is($items)) {
                 foreach ($items as $obj) {
@@ -120,13 +121,13 @@
         public function remove($param)
         {
             if ($param instanceof Container) {
-                $param = $param->id();
+                $param = $param->id;
             }
 
             $item = $this->get($param);
 
             if ($item) {
-                $id = (int) $item->id();
+                $id = (int) $item->id;
 
                 if ($this->_items[$id]) {
                     unset($this->_items[$id]);
@@ -184,7 +185,7 @@
         public function has($param)
         {
             if ($param instanceof Container) {
-                $id = (int) $param->id();
+                $id = (int) $param->id;
             } elseif (is_integer($param)) {
                 $id = $param;
             }
@@ -940,7 +941,7 @@
 
             foreach ($rows as $row) {
                 if ($row instanceof Container) {
-                    array_push($ids, $row->id());
+                    array_push($ids, $row->id);
                 }
             }
 

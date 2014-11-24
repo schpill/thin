@@ -1,5 +1,6 @@
 <?php
     namespace Thin;
+
     use RuntimeException;
 
     abstract class Facade
@@ -32,9 +33,11 @@
         private static function instance()
         {
             $name = static::factory();
+
             if (false === App::has($name)) {
                 throw new Exception("You must define " . $name . " app before use it.");
             }
+
             return App::make($name);
         }
     }

@@ -10,18 +10,18 @@
         private $_sessionName;
         private $_isLocked           = false;
         private $_duration           = 3600;
-        private static $_instances   = array();
 
         public static function instance($name, $duration = 3600)
         {
-            $i = isAke(static::$_instances, $name, null);
+            $args   = func_get_args();
+            $key    = sha1(serialize($args));
+            $has    = Instance::has('Session', $key);
 
-            if (is_null($i)) {
-                $i = new self($name, $duration);
-                static::$_instances[$name] = $i;
+            if (true === $has) {
+                return Instance::get('Session', $key);
+            } else {
+                return Instance::make('Session', $key, new self($name, $duration));
             }
-
-            return $i;
         }
 
         public function __construct($name, $duration = 3600)
@@ -74,7 +74,6 @@
             unset($tab['_sessionName']);
             unset($tab['_isLocked']);
             unset($tab['_duration']);
-            unset($tab['_instances']);
 
             foreach ($tab as $key => $value) {
                 $_SESSION['__Thin__'][$this->_sessionName][$key] = $value;

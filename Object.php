@@ -140,7 +140,7 @@
             $key = sha1('orm' . $this->_token);
             $orm = isAke($this->values, $key, false);
 
-            $key = sha1('touch' . $this->_token);
+            $key = sha1('model' . $this->_token);
             $dbjson = isAke($this->values, $key, false);
 
             if (substr($func, 0, 4) == 'link' && false !== $orm) {
@@ -150,7 +150,7 @@
 
                 if (!empty($var)) {
                     $var = setter($var . '_id');
-                    $this->$var($value->id());
+                    $this->$var($value->id);
 
                     return $this;
                 }
@@ -426,19 +426,24 @@
                 }
 
                 if (false !== $dbjson) {
-                    $key    = sha1('db' . $this->_token);
-                    $cb     = isAke($this->values, $key);
-                    $db     = call_user_func_array($cb, []);
+                    $db     = $this->model()->db();
                     $fields = $db->fields();
 
+                    $modelMethods = get_class_methods('Dbjson\Model');
+
                     if (Arrays::in($func, $fields)) {
-                        if (!count($argv)) return $this->$func;
-                        else {
+                        if (!count($argv)) {
+                            return $this->$func;
+                        } else {
                             $setter = setter($func);
                             $this->$setter(Arrays::first($argv));
 
                             return $this;
                         }
+                    }
+
+                    if (Arrays::in($func, $modelMethods)) {
+                        return call_user_func_array([$this->model(), $func], $argv);
                     }
 
                     $tab    = str_split($func);

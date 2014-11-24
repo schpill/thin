@@ -52,6 +52,8 @@
                 }
 
                 jdb($database, $table);
+
+                $found = true;
             }
         }
     }

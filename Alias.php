@@ -1,8 +1,15 @@
 <?php
     namespace Thin;
 
+    use Closure;
+    use ReflectionFunction;
+    use SplObjectStorage;
+    use SplFileObject;
+
     class Alias
     {
+        protected static $cb = [];
+
         public static function facade($to, $target, $namespace = 'Thin')
         {
             $class  = '\\' . $namespace . '\\' . $target;
@@ -35,6 +42,31 @@
                     throw new Exception("The class '$to' ever exists and cannot be capsulated.");
                 } else {
                     throw new Exception("A problem occured.");
+                }
+            }
+        }
+
+        public static function callback($class, $method, Closure $cb)
+        {
+            $callbackClass = ucfirst(Inflector::lower($class));
+
+            if (!class_exists('Thin\\' . $callbackClass)) {
+                eval("namespace Thin; class $callbackClass extends Alias {}");
+            }
+
+            static::$cb[$callbackClass][$method] = $cb;
+        }
+
+        public static function __callStatic($method, $args)
+        {
+            $calledClass = str_replace('Thin\\', '', get_called_class());
+
+            $cbs    = isAke(Alias::$cb, $calledClass, []);
+            $cb     = isAke($cbs, $method, false);
+
+            if (false !== $cb) {
+                if (is_callable($cb)) {
+                    return call_user_func_array($cb, $args);
                 }
             }
         }

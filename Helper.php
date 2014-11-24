@@ -36,10 +36,24 @@
     use Thin\Instance;
     use Thin\Request;
     use Thin\Tool;
+    use Thin\Alias;
     use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
+
+    if (!function_exists('one')) {
+        function one($table = null)
+        {
+            if (!class_exists('One')) {
+                require_once __DIR__ . DS . 'One.php';
+            }
+
+            $table = is_null($table) ? SITE_NAME : $table;
+
+            return One::forTable($table);
+        }
+    }
 
     if (!function_exists('hashPath')) {
         function hashPath($path, $key)
