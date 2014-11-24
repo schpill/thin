@@ -2,6 +2,7 @@
     namespace Thin;
 
     use Closure;
+    use Mvc\Router as MVCRouter;
 
     class Controller
     {
@@ -96,5 +97,10 @@
             } else {
                 return $res;
             }
+        }
+
+        public function go($routeName)
+        {
+            MVCRouter::forward();
         }
     }
