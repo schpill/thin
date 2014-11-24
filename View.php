@@ -4,6 +4,9 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
+    use Mvc\Router as MVCRouter;
+
     class View
     {
         public $_viewFile, $_module, $_cache;
@@ -1001,5 +1004,16 @@
         public function __isset($key)
         {
             return isset($this->$key);
+        }
+
+        public function to($routeName, $args = [], $echo = true)
+        {
+            $url = MVCRouter::to($routeName, $args);
+
+            if (true === $echo) {
+                echo $url;
+            } else {
+                return $url;
+            }
         }
     }
