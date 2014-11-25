@@ -317,6 +317,11 @@
         {
             return context($db);
         }
+
+        function thin($service = null)
+        {
+            return ph($service);
+        }
     }
 
     if (!function_exists('infosIP')) {
