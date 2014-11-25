@@ -8,7 +8,11 @@
     {
         public function __construct()
         {
-            $this->view = view();
+            $this->view     = view();
+            $this->flash    = function() {return new \Phalcon\Flash\Direct();};
+            $this->filter   = function() {return new \Phalcon\Filter();};
+            $this->request  = new \Phalcon\Http\Request();
+            $this->response = new \Phalcon\Http\Response();
         }
 
         public function noRender()
@@ -102,5 +106,34 @@
         public function go($routeName)
         {
             MVCRouter::forward();
+        }
+
+        public function set($var, $what)
+        {
+            $this->$var = $what;
+        }
+
+        public function __set($var, $what)
+        {
+            $this->$var = $what;
+        }
+
+        public function __isset($var)
+        {
+            return isset($this->$var);
+        }
+
+        public function __get($var)
+        {
+            return $this->$var;
+        }
+
+        public function __call($method, $args)
+        {
+            if (isset($this->$method)) {
+                if (is_callable($this->$method)) {
+                    return call_user_func_array($this->$method, $args);
+                }
+            }
         }
     }
