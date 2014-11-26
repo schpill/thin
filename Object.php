@@ -5,12 +5,14 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
     use SQLite3;
+    use Closure;
 
     class Object extends \ArrayObject implements \ArrayAccess, \Countable, \IteratorAggregate
     {
-        public $_fields         = array();
-        public $_closures       = array();
+        public $_fields         = [];
+        public $_closures       = [];
 
         public function __construct()
         {
@@ -31,7 +33,7 @@
             return $this;
         }
 
-        public function closure($name, \Closure $closure)
+        public function closure($name, Closure $closure)
         {
             $this->_closures[$name] = $closure;
 
@@ -61,11 +63,11 @@
             if (isset($this->thin_kv)) {
                 $db = new Keyvalue($this->thin_kv);
 
-                return $db->save($this->toArray());
+                return $db->save($this->to[]);
             } elseif (isset($this->thin_type)) {
                 $type = $this->thin_type;
                 Data::getModel($type);
-                $data = array();
+                $data = [];
 
                 if (Arrays::exists($type, Data::$_fields)) {
                     $fields = Data::$_fields[$type];
@@ -162,7 +164,7 @@
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
                         Data::getModel($type);
-                        $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                        $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
 
                         if (Arrays::exists('relationships', $settings)) {
                             if (Arrays::exists($var, $settings['relationships'])) {
@@ -179,7 +181,7 @@
                         return $o->$getter();
                     }
 
-                    if ($this->$var instanceof \Closure) {
+                    if ($this->$var instanceof Closure) {
                         if(is_callable($this->$var) && count($argv)) {
                             return call_user_func_array($this->$var, $argv);
                         }
@@ -194,13 +196,13 @@
                     if (isset($this->thin_type)) {
                         $type = $this->thin_type;
                         Data::getModel($type);
-                        $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
-                        $relationships = Arrays::exists('relationships', $settings) ? $settings['relationships'] : array();
+                        $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
+                        $relationships = Arrays::exists('relationships', $settings) ? $settings['relationships'] : [];
 
                         if (Arrays::exists($var, $relationships) && 's' == $var[strlen($var) - 1]) {
                             if (Arrays::exists($var, $relationships)) {
                                 $res = dm(substr($var, 0, -1))->where("$type = " . $this->id)->get();
-                                $collection = array();
+                                $collection = [];
 
                                 if (count($res)) {
                                     foreach ($res as $obj) {
@@ -242,7 +244,7 @@
                 if (!empty($var)) {
                     if (isset($this->thin_type)) {
                         Data::getModel($this->thin_type);
-                        $fields = Arrays::exists($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : array();
+                        $fields = Arrays::exists($this->thin_type, Data::$_fields) ? Data::$_fields[$this->thin_type] : [];
 
                         if(!Arrays::exists($var, $fields)) {
                             throw new Exception($var . ' is not defined in the model => ' . $this->thin_type);
@@ -294,11 +296,11 @@
                 $value              = Arrays::first($argv);
 
                 if (!isset($this->$var)) {
-                    $this->$var = array();
+                    $this->$var = [];
                 }
 
                 if (!Arrays::is($this->$var)) {
-                    $this->$var = array();
+                    $this->$var = [];
                 }
 
                 array_push($this->$var, $value);
@@ -334,13 +336,13 @@
             }
 
             if (Arrays::in($func, $this->_fields)) {
-                if ($this->$func instanceof \Closure) {
+                if ($this->$func instanceof Closure) {
                     return call_user_func_array($this->$func, $argv);
                 }
             }
 
             if (Arrays::exists($func, $this->_closures)) {
-                if ($this->_closures[$func] instanceof \Closure) {
+                if ($this->_closures[$func] instanceof Closure) {
                     return call_user_func_array($this->_closures[$func] , $argv);
                 }
             }
@@ -382,7 +384,7 @@
                 if(isset($this->thin_litedb)) {
                     $closure = isAke($this->thin_litedb->closures, $func);
 
-                    if (!empty($closure) && $closure instanceof \Closure) {
+                    if (!empty($closure) && $closure instanceof Closure) {
                         return $closure($this);
                     }
                 }
@@ -393,7 +395,7 @@
                 }
 
                 if (false !== $orm) {
-                    $db     = call_user_func_array($orm, array());
+                    $db     = call_user_func_array($orm, []);
                     $fields = array_keys($db->map['fields']);
 
                     if (Arrays::in($func, $fields)) {
@@ -488,7 +490,7 @@
 
         public function __get($key)
         {
-            $array = isset($this->values) ? $this->values : array();
+            $array = isset($this->values) ? $this->values : [];
 
             if (count($array)) {
                 foreach ($array as $k => $v) {
@@ -504,7 +506,7 @@
                 if (isset($this->thin_type)) {
                     $type = $this->thin_type;
                     Data::getModel($this->thin_type);
-                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
 
                     if (Arrays::exists('relationships', $settings)) {
                         if (Arrays::exists($key, $settings['relationships']) && 's' != $key[strlen($key) - 1]) {
@@ -566,7 +568,7 @@
                 return;
             }
 
-            $this->values       = isset($this->values) ? $this->values : array();
+            $this->values       = isset($this->values) ? $this->values : [];
             $this->$key         = $value;
             $this[$key]         = $value;
             $this->values[$key] = $value;
@@ -593,14 +595,14 @@
         {
             if (null !== $namespace) {
                 if (!isset($this->$namespace)) {
-                    $this->$namespace = array();
+                    $this->$namespace = [];
                 }
 
                 foreach ($datas as $k => $v) {
                     if (Arrays::is($k)) {
                         $this->populate($k, $namespace);
                     } else {
-                        $this->$namespace = array_merge($this->$namespace, array($k => $v));
+                        $this->$namespace = array_merge($this->$namespace, [$k => $v]);
                     }
                 }
             } else {
@@ -634,7 +636,7 @@
                 if (isset($this->thin_type)) {
                     Data::getModel($this->thin_type);
                     $type = $this->thin_type;
-                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
 
                     if (Arrays::exists('relationships', $settings)) {
                         if (Arrays::exists($var, $settings['relationships'])) {
@@ -648,12 +650,12 @@
                 if (isset($this->thin_type)) {
                     Data::getModel($this->thin_type);
                     $type = $this->thin_type;
-                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+                    $settings = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
 
                     if (Arrays::exists($var, $settings['relationships']) && 's' == $var[strlen($var) - 1]) {
                         if (Arrays::exists($var, $settings['relationships'])) {
                             $res = Data::query(substr($var, 0, -1), "$type = " . $this->id);
-                            $collection = array();
+                            $collection = [];
 
                             if (count($res)) {
                                 foreach ($res as $row) {
@@ -702,12 +704,12 @@
 
         public function assoc()
         {
-            $collection = array();
+            $collection = [];
 
             if (count($this->_fields)) {
                 foreach ($this->_fields as $field) {
                     if ($field != 'values' && $field != '_nameClass') {
-                        if (!$this->$field instanceof \Closure) {
+                        if (!$this->$field instanceof Closure) {
                             if ($this->$field instanceof Object) {
                                 $collection[$field] = $this->$field->assoc();
                             } else {
@@ -723,7 +725,7 @@
 
         public function toArray()
         {
-            $collection = array();
+            $collection = [];
 
             if (count($this->values)) {
                 foreach ($this->values as $field => $value) {
@@ -784,7 +786,7 @@
                 $type = $this->thin_type;
 
                 if (Arrays::exists($type, Data::$_fields)) {
-                    $fields = array();
+                    $fields = [];
                     $dataFields = Data::$_fields[$type];
 
                     foreach ($dataFields as $dataField => $info) {
@@ -800,8 +802,8 @@
         public function deleteLite($type)
         {
             $table          = $type . 's';
-            $fields         = Arrays::exists($type, Data::$_fields) ? Data::$_fields[$type] : array();
-            $settings       = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+            $fields         = Arrays::exists($type, Data::$_fields) ? Data::$_fields[$type] : [];
+            $settings       = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
 
             if (count($fields) && count($settings)) {
                 $dbType     = Arrays::exists('db', $settings) ? $settings['db'] : null;
@@ -818,8 +820,8 @@
         public function saveLite($type)
         {
             $table          = $type . 's';
-            $fields         = Arrays::exists($type, Data::$_fields) ? Data::$_fields[$type] : array();
-            $settings       = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : array();
+            $fields         = Arrays::exists($type, Data::$_fields) ? Data::$_fields[$type] : [];
+            $settings       = Arrays::exists($type, Data::$_settings) ? Data::$_settings[$type] : [];
 
             if (count($fields) && count($settings)) {
                 $dbType     = Arrays::exists('db', $settings) ? $settings['db'] : null;
@@ -827,8 +829,8 @@
 
                 if (!empty($dbType)) {
                     $data   = $this->toArray();
-                    $fields['id'] = array();
-                    $fields['date_create'] = array();
+                    $fields['id'] = [];
+                    $fields['date_create'] = [];
 
                     $id = Arrays::exists('id', $data) ? $data['id'] : Data::getKeyLite($type);
                     $date_create = Arrays::exists('date_create', $data) ? $data['date_create'] : time();
@@ -842,7 +844,7 @@
                     $res    = $db->query($q);
 
                     if(false === $res->fetchArray()) {
-                        $values = array();
+                        $values = [];
                         foreach ($fields as $field) {
                             $values[] = "'" . SQLite3::escapeString($data[$field]) . "'";
                         }
@@ -870,7 +872,7 @@
             return $this;
         }
 
-        public function func($id, \Closure $c)
+        public function func($id, Closure $c)
         {
             event($id, $c);
 
