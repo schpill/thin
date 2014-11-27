@@ -5,158 +5,97 @@
     {
         public static function get($id, $default, $args = [])
         {
+            defined ('REDIS_ACTIVE') || define('REDIS_ACTIVE', false);
+
+            if (false === REDIS_ACTIVE) {
+                return count($args) ? static::assign($default, $args) : $default;
+            }
+
             $defaultLng = Config::get(
                 'application.language',
                 DEFAULT_LANGUAGE
             );
 
-            if ($defaultLng == lng()) {
-                /* on crée automatiquement les lignes en anglais */
-                // if (!static::has($id, 'en')) {
-                //     static::set($id, 'en', $default);
-                // }
+            $lng = lng();
 
-                return static::assign($default, $args);
+            $cache = redis()->get('lang.' . $lng . '.' . $id);
+
+            if (strlen($cache)) {
+                return $cache;
             }
 
-            $mvc = container()->getMvc();
-            $mvc = empty($mvc) ? 'www::static::index' : $mvc;
-
-            $mvc = explode('::', $mvc);
-
-            if (count($mvc) == 3) {
-                $module     = $mvc[0];
-                $controller = $mvc[1];
-                $action     = $mvc[2];
+            if ($defaultLng == $lng) {
+                $translation = count($args) ? static::assign($default, $args) : $default;
+                $save = $default;
             } else {
-                $module     = 'www';
-                $controller = 'static';
-                $action     = 'index';
+                $row = jdb(
+                    Config::get('application.i18n.db', SITE_NAME),
+                    Config::get('application.i18n.table', 'lang')
+                )->where(['key', '=', $id])
+                ->where(['language', '=', $lng])
+                ->first(true);
+
+                if ($row) {
+                    $translation = count($args) ? static::assign($row->translation, $args) : $row->translation;
+                    $save = $row->translation;
+                } else {
+                    $translation = count($args) ? static::assign($default, $args) : $default;
+                    $save = $default;
+
+                    jdb(
+                        Config::get('application.i18n.db', SITE_NAME),
+                        Config::get('application.i18n.table', 'lang')
+                    )->create(['key' => $id, 'language' => $lng, 'translation' => $save])->save();
+                }
             }
 
-            $row = jdb(
-                Config::get('application.i18n.db', SITE_NAME),
-                Config::get('application.i18n.table', 'translation')
-            )->where("key = $id")
-            ->where('language = ' . lng())
-            ->where('module = ' . $module)
-            ->where('controller = ' . $controller)
-            ->where('action = ' . $action)
-            ->first(true);
+            redis()->set('lang.' . $lng . '.' . $id, $save);
 
-            if ($row) {
-                return static::assign($row->translation, $args);
-            }
-
-            return static::assign($default, $args);
+            return $translation;
         }
 
-        public static function has($id, $lng)
+        public static function purgeCache($lng = '*')
         {
-            $mvc = container()->getMvc();
-            $mvc = empty($mvc) ? 'www::static::index' : $mvc;
+            $keys = redis()->keys('lang.' . $lng . '.*');
 
-            $mvc = explode('::', $mvc);
-
-            if (count($mvc) == 3) {
-                $module     = $mvc[0];
-                $controller = $mvc[1];
-                $action     = $mvc[2];
-            } else {
-                $module     = 'www';
-                $controller = 'static';
-                $action     = 'index';
+            if (count($keys)) {
+                foreach ($keys as $key) {
+                    redis()->del($key);
+                }
             }
-
-            $row = jdb(
-                Config::get('application.i18n.db', SITE_NAME),
-                Config::get('application.i18n.table', 'translation')
-            )->where("key = $id")
-            ->where('module = ' . $module)
-            ->where('controller = ' . $controller)
-            ->where('action = ' . $action)
-            ->where('language = ' . $lng)
-            ->first(true);
-
-            return $row ? true : false;
         }
 
-        public static function set($id, $lng, $translation)
+        public static function makeFrom($to, $from = null)
         {
-            $mvc = container()->getMvc();
-            $mvc = empty($mvc) ? 'www::static::index' : $mvc;
+            $defaultLng = Config::get(
+                'application.language',
+                DEFAULT_LANGUAGE
+            );
 
-            $mvc = explode('::', $mvc);
+            $from = is_null($from) ? $defaultLng : $from;
 
-            if (count($mvc) == 3) {
-                $module     = $mvc[0];
-                $controller = $mvc[1];
-                $action     = $mvc[2];
-            } else {
-                $module     = 'www';
-                $controller = 'static';
-                $action     = 'index';
+            $keys = redis()->keys('lang.' . $from . '.*');
+
+            if (count($rows)) {
+                foreach ($rows as $row) {
+                    $save = redis()->get($row);
+                    list($dummy, $from, $id) = explode('.', $row, 3);
+
+                    jdb(
+                        Config::get('application.i18n.db', SITE_NAME),
+                        Config::get('application.i18n.table', 'lang')
+                    )->create(['key' => $id, 'language' => $to, 'translation' => $save])->save();
+                }
             }
-
-            return jdb(
-                Config::get('application.i18n.db', SITE_NAME),
-                Config::get('application.i18n.table', 'translation')
-            )->create()
-            ->setModule($module)
-            ->setController($controller)
-            ->setAction($action)
-            ->setKey($id)
-            ->setLanguage($lng)
-            ->setTranslation($translation)
-            ->save();
         }
 
-        public static function forget($id, $lng)
+        private static function assign($string, $args = [])
         {
-            return static::remove($id, $lng);
-        }
-
-        public static function remove($id, $lng)
-        {
-            $mvc = container()->getMvc();
-            $mvc = empty($mvc) ? 'www::static::index' : $mvc;
-
-            $mvc = explode('::', $mvc);
-
-            if (count($mvc) == 3) {
-                $module     = $mvc[0];
-                $controller = $mvc[1];
-                $action     = $mvc[2];
-            } else {
-                $module     = 'www';
-                $controller = 'static';
-                $action     = 'index';
-            }
-
-            $row = jdb(
-                Config::get('application.i18n.db', SITE_NAME),
-                Config::get('application.i18n.table', 'translation')
-            )->where("key = $id")
-            ->where('language = ' . $lng)
-            ->where('module = ' . $module)
-            ->where('controller = ' . $controller)
-            ->where('action = ' . $action)
-            ->first(true);
-
-            if ($row) {
-                return $row->delete();
-            }
-
-            return false;
-        }
-
-        private static function assign($string, $params = [])
-        {
-            if (!count($params)) {
+            if (!count($args)) {
                 return $string;
             }
 
-            foreach ($params as $k => $v) {
+            foreach ($args as $k => $v) {
                 $string = str_replace("##$k##", $v, $string);
             }
 
