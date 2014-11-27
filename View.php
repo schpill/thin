@@ -394,6 +394,7 @@
                     if (File::exists($file)) {
                         File::delete($file);
                     }
+
                     File::put($file, $this->makeCompile($compile));
                 }
 

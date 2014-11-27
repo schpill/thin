@@ -5,6 +5,20 @@
     {
         public static function get($id, $default, $args = [])
         {
+            $defaultLng = Config::get(
+                'application.language',
+                DEFAULT_LANGUAGE
+            );
+
+            if ($defaultLng == lng()) {
+                /* on crée automatiquement les lignes en anglais */
+                // if (!static::has($id, 'en')) {
+                //     static::set($id, 'en', $default);
+                // }
+
+                return static::assign($default, $args);
+            }
+
             $mvc = container()->getMvc();
             $mvc = empty($mvc) ? 'www::static::index' : $mvc;
 
@@ -18,20 +32,6 @@
                 $module     = 'www';
                 $controller = 'static';
                 $action     = 'index';
-            }
-
-            $defaultLng = Config::get(
-                'application.language',
-                DEFAULT_LANGUAGE
-            );
-
-            if ($defaultLng == lng()) {
-                /* on crée automatiquement les lignes en anglais */
-                if (!static::has($id, 'en')) {
-                    static::set($id, 'en', $default);
-                }
-
-                return static::assign($default, $args);
             }
 
             $row = jdb(
