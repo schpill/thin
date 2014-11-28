@@ -11,7 +11,7 @@
         {
             $this->bucket   = $bucket;
             $this->session  = session('data_bucket_' . $bucket);
-            $this->url      = URLSITE . 'bucket/';
+            $this->url      = str_replace('https://', 'http://', URLSITE) . 'bucket/';
         }
 
         public function all($pattern)
