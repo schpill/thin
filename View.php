@@ -268,10 +268,10 @@
 
         protected function _run()
         {
-            $viewRedis  = container()->getViewRedis();
-            $echo       = func_get_arg(0);
-            $file       = $this->_viewFile;
-            $isExpired  = $this->expired();
+            $viewRedis = container()->getViewRedis();
+            $echo = func_get_arg(0);
+            $file = $this->_viewFile;
+            $isExpired = $this->expired();
 
             if (false === $this->_compiled) {
                 $isExpired = true;
@@ -400,7 +400,7 @@
                         File::delete($file);
                     }
 
-                    File::put($file, '<' . '?php namespace Thin; ?>' . "\n" . $this->makeCompile($compile));
+                    File::put($file, $this->makeCompile($compile));
                 }
 
                 return $file;
@@ -411,7 +411,7 @@
 
                 if (false !== $compile) {
                     $redis->set($keyAge, time());
-                    $content = '<' . '?php namespace Thin; ?>' . "\n" . $this->makeCompile($compile);
+                    $content = $this->makeCompile($compile);
                     $redis->set($keyTpl, $content);
 
                     return $content;
