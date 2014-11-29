@@ -130,10 +130,15 @@
                 $route = container()->getRoute();
                 $module = (null === $module) ? $route->getModule() : $module;
 
-                if (true === container()->getMultiSite()) {
-                    $viewFile = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                if (empty($module)) {
+                    $module = !isset($route->module) ? 'default' : $route->module;
+                    $viewFile = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'partials' . DS . $partial;
                 } else {
-                    $viewFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                    if (true === container()->getMultiSite()) {
+                        $viewFile = APPLICATION_PATH . DS . SITE_NAME . DS . 'modules' . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                    } else {
+                        $viewFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'scripts' . DS . $partial;
+                    }
                 }
             }
 
@@ -480,17 +485,23 @@
         {
             $route = container()->getRoute();
 
-            $module = $route->module;
+            $module = !isset($route->module) ? 'default' : $route->module;
 
             $content = File::read($file);
 
             if (strstr($content, '@@layout')) {
                 $layout = Utils::cut("@@layout('", "')", $content);
                 $layoutFile = APPLICATION_PATH . DS . 'modules' . DS . SITE_NAME . DS . $module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
+                $layoutFile2 = APPLICATION_PATH . DS . 'modules' . DS . $module . DS . 'views' . DS . 'layouts' . DS . $layout . '.phtml';
 
                 if (File::exists($layoutFile)) {
                     $contentL = File::read($layoutFile);
-                    $content = repl('@@content', repl("@@layout('$layout')", '', $content), $contentL);
+                    $content = str_replace('@@content', str_replace("@@layout('$layout')", '', $content), $contentL);
+                } else {
+                    if (File::exists($layoutFile2)) {
+                        $contentL = File::read($layoutFile2);
+                        $content = str_replace('@@content', str_replace("@@layout('$layout')", '', $content), $contentL);
+                    }
                 }
             }
 
