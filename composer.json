@@ -1,0 +1,54 @@
+{
+    "name": "thin/framework",
+    "description": "The Thin Framework.",
+    "keywords": ["framework", "thin"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Gerald Plusquellec",
+            "email": "me@geraldplusquellec.me"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "ext-gd": "*",
+        "ext-curl": "*",
+        "ext-intl": "*",
+        "ext-pdo_sqlite": "*",
+        "ext-soap": "*",
+        "ext-mongo": "*",
+        "ext-redis": "*",
+        "ext-openssl": "*",
+        "ext-mcrypt": "*",
+        "classpreloader/classpreloader": "~1.0.2",
+        "d11wtq/boris": "~1.0",
+        "doctrine/annotations": "~1.0",
+        "ircmaxell/password-compat": "~1.0",
+        "jeremeamia/superclosure": "~1.0.1",
+        "league/flysystem": "0.6.*",
+        "monolog/monolog": "~1.6",
+        "mtdowling/cron-expression": "~1.0",
+        "nesbot/carbon": "~1.0",
+        "patchwork/utf8": "~1.1",
+        "predis/predis": "~1.0",
+        "swiftmailer/swiftmailer": "~5.1",
+        "vlucas/phpdotenv": "~1.0"
+    },
+    "require-dev": {
+        "aws/aws-sdk-php": "~2.7",
+        "iron-io/iron_mq": "~1.5",
+        "pda/pheanstalk": "~3.0",
+        "mockery/mockery": "~0.9",
+        "phpunit/phpunit": "~4.0"
+    },
+    "autoload": {
+        "files": [
+            "Helper.php"
+        ]
+    },
+    "suggest": {
+        "doctrine/dbal": "Allow renaming columns and dropping SQLite columns.",
+        "guzzlehttp/guzzle": "Required for Mailgun and Mandrill mail drivers."
+    },
+    "minimum-stability": "dev"
+}
