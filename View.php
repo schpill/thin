@@ -658,8 +658,8 @@
         public function __call($func, $argv)
         {
             if (substr($func, 0, 3) == 'get') {
-                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
-                $var = Inflector::lower($uncamelizeMethod);
+                $uncamelizeMethod   = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var                = Inflector::lower($uncamelizeMethod);
 
                 if (isset($this->$var)) {
                     return $this->$var;
@@ -667,10 +667,10 @@
                     return null;
                 }
             } elseif (substr($func, 0, 3) == 'set') {
-                $value = Arrays::first($argv);
-                $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
-                $var = Inflector::lower($uncamelizeMethod);
-                $this->$var = $value;
+                $value              = Arrays::first($argv);
+                $uncamelizeMethod   = Inflector::uncamelize(lcfirst(substr($func, 3)));
+                $var                = Inflector::lower($uncamelizeMethod);
+                $this->$var         = $value;
 
                 return $this;
             }
@@ -708,9 +708,9 @@
             $versionJs = $configs['app']['js']['version'];
             $versionCss = $configs['app']['css']['version'];
 
-            if(null === $ext) {
+            if (null === $ext) {
                 $tabString = explode('.', Inflector::lower($asset));
-                $ext = Arrays::last($tabString);
+                $ext       = Arrays::last($tabString);
             }
 
             if ($ext == 'css') {
