@@ -42,6 +42,7 @@
         "phpunit/phpunit": "~4.0"
     },
     "autoload": {
+        "psr-0": { "Thin": "" },
         "files": [
             "Helper.php"
         ]
