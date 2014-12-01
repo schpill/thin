@@ -552,7 +552,7 @@
             $t->setName(sha1($name))->setLanguage($language)->setValue($value)->save();
         }
 
-        function t($key, $params = array(), $echo = true)
+        function t_old($key, $params = array(), $echo = true)
         {
             $lng = session('web')->getLanguage();
 
