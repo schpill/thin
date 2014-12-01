@@ -308,7 +308,7 @@
             return new $name();
         }
 
-        function di()
+        function di_old()
         {
             return with(new Di);
         }
