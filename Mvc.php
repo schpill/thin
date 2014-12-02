@@ -101,7 +101,7 @@
             return thin($service);
         }
 
-        public static function to($name, $args = [], $dry = true)
+        public static function to($name, $args = [], $dry = true, $echo = true)
         {
             $route = static::getRouteByName($name);
 
@@ -114,10 +114,20 @@
                     }
                 }
 
-                return $dry ? $path : trim(urldecode(URLSITE), '/') . $path;
-            }
+                $path = Config::get('application.base_uri') . $path;
 
-            return $dry ? '/' : urldecode(URLSITE);
+                if (true === $echo) {
+                    echo $dry ? $path : trim(urldecode(URLSITE), '/') . $path;
+                } else {
+                    return $dry ? $path : trim(urldecode(URLSITE), '/') . $path;
+                }
+            } else {
+                if (true === $echo) {
+                    echo $dry ? '/' . Config::get('application.base_uri') : urldecode(URLSITE);
+                } else {
+                    return $dry ? '/' . Config::get('application.base_uri') : urldecode(URLSITE);
+                }
+            }
         }
 
         public static function getRouteByName($name)
