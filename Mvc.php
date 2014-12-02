@@ -146,10 +146,11 @@
 
             $is404 = true;
 
-            $module     = !isset($route->module) ? 'default' : $route->module;
+            $module     = !isset($route->module)    ? 'default' : $route->module;
             $controller = $route->controller;
             $action     = $route->action;
-            $render     = !isset($route->render) ? $action : $route->render;
+            $render     = !isset($route->render)    ? $action   : $route->render;
+            $stats      = !isset($route->stats)     ? true      : $route->stats;
 
             if ($action instanceof \Closure) {
                 return call_user_func_array($action, [$route]);
@@ -226,6 +227,12 @@
                             $keyEv = $keyEvent . '.done';
                             Event::run($keyEv);
                             $controllerInstance->exit();
+                        }
+
+                        if (isset($controllerInstance->view)) {
+                            if (true === $stats) {
+                                echo $controllerInstance->view->showStats();
+                            }
                         }
                     }
                 }

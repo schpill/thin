@@ -911,8 +911,7 @@
             ? 'NoSQL Query executed'
             : 'NoSQL Queries executed';
 
-            $SQLDurationNoSQL = \Dbjson\Dbjson::$duration;
-
+            $SQLDurationNoSQL   = number_format(\Dbjson\Dbjson::$duration, 6);
             $execPHPSQL         = $executionTime - $SQLDuration;
             $execPHPNoSQL       = $executionTime - $SQLDurationNoSQL;
             $execPHP            = $executionTime - $SQLDuration - $SQLDurationNoSQL;
