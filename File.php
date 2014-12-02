@@ -509,7 +509,7 @@
 				$back = [];
 
 				for ($i = $start - 1; $i < $end; $i++) {
-					array_push($back, $content[$i]);
+					if (isset($content[$i])) array_push($back, $content[$i]);
 				}
 
 				return implode('', $back);
