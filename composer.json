@@ -42,9 +42,7 @@
         "phpunit/phpunit": "~4.0"
     },
     "autoload": {
-        "files": [
-            "Helper.php"
-        ]
+        "psr-4": { "Thin": "" }
     },
     "suggest": {
         "doctrine/dbal": "Allow renaming columns and dropping SQLite columns.",
