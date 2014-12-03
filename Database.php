@@ -783,9 +783,10 @@
                 }
 
                 $skip = false;
+                $skipException = false;
 
                 if (!Arrays::in($k, $fields)) {
-                    if (count($this->foreign)) {
+                    if (!empty($this->foreign)) {
                         $skipException = false;
 
                         foreach ($this->foreign as $originalField => $renamed) {
