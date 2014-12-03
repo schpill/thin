@@ -1509,6 +1509,9 @@
                     foreach ($consition as $key => $value) {
                         $this->wheres[] = [$op, "$key = $value"];
                     }
+                } else {
+                    list($field, $operand, $value) = $condition;
+                    $this->wheres[] = [$op, "$field $operand '$value'"];
                 }
             }
 
