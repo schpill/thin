@@ -85,7 +85,7 @@
             if ($cmd == static::CMD_START) {
                 // check if the timer has already been started
                 if (static::$_running === true) {
-                    ThinLog('Timer has already been started');
+                    // ThinLog('Timer has already been started');
                     return;
                 }
 
@@ -95,7 +95,7 @@
             } else if ($cmd == static::CMD_STOP) {
                 // check if the timer is already stopped
                 if (static::$_running === false) {
-                    ThinLog('Timer has already been stopped/paused or has not yet been started');
+                    // ThinLog('Timer has already been stopped/paused or has not yet been started');
                     return;
                 }
 
@@ -104,7 +104,7 @@
 
             } else {
                 // fail execution of the script
-                ThinLog('Invalid command specified');
+                // ThinLog('Invalid command specified');
                 return;
             }
 
@@ -151,7 +151,7 @@
         {
             // stop timer if it is still running
             if (static::$_running === true) {
-                ThinLog('Forcing timer to stop', E_USER_NOTICE);
+                // ThinLog('Forcing timer to stop', E_USER_NOTICE);
                 static::stop();
             }
 

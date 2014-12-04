@@ -7,11 +7,11 @@
         private $response;
         private $url;
 
-        public function __construct($bucket)
+        public function __construct($bucket, $url = null)
         {
             $this->bucket   = $bucket;
             $this->session  = session('data_bucket_' . $bucket);
-            $this->url      = str_replace('https://', 'http://', URLSITE) . 'bucket/';
+            $this->url      = is_null($url) ? str_replace('https://', 'http://', URLSITE) . 'bucket/' : $url . '/';
         }
 
         public function all($pattern)
