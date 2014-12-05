@@ -129,6 +129,7 @@
                 unset($data['id']);
                 unset($data['created_at']);
                 unset($data['updated_at']);
+                unset($data['deleted_at']);
             }
 
             return $data;
