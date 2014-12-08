@@ -21,7 +21,7 @@
                 [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE]
             ) ? 'FATAL ERROR' : 'ERROR';
 
-            if (!fnmatch('Undefined offset:*', $message) && !fnmatch('*StreamConnection.php*', $file)) {
+            if (!fnmatch('Undefined offset:*', $message) && !fnmatch('*StreamConnection.php*', $file) && !fnmatch('*connected*', $message)) {
                 $start      = $line > 5 ? $line - 5 : $line;
                 $code       = Thin\File::readLines($file, $start, $line + 5);
 
@@ -67,7 +67,9 @@
                     [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE]
                 ) ? 'FATAL ERROR' : 'ERROR';
 
-                if (!fnmatch('*undefinedVariable*', $message) && file_exists($file)) {
+                if (fnmatch('*Allowed memory size*', $message)) {
+                    dd($file . '['.$message.']', 'Ligne:' . $line);
+                } elseif (!fnmatch('*undefinedVariable*', $message) && !fnmatch('*connected*', $message) && file_exists($file)) {
                     $start      = $line > 5 ? $line - 5 : $line;
                     $code       = Thin\File::readLines($file, $start, $line + 5);
 
