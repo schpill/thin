@@ -42,6 +42,45 @@
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
 
+    if (!function_exists('bigDb')) {
+        function bigDb($table, $db = null)
+        {
+            $db = is_null($db) ? SITE_NAME : $db;
+            return Dbredis\Db::instance($db, $table);
+        }
+    }
+
+    if (!function_exists('remember')) {
+        function remember($closure, $args = [], $minAge = 0)
+        {
+            $code       = Arrays::first(debug_backtrace());
+            $keyData    = 'remembers.data.' . sha1($code['file'] . $code['line']);
+            $keyAge     = 'remembers.age.' . sha1($code['file'] . $code['line']);
+
+            $age        = redis()->get($keyAge);
+
+            if (strlen($age)) {
+                if ($minAge > 0) {
+                    if ($age > $minAge) {
+                        return redis()->get($keyData);
+                    }
+                } else {
+                    return redis()->get($keyData);
+                }
+            }
+
+            if (is_callable($closure)) {
+                $res = call_user_func_array($closure, $args);
+                redis()->set($keyAge, time());
+                redis()->set($keyData, $res);
+
+                return $res;
+            }
+
+            return null;
+        }
+    }
+
     if (!function_exists('one')) {
         function one($table = null)
         {
