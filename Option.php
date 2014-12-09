@@ -2,19 +2,48 @@
     namespace Thin;
 
     use Closure;
-    use Dbjson\Dbjson as Db;
+    use Dbredis\Db;
 
     class Option
     {
-        private $db, $id, $optDb, $optTable, $results;
+        private $db, $id, $optMotor, $optDb, $optTable, $results;
         private $wheres = [];
 
-        public function __construct(Db $model, $id, $cached = true)
+        public function __construct($model, $inCache = true)
         {
-            $this->db       = Db::instance(SITE_NAME, 'globaloption')->inCache($cached);
-            $this->optDb    = $model->db;
-            $this->optTable = $model->table;
-            $this->id       = $id;
+            if (!is_object($model)) {
+                throw new Exception("The first argument is not a model.");
+            }
+
+            if ($model instanceof Container) {
+                $motor = 'dbjson';
+            } else {
+                $motor = 'dbredis';
+            }
+
+            $this->db       = Db::instance(SITE_NAME, 'option')->inCache($inCache);
+            $this->optDb    = $model->db()->db;
+            $this->optTable = $model->db()->table;
+            $this->optMotor = $motor;
+            $this->id       = $model->id;
+        }
+
+        public function sets(array $options, $multiple = false)
+        {
+            foreach ($options as $k => $v) {
+                $this->set($k, $v, $multiple);
+            }
+
+            return $this;
+        }
+
+        public function setsMultiple(array $options)
+        {
+            foreach ($options as $k => $v) {
+                $this->set($k, $v, true);
+            }
+
+            return $this;
         }
 
         public function set($name, $value, $multiple = false)
@@ -22,6 +51,7 @@
             if (true === $multiple) {
                 $this->db->firstOrCreate([
                     'object_id'         => $this->id,
+                    'object_motor'      => $this->optMotor,
                     'object_database'   => $this->optDb,
                     'object_table'      => $this->optTable,
                     'name'              => $name,
@@ -30,6 +60,7 @@
             } else {
                 $this->db->firstOrCreate([
                     'object_id'         => $this->id,
+                    'object_motor'      => $this->optMotor,
                     'object_database'   => $this->optDb,
                     'object_table'      => $this->optTable,
                     'name'              => $name
@@ -47,6 +78,7 @@
         public function get($name, $default = null)
         {
             $option = $this->db
+            ->where(['object_motor', '=', $this->optMotor])
             ->where(['object_database', '=', $this->optDb])
             ->where(['object_table', '=', $this->optTable])
             ->where(['object_id', '=', $this->id])
@@ -58,19 +90,21 @@
 
         public function getMultiple($name, $default = [])
         {
-            $option = $this->db
+            $options = $this->db
+            ->where(['object_motor', '=', $this->optMotor])
             ->where(['object_database', '=', $this->optDb])
             ->where(['object_table', '=', $this->optTable])
             ->where(['object_id', '=', $this->id])
             ->where(['name', '=', $name])
             ->exec();
 
-            return !$option ? $default : $option->value;
+            return empty($options) ? $default : $options;
         }
 
         public function all()
         {
             return $this->db
+            ->where(['object_motor', '=', $this->optMotor])
             ->where(['object_database', '=', $this->optDb])
             ->where(['object_table', '=', $this->optTable])
             ->where(['object_id', '=', $this->id])
@@ -254,6 +288,11 @@
 
             if (!empty($datas)) {
                 foreach ($datas as $tab) {
+                    $old = $tab;
+                    $new = [];
+                    $new[$tab['name']] = $tab['value'];
+                    $tab = $new;
+
                     if (!empty($tab)) {
                         $val = isAke($tab, $field, null);
 
@@ -291,7 +330,7 @@
                         }
 
                         if (true === $check) {
-                            array_push($collection, $tab);
+                            array_push($collection, $old);
                         }
                     }
                 }

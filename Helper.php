@@ -37,10 +37,18 @@
     use Thin\Request;
     use Thin\Tool;
     use Thin\Alias;
+    use Thin\Option;
     use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
+
+    if (!function_exists('opt')) {
+        function opt($model, $cache = true)
+        {
+            return new Option($model, $cache);
+        }
+    }
 
     if (!function_exists('bigDb')) {
         function bigDb($table, $db = null)
