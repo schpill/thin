@@ -62,8 +62,8 @@
         function remember($closure, $args = [], $minAge = 0)
         {
             $code       = Arrays::first(debug_backtrace());
-            $keyData    = 'remembers.data.' . sha1($code['file'] . $code['line']);
-            $keyAge     = 'remembers.age.' . sha1($code['file'] . $code['line']);
+            $keyData    = 'remembers.data.' . sha1($minAge . $code['file'] . $code['line'] . serialize($args));
+            $keyAge     = 'remembers.age.' . sha1($minAge . $code['file'] . $code['line'] . serialize($args));
 
             $age        = redis()->get($keyAge);
 
