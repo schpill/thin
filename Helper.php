@@ -43,27 +43,6 @@
     use Thin\Session\Redis as RedisSession;
     use Dbjson\Cache as JCache;
 
-    if (!function_exists('opt')) {
-        function opt($model, $cache = true)
-        {
-            return new Option('option', $model, $cache);
-        }
-    }
-
-    if (!function_exists('opt')) {
-        function uplift($model, $cache = true)
-        {
-            return new Option('uplift', $model, $cache);
-        }
-    }
-
-    if (!function_exists('setting')) {
-        function setting($model, $cache = true)
-        {
-            return new Option('setting', $model, $cache);
-        }
-    }
-
     if (!function_exists('bigDb')) {
         function bigDb($table, $db = null)
         {

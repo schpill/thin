@@ -75,7 +75,7 @@
             return $this->set($name, $value, true);
         }
 
-        public function get($name, $default = null)
+        public function get($name, $id = false, $default = null)
         {
             $option = $this->db
             ->where(['object_motor', '=', $this->optMotor])
@@ -85,11 +85,56 @@
             ->where(['name', '=', $name])
             ->first(true);
 
-            return !$option ? $default : $option->value;
+            return !$option ? $default : !$id ? $option->value : [$option->id => $option->value];
         }
 
-        public function getMultiple($name, $default = [])
+        public function gets($name, $id = false)
         {
+            return $this->getMultiple($name, $id);
+        }
+
+        public function del($what)
+        {
+            /* polymorphism */
+
+            if (is_numeric($what)) {
+                $option = $this->db->find($id);
+            } elseif (is_object($what)) {
+                return $what->delete();
+            } else {
+                $option = $this->db
+                ->where(['object_motor', '=', $this->optMotor])
+                ->where(['object_database', '=', $this->optDb])
+                ->where(['object_table', '=', $this->optTable])
+                ->where(['object_id', '=', $this->id])
+                ->where(['name', '=', $name])
+                ->first(true);
+            }
+
+            return !$option ? false : $option->delete();
+        }
+
+        public function dels($name)
+        {
+            $options = $this->db
+            ->where(['object_motor', '=', $this->optMotor])
+            ->where(['object_database', '=', $this->optDb])
+            ->where(['object_table', '=', $this->optTable])
+            ->where(['object_id', '=', $this->id])
+            ->where(['name', '=', $name])
+            ->exec(true);
+
+            foreach ($options as $option) {
+                $option->delete();
+            }
+
+            return true;
+        }
+
+        public function getMultiple($name, $id = false)
+        {
+            $collection = [];
+
             $options = $this->db
             ->where(['object_motor', '=', $this->optMotor])
             ->where(['object_database', '=', $this->optDb])
@@ -98,7 +143,15 @@
             ->where(['name', '=', $name])
             ->exec();
 
-            return empty($options) ? $default : $options;
+            foreach ($options as $option) {
+                if (false === $id) {
+                    array_push($collection, $option['value']);
+                } else {
+                    array_push($collection, [$option['id'] => $option['value']]);
+                }
+            }
+
+            return $collection;
         }
 
         public function all()
