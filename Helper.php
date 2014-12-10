@@ -46,7 +46,21 @@
     if (!function_exists('opt')) {
         function opt($model, $cache = true)
         {
-            return new Option($model, $cache);
+            return new Option('option', $model, $cache);
+        }
+    }
+
+    if (!function_exists('opt')) {
+        function uplift($model, $cache = true)
+        {
+            return new Option('uplift', $model, $cache);
+        }
+    }
+
+    if (!function_exists('setting')) {
+        function setting($model, $cache = true)
+        {
+            return new Option('setting', $model, $cache);
         }
     }
 
@@ -2389,11 +2403,6 @@ $(document).ready(function() {
             return $class;
         }
 
-        function entity()
-        {
-            return Doctrine::em();
-        }
-
         function helper($helper)
         {
             $file = APPLICATION_PATH . DS . 'helpers' . DS . ucfirst(Inflector::lower($helper)) . '.php';
@@ -3131,6 +3140,21 @@ $(document).ready(function() {
             return null;
         }
     }
+
+    if (!function_exists('m')) {
+        function m()
+        {
+            static $s;
+
+            if (is_null($s)) {
+                $s = new Memcache;
+                $s->connect('localhost:11211');
+            }
+
+            return $s;
+        }
+    }
+
     if (!function_exists('memory')) {
         function memory($entity, $table)
         {

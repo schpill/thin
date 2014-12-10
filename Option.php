@@ -9,7 +9,7 @@
         private $db, $id, $optMotor, $optDb, $optTable, $results;
         private $wheres = [];
 
-        public function __construct($model, $inCache = true)
+        public function __construct($type, $model, $inCache = true)
         {
             if (!is_object($model)) {
                 throw new Exception("The first argument is not a model.");
@@ -21,7 +21,7 @@
                 $motor = 'dbredis';
             }
 
-            $this->db       = Db::instance(SITE_NAME, 'option')->inCache($inCache);
+            $this->db       = Db::instance(SITE_NAME, $type)->inCache($inCache);
             $this->optDb    = $model->db()->db;
             $this->optTable = $model->db()->table;
             $this->optMotor = $motor;
