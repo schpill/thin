@@ -3,8 +3,8 @@
      * Geoloc class
      * @author      Gerald Plusquellec
      */
-
     namespace Thin;
+
     class Geoloc
     {
         public static function request($address, $locale = 'fr')
@@ -105,6 +105,5 @@
 
             return round($km, 2);
         }
-
     }
 
