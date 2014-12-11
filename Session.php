@@ -208,7 +208,7 @@
 
                     return $this;
                 } else {
-                    container()->log("The key $key does not exist in this session.");
+                    error_log("The key $key does not exist in this session.");
                 }
             }
         }

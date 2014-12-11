@@ -69,14 +69,25 @@
 
         public static function getCoords($address, $region = 'FR')
         {
+            $key        = 'coords.' . sha1(serialize(func_get_args()));
+
+            $coords     = redis()->get($key);
+
+            if (strlen($coords)) {
+                return unserialize($coords);
+            }
+
             $address    = urlencode($address);
             $json       = fgc("http://maps.google.com/maps/api/geocode/json?address=$address&sensor=false&region=$region");
             $json       = json_decode($json);
             $lat        = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'};
-            $long       = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'};
+            $lng        = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'};
 
-            $coords     = new Coords;
-            return $coords->setLatitude($lat)->setLongitude($long);
+            $coords     = ['lng' => $lng, 'lat' => $lat];
+
+            redis()->set($key, serialize($coords));
+
+            return $coords;
         }
 
         public static function distance($address1, $address2)
