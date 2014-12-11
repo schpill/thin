@@ -156,12 +156,33 @@
 
         public function all()
         {
-            return $this->db
+            $collection = [];
+
+            $options = $this->db
             ->where(['object_motor', '=', $this->optMotor])
             ->where(['object_database', '=', $this->optDb])
             ->where(['object_table', '=', $this->optTable])
             ->where(['object_id', '=', $this->id])
             ->exec();
+
+            foreach ($options as $option) {
+                if (!isset($collection[$option['name']])) {
+                    $collection[$option['name']] = $option['value'];
+                } else {
+                    /* cas des options à valeurs multiples */
+                    if (!Arrays::is($collection[$option['name']])) {
+                        $val = $collection[$option['name']];
+                        unset($collection[$option['name']]);
+
+                        $collection[$option['name']] = [];
+                        $collection[$option['name']][] = $val;
+                        $collection[$option['name']][] = $option['value'];
+                    } else {
+                        $collection[$option['name']][] = $option['value'];
+                    }
+                }
+            }
+            return $collection;
         }
 
         public function inCache($bool = true)
