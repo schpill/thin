@@ -69,7 +69,7 @@
 
         public static function getCoords($address, $region = 'FR')
         {
-            $key        = 'coords.' . sha1(serialize(func_get_args()));
+            $key        = 'loc.coords.' . sha1(serialize(func_get_args()));
 
             $coords     = redis()->get($key);
 
@@ -77,17 +77,45 @@
                 return unserialize($coords);
             }
 
-            $address    = urlencode($address);
-            $json       = fgc("http://maps.google.com/maps/api/geocode/json?address=$address&sensor=false&region=$region");
-            $json       = json_decode($json);
-            $lat        = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'};
-            $lng        = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'};
+            $address        = urlencode($address);
+            $json           = fgc("http://maps.google.com/maps/api/geocode/json?address=$address&sensor=false&region=$region");
+            $json           = json_decode($json);
+            $lat            = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'};
+            $lng            = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'};
+            $addrComponents = $json->{'results'}[0]->{'address_components'};
 
-            $coords     = ['lng' => $lng, 'lat' => $lat];
+            $addrComponents = json_decode(json_encode($addrComponents), true);
 
-            redis()->set($key, serialize($coords));
+            $components = [];
 
-            return $coords;
+            foreach ($addrComponents as $component) {
+                $k = implode('_', $component['types']);
+
+                if ($k == 'locality_political') {
+                    $k = 'city';
+                } elseif ($k == 'route') {
+                    $k = 'street';
+                } elseif ($k == 'administrative_area_level_2_political') {
+                    $k = 'department';
+                } elseif ($k == 'administrative_area_level_1_political') {
+                    $k = 'region';
+                } elseif ($k == 'country_political') {
+                    $k = 'country';
+                } elseif ($k == 'postal_code') {
+                    $k = 'zip';
+                }
+
+                unset($component['types']);
+                $components[$k] = $component;
+            }
+
+            $components += ['lng' => $lng, 'lat' => $lat, 'geohash' => with(new Geohash)->encode($lat, $lng)];
+
+            ksort($components);
+
+            redis()->set($key, serialize($components));
+
+            return $components;
         }
 
         public static function distance($address1, $address2)
