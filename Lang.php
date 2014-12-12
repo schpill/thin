@@ -18,9 +18,10 @@
 
             $lng = lng();
 
-            $cache = redis()->get('lang.' . $lng . '.' . $id);
+            $cache      = redis()->get('lang.' . $lng . '.' . $id);
+            $cacheEn    = redis()->get('lang.en.' . $id);
 
-            if (strlen($cache)) {
+            if (strlen($cache) && strlen($cacheEn)) {
                 return $cache;
             }
 
@@ -28,12 +29,7 @@
                 $translation = count($args) ? static::assign($default, $args) : $default;
                 $save = $default;
             } else {
-                $row = jdb(
-                    Config::get('application.i18n.db', SITE_NAME),
-                    Config::get('application.i18n.table', 'lang')
-                )->where(['key', '=', $id])
-                ->where(['language', '=', $lng])
-                ->first(true);
+                $row = self::getDb()->where(['key', '=', $id])->where(['language', '=', $lng])->first(true);
 
                 if ($row) {
                     $translation = count($args) ? static::assign($row->translation, $args) : $row->translation;
@@ -42,14 +38,16 @@
                     $translation = count($args) ? static::assign($default, $args) : $default;
                     $save = $default;
 
-                    jdb(
-                        Config::get('application.i18n.db', SITE_NAME),
-                        Config::get('application.i18n.table', 'lang')
-                    )->create(['key' => $id, 'language' => $lng, 'translation' => $save])->save();
+                    self::getDb()->create(['key' => $id, 'language' => $lng, 'translation' => $save])->save();
                 }
             }
 
             redis()->set('lang.' . $lng . '.' . $id, $save);
+
+            if (!strlen($cacheEn)) {
+                redis()->set('lang.en.' . $id, $save);
+                self::getDb()->create(['key' => $id, 'language' => 'en', 'translation' => $save])->save();
+            }
 
             return $translation;
         }
@@ -81,10 +79,7 @@
                     $save = redis()->get($row);
                     list($dummy, $from, $id) = explode('.', $row, 3);
 
-                    jdb(
-                        Config::get('application.i18n.db', SITE_NAME),
-                        Config::get('application.i18n.table', 'lang')
-                    )->create(['key' => $id, 'language' => $to, 'translation' => $save])->save();
+                    self::getDb()->create(['key' => $id, 'language' => $to, 'translation' => $save])->save();
                 }
             }
         }
@@ -100,5 +95,10 @@
             }
 
             return $string;
+        }
+
+        public static function getDb()
+        {
+            return bigDb('translation', SITE_NAME);
         }
     }
