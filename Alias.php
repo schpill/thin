@@ -13,10 +13,11 @@
         public static function facade($to, $target, $namespace = 'Thin')
         {
             $class  = '\\' . $namespace . '\\' . $target;
+            $target = $to;
             $to     = '\\Thin\\' . $to;
 
             if (class_exists($class) && !class_exists($to)) {
-                class_alias($class, $to);
+                eval('namespace Thin; class ' . $target . ' extends ' . $class . ' {}');
             } else {
                 if (!class_exists($class)) {
                     throw new Exception("The class '$class' does not exist.");
