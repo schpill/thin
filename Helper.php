@@ -49,6 +49,11 @@
             $db = is_null($db) ? SITE_NAME : $db;
             return Dbredis\Db::instance($db, $table);
         }
+
+        function rdb($db, $table)
+        {
+            return Dbredis\Db::instance($db, $table);
+        }
     }
 
     if (!function_exists('remember')) {
