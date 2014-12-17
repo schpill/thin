@@ -880,18 +880,6 @@
             return null;
         }
 
-        function getStatus($status = 'online')
-        {
-            $db = dm('statuspage');
-            $res = $db->where('name = ' . $status)->get();
-
-            if (count($res)) {
-                return $db->first($res);
-            }
-
-            return null;
-        }
-
         function cms_get_page($name = 'home')
         {
             $db = dm('page');
