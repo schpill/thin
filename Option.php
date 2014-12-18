@@ -28,13 +28,9 @@
             $this->id       = $model->id;
         }
 
-        public function sets(array $options, $multiple = false)
+        public function sets($key, $value)
         {
-            foreach ($options as $k => $v) {
-                $this->set($k, $v, $multiple);
-            }
-
-            return $this;
+            return $this->set($key, $value, true);
         }
 
         public function setsMultiple(array $options)
