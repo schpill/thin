@@ -108,8 +108,8 @@
             $processedStr   = $this->phoneme($string, $language);
             $processedCmp   = $this->phoneme($cmp, $language);
             $score          = levenshtein($processedStr, $processedCmp);
-            $smaller        = (strlen($processedStr) < strlen($processedCmp)) ? $processedStr : $processedCmp;
-            $biggest        = (strlen($processedStr) < strlen($processedCmp)) ? $processedCmp : $processedStr;
+            $smaller        = strlen($processedStr) < strlen($processedCmp) ? $processedStr : $processedCmp;
+            $biggest        = strlen($processedStr) < strlen($processedCmp) ? $processedCmp : $processedStr;
 
             $phonexStr      = $this->getPhonex($string);
             $phonexCmp      = $this->getPhonex($cmp);
@@ -122,9 +122,9 @@
             $finalScore     = round((1.0 / $avgLength) * $score, 6);
             $finalScore     = round(((1 - $finalScore) * 100), 2);
 
-            $finalScore     = (0 > $finalScore && false !== $contain) ? (100 + $finalScore) : $finalScore;
-            $finalScore     = (100 < $finalScore) ? 100 : $finalScore;
-            $finalScore     = (0 > $finalScore) ? 0 : $finalScore;
+            $finalScore     = 0 > $finalScore && false !== $contain ? 100 + $finalScore : $finalScore;
+            $finalScore     = 100 < $finalScore ? 100   : $finalScore;
+            $finalScore     = 0 > $finalScore   ? 0     : $finalScore;
 
             if ($finalScore / 100 >= $this->_tolerance) {
                 $grade = 1;
@@ -132,15 +132,15 @@
                 $grade = 0;
             }
 
-            $proxMatch  = self::checkProx(self::_iconv($string), self::_iconv($comp));
-            $pctg       = ($finalScore > $proxMatch) ? $finalScore : $proxMatch;
+            $proxMatch  = self::checkProx(self::_iconv($string), self::_iconv($cmp));
+            $pctg       = $finalScore > $proxMatch ? $finalScore : $proxMatch;
 
-            if (strstr($string, ' ') && strstr($comp, ' ')) {
-                $matchWords = self::matchWords(self::_iconv($string), self::_iconv($comp));
-                $pctg       = ($matchWords > $pctg) ? $matchWords : $pctg;
+            if (strstr($string, ' ') && strstr($cmp, ' ')) {
+                $matchWords = self::matchWords(self::_iconv($string), self::_iconv($cmp));
+                $pctg       = $matchWords > $pctg ? $matchWords : $pctg;
             }
 
-            $finalScore  = ($pctg > $bestScore) ? $pctg : $bestScore;
+            $finalScore  = $pctg > $finalScore ? $pctg : $finalScore;
 
 
             $data = array(
@@ -150,6 +150,17 @@
             );
 
             return $data;
+        }
+
+        public static function __callStatic($fn, $args)
+        {
+            $instance = self::instance();
+
+            if ($fn == 'proximity') {
+                $fn = 'similarity';
+            }
+
+            return call_user_func_array([$instance, $fn], $args);
         }
 
 
@@ -344,7 +355,7 @@
         }
 
         /**
-        * private function getNum ()
+        * private function getPhonex ()
         * method to get a numeric array from the main string
         * we call the callback function mapNum and we sum all the values of the obtained array to get the final phonex code
         */
@@ -357,7 +368,7 @@
             return round($score, 3);
         }
 
-        protected function french($string)
+        public static function french($string)
         {
             $accents = array(
                 'É' => 'E',
@@ -1178,9 +1189,9 @@
                 $nsDistance = range(1, $nRightLength + 1);
 
                 for ($nLeftPos = 1; $nLeftPos <= $nLeftLength; $nLeftPos++) {
-                    $cLeft                      = $sLeft[$nLeftPos - 1];
-                    $nDiagonal                  = $nLeftPos - 1;
-                    Arrays::first($nsDistance)  = $nLeftPos;
+                    $cLeft          = $sLeft[$nLeftPos - 1];
+                    $nDiagonal      = $nLeftPos - 1;
+                    $nsDistance[0]  = $nLeftPos;
 
                     for ($nRightPos = 1; $nRightPos <= $nRightLength; $nRightPos++) {
                         $cRight = $sRight[$nRightPos - 1];

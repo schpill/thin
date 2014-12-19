@@ -71,6 +71,24 @@
             return $this->set($name, $value, true);
         }
 
+        public function has($name, $value = null)
+        {
+            $query = $this->db
+            ->where(['object_motor', '=', $this->optMotor])
+            ->where(['object_database', '=', $this->optDb])
+            ->where(['object_table', '=', $this->optTable])
+            ->where(['object_id', '=', $this->id])
+            ->where(['name', '=', $name]);
+
+            if (!empty($value)) {
+                $query = $query->where(['value', '=', $value]);
+            }
+
+            $options = $query->exec();
+
+            return !empty($options);
+        }
+
         public function get($name, $id = false, $default = null)
         {
             $option = $this->db
@@ -118,6 +136,24 @@
             ->where(['object_table', '=', $this->optTable])
             ->where(['object_id', '=', $this->id])
             ->where(['name', '=', $name])
+            ->exec(true);
+
+            foreach ($options as $option) {
+                $option->delete();
+            }
+
+            return true;
+        }
+
+        public function delByValue($name, $value)
+        {
+            $options = $this->db
+            ->where(['object_motor', '=', $this->optMotor])
+            ->where(['object_database', '=', $this->optDb])
+            ->where(['object_table', '=', $this->optTable])
+            ->where(['object_id', '=', $this->id])
+            ->where(['name', '=', $name])
+            ->where(['value', '=', $value])
             ->exec(true);
 
             foreach ($options as $option) {
