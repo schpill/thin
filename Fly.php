@@ -47,6 +47,13 @@
             return $check != isake($this->_data, $key, $check);
         }
 
+        public function hasEvent($key)
+        {
+            $check = Utils::token();
+
+            return $check != isake($this->_events, $key, $check);
+        }
+
         public function __unset($key)
         {
             unset($this->_data[$key]);
