@@ -4,6 +4,7 @@
      * @author      Gerald Plusquellec
      */
     namespace Thin;
+
     class Arrays
     {
         /**
@@ -15,9 +16,11 @@
         {
             if (true === static::isAssoc($array)) {
                 $object = new Object;
+
                 if (!empty($type)) {
                     $object->thin_type = $type;
                 }
+
                 foreach ($array as $key => $value) {
                     if (static::is($value)) {
                         $object->$key = static::getObject($value);
@@ -25,8 +28,10 @@
                         $object->$key = $value;
                     }
                 }
+
                 return $object;
             }
+
             return null;
         }
 
@@ -52,7 +57,7 @@
                 // If the key doesn't exist at this depth, we will just create an empty array
                 // to hold the next value, allowing us to create the arrays to hold final
                 // values at the correct depth. Then we'll keep digging into the array.
-                if ( ! isset($array[$key]) || ! is_array($array[$key]))  {
+                if (!isset($array[$key]) || ! is_array($array[$key])) {
                     $array[$key] = array();
                 }
 
@@ -159,12 +164,12 @@
          */
         public static function path($array, $path, $default = null, $delimiter = null)
         {
-            if (!static::isArray($array)) {
+            if (!static::is($array)) {
                 // This is not an array!
                 return $default;
             }
 
-            if (static::isArray($path)) {
+            if (static::is($path)) {
                 // The path has already been separated into keys
                 $keys = $path;
             } else {
@@ -245,7 +250,7 @@
         * @param mixed   $value     Value to set
         * @param string  $delimiter Path delimiter
         */
-        public static function setPath( & $array, $path, $value, $delimiter = '.')
+        public static function setPath(&$array, $path, $value, $delimiter = '.')
         {
             // Split the keys by delimiter
             $keys = explode($delimiter, $path);
@@ -283,12 +288,12 @@
         public static function range($step = 10, $max = 100)
         {
             if ($step < 1) {
-                return array();
+                return [];
             }
 
-            $array = array();
+            $array = [];
 
-            for ($i = $step ; $i <= $max ; $i += $step) {
+            for ($i = $step; $i <= $max; $i += $step) {
                 $array[$i] = $i;
             }
 
@@ -305,14 +310,16 @@
          */
         public static function get($array, $key, $default = null)
         {
-            if (is_null($key)) return $array;
+            if (is_null($key)) {
+                return $array;
+            }
 
-            if (isset($array[$key])) return $array[$key];
+            if (isset($array[$key])) {
+                return $array[$key];
+            }
 
-            foreach (explode('.', $key) as $segment)
-            {
-                if ( ! is_array($array) || ! array_key_exists($segment, $array))
-                {
+            foreach (explode('.', $key) as $segment) {
+                if (!is_array($array) || ! array_key_exists($segment, $array)) {
                     return value($default);
                 }
 
@@ -398,7 +405,8 @@
          */
         public static function extract($array, array $paths, $default = null)
         {
-            $found = array();
+            $found = [];
+
             foreach ($paths as $path) {
                 static::setPath($found, $path, static::path($array, $path, $default));
             }
@@ -420,7 +428,7 @@
          */
         public static function pluck($array, $key)
         {
-            $values = array();
+            $values = [];
 
             foreach ($array as $row) {
                 if (isset($row[$key])) {
@@ -434,7 +442,7 @@
 
         public static function newOne()
         {
-            return array();
+            return [];
         }
 
         /**
@@ -450,9 +458,9 @@
          */
         public static function unshift(array &$array, $key, $val)
         {
-            $array = array_reverse($array, TRUE);
+            $array = array_reverse($array, true);
             $array[$key] = $val;
-            $array = array_reverse($array, TRUE);
+            $array = array_reverse($array, true);
 
             return $array;
         }
@@ -563,17 +571,19 @@
 
         public static function first(array $tab)
         {
-            if (count($tab)) {
+            if (!empty($tab)) {
                 return current($tab);
             }
+
             return null;
         }
 
         public static function last(array $tab)
         {
-            if (count($tab)) {
+            if (!empty($tab)) {
                 return end($tab);
             }
+
             return null;
         }
 
@@ -708,10 +718,12 @@
                 } else {
                     $arrays = null;
                 }
+
                 if (static::is($arrays)) {
                     return $arrays;
                 }
             }
+
             return null;
         }
 
@@ -734,6 +746,7 @@
                     if (isset($array[$i])) {
                         $key = $array[$i];
                         $value = $array[$i + 1];
+
                         if (!empty($key) && !empty($value)) {
                            $hash[$key] = $value;
                         }
@@ -769,6 +782,7 @@
 
             //now go through the array and add the items to the two groups.
             $first=true;
+
             foreach ($g as $k => $v) {
                 if ($first) {
                     $arrFirst[$k] = $groups[$k];
@@ -783,6 +797,7 @@
 
             $arrReturn['first']     = $arrFirst;
             $arrReturn['second']    = $arrSecond;
+
             return $arrReturn;
         }
 
@@ -801,15 +816,18 @@
         public static function arrayFromGet($getParams)
         {
             $parts = explode('&', $getParams);
+
             if (static::is($parts)) {
                 foreach ($parts as $part) {
                     $paramParts = explode('=', $part);
+
                     if (static::is($paramParts) && count($paramParts) == 2) {
                         $param[current($paramParts)] = end($paramParts);
                         unset($paramParts);
                     }
                 }
             }
+
             return $param;
         }
 
@@ -820,21 +838,23 @@
 
         public static function indexReverse(array $tab, $index = 1)
         {
-            if (count($tab)) {
+            if (!empty($tab)) {
                 if (isset($tab[count($tab) - $index])) {
                     return $tab[count($tab) - $index];
                 }
             }
+
             return null;
         }
 
         public static function index(array $tab, $index = 1)
         {
-            if (count($tab)) {
+            if (!empty($tab)) {
                 if (isset($tab[$index])) {
                     return $tab[$index];
                 }
             }
+
             return null;
         }
 
@@ -901,25 +921,31 @@
                     return $method();
                 } elseif (count($args) == 1) {
                     $arg = static::first($args);
+
                     return $method($arg);
                 } elseif (count($args) == 2) {
                     $arg1 = static::first($args);
                     $arg2 = static::last($args);
+
                     return $method($arg1, $arg2);
                 } else {
                     return call_user_func_array($method, $args);
                 }
             }
+
             $method = 'array_' . $method;
+
             if (is_callable($method)) {
                 if (count($args) == 0) {
                     return $method();
                 } elseif (count($args) == 1) {
                     $arg = static::first($args);
+
                     return $method($arg);
                 } elseif (count($args) == 2) {
                     $arg1 = static::first($args);
                     $arg2 = static::last($args);
+
                     return $method($arg1, $arg2);
                 } else {
                     return call_user_func_array($method, $args);
