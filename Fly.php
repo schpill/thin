@@ -1,9 +1,13 @@
 <?php
     namespace Thin;
 
+    use ArrayObject;
+    use ArrayAccess;
+    use Countable;
+    use IteratorAggregate;
     use Closure;
 
-    class Fly
+    class Fly extends ArrayObject implements ArrayAccess, Countable, IteratorAggregate
     {
         public $_data       = [];
         private $_events    = [];
@@ -35,7 +39,17 @@
             $this->_data[$key] = $value;
         }
 
+        public function offsetSet($key, $value)
+        {
+            $this->_data[$key] = $value;
+        }
+
         public function __get($key)
+        {
+            return isAke($this->_data, $key, null);
+        }
+
+        public function offsetGet($key)
         {
             return isAke($this->_data, $key, null);
         }
@@ -47,9 +61,36 @@
             return $check != isake($this->_data, $key, $check);
         }
 
+        public function offsetExists($key)
+        {
+            $check = Utils::token();
+
+            return $check != isake($this->_data, $key, $check);
+        }
+
+        public function hasEvent($key)
+        {
+            $check = Utils::token();
+
+            return $check != isake($this->_events, $key, $check);
+        }
+
         public function __unset($key)
         {
             unset($this->_data[$key]);
+        }
+
+        public function offsetUnset($key)
+        {
+            unset($this->_data[$key]);
+        }
+
+        public function register($provider, $args = [])
+        {
+            $args = array_merge([$this], $args);
+            call_user_func_array([$provider, 'register'], $args);
+
+            return $this;
         }
 
         public function __call($func, $args)
