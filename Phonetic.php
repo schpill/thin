@@ -116,6 +116,10 @@
 
             $scorePhonex    = ($phonexStr + $phonexCmp) / 2;
 
+            if (empty($biggest) || empty($smaller)) {
+                return false;
+            }
+
             $contain        = strstr($biggest, $smaller);
 
             $avgLength      = (strlen($processedStr) + strlen($processedCmp)) / 2;
