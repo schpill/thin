@@ -2,9 +2,6 @@
     namespace Thin;
 
     use Closure;
-    use ReflectionFunction;
-    use SplObjectStorage;
-    use SplFileObject;
 
     class Alias
     {

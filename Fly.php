@@ -9,8 +9,7 @@
 
     class Fly extends ArrayObject implements ArrayAccess, Countable, IteratorAggregate
     {
-        public $_data       = [];
-        private $_events    = [];
+        public $_data = [], $_events = [];
 
         public function __construct($data = [])
         {
@@ -25,23 +24,37 @@
             if (true === $has) {
                 return Instance::get('Fly', $key);
             } else {
-                return Instance::make('Fly', $key, with(new self($data)));
+                return Instance::make('Fly', $key, new self($data));
             }
         }
 
         public function event($name, Closure $cb)
         {
             $this->_events[$name] = $cb;
+
+            return $this;
         }
 
         public function __set($key, $value)
         {
+            if (is_callable($value)) {
+                return $this->event($key, $value);
+            }
+
             $this->_data[$key] = $value;
+
+            return $this;
         }
 
         public function offsetSet($key, $value)
         {
+            if (is_callable($value)) {
+                return $this->event($key, $value);
+            }
+
             $this->_data[$key] = $value;
+
+            return $this;
         }
 
         public function __get($key)
@@ -124,7 +137,7 @@
                     }
                 }
 
-                dd("$func is not a model function of $this->_db.");
+                dd("$func is not a model function of this object.");
             }
         }
     }
