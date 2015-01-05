@@ -38,6 +38,7 @@
     use Thin\Tool;
     use Thin\Alias;
     use Thin\Option;
+    use Thin\Model;
     use Thin\Database\Validator as DBValidator;
     use Thin\Load\Ini as IniLoad;
     use Thin\Session\Redis as RedisSession;
@@ -3249,6 +3250,15 @@ $(document).ready(function() {
             $object->populate($_COOKIE);
 
             return $object;
+        }
+
+        function browser($ns, $sessid = 0)
+        {
+            if (0 < $sessid) {
+                return session($ns);
+            }
+
+            return Model::Session()->firstOrCreate(['autosave' => true, 'user' => forever()]);
         }
 
         function forever($ns = 'user')
