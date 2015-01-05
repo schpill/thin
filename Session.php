@@ -110,10 +110,10 @@
 
                     return $this->$var;
                 } else {
-                    return null;
+                    return count($argv) == 1 ? current($argv) : null;
                 }
             } elseif (substr($func, 0, 3) == 'set' && strlen($func) > 3) {
-                $value = $argv[0];
+                $value = count($argv) == 1 ? current($argv) : null;
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($func, 3)));
                 $var = Inflector::lower($uncamelizeMethod);
 
@@ -177,6 +177,11 @@
             return $this->save();
         }
 
+        public function has($key)
+        {
+            return isset($this->$key);
+        }
+
         private function checkTimeout()
         {
             if (Arrays::exists('__Thin__', $_SESSION)) {
@@ -191,6 +196,16 @@
             }
         }
 
+        public function forget($key)
+        {
+            return $this->erase($key);
+        }
+
+        public function remove($key)
+        {
+            return $this->erase($key);
+        }
+
         public function erase($key = null)
         {
             if (!Arrays::exists('__Thin__', $_SESSION)) {
@@ -199,18 +214,16 @@
 
             if (is_null($key)) {
                 unset($_SESSION['__Thin__'][$this->_sessionName]);
-
-                return $this;
             } else {
                 if (Arrays::exists($key, $_SESSION['__Thin__'][$this->_sessionName])) {
                     $_SESSION['__Thin__'][$this->_sessionName][$key] = null;
                     unset($_SESSION['__Thin__'][$this->_sessionName][$key]);
-
-                    return $this;
                 } else {
                     error_log("The key $key does not exist in this session.");
                 }
             }
+
+            return $this;
         }
 
         public function event($id, \Closure $closure)

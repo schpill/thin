@@ -3362,9 +3362,11 @@ $(document).ready(function() {
     if (!function_exists('defines')) {
         function defines($name, $value)
         {
-            if(!defined($name)) {
-                define($name, $value);
+            if (!is_string($value)) {
+                $value = serialize($value);
             }
+
+            defined($name) || define($name, $value);
         }
     }
 
@@ -3374,7 +3376,7 @@ $(document).ready(function() {
             $args       = func_get_args();
             $callback   = array_shift($args);
 
-            if(is_callable($callback)) {
+            if (is_callable($callback)) {
                 return call_user_func_array($callback, $args);
             }
 
