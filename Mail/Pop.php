@@ -152,7 +152,7 @@
                 switch ($this->authMethod) {
                     case "apop":
                         $rs     = explode(" ", $rs);
-                        $secret = md5(trim($rs[count($rs)-1]) . $this->password);
+                        $secret = md5(trim($rs[count($rs) - 1]) . $this->password);
                         @fputs($socket, "apop $this->username $secret\r\n");
                         break;
 
