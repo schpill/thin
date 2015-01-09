@@ -77,8 +77,13 @@
                 return unserialize($coords);
             }
 
-            $address        = urlencode($address);
-            $json           = fgc("http://maps.google.com/maps/api/geocode/json?address=$address&sensor=false&region=$region");
+            $address    = urlencode($address);
+            $json       = fgc("http://maps.google.com/maps/api/geocode/json?address=$address&sensor=false&region=$region");
+
+            if (!strstr($json, 'geometry')) {
+                return ['lng' => 0, 'lat' => 0];
+            }
+
             $json           = json_decode($json);
             $lat            = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'};
             $lng            = $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'};
