@@ -259,6 +259,7 @@
 
             foreach ($tab1 as $row) {
                 $id = isAke($row, 'id', null);
+
                 if (strlen($id)) {
                     array_push($ids1, $id);
                 }
@@ -266,6 +267,7 @@
 
             foreach ($tab2 as $row) {
                 $id = isAke($row, 'id', null);
+
                 if (strlen($id)) {
                     array_push($ids2, $id);
                 }
