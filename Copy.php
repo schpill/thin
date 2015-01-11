@@ -10,7 +10,7 @@
         public static $__args = [];
 
         /**
-         * Get the underlying faker instance.
+         * Get the underlying instance.
          *
          * We'll always cache the instance and reuse it.
          *
