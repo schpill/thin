@@ -69,13 +69,13 @@
 
 			$message = (string) $message;
 
-			$message = str_replace('swift', 'ZeLift', $message);
+			$message = str_replace('swift', SITE_NAME, $message);
 
 			$res = $client->post('https://mandrillapp.com/api/1.0/messages/send-raw.json', [
 				'body' 				=> [
 					'key' 			=> $this->key,
 					'raw_message' 	=> (string) $message,
-					'async'			=> false,
+					'async'			=> true,
 				],
 			]);
 
@@ -120,5 +120,4 @@
 		{
 			return $this->key = $key;
 		}
-
 	}

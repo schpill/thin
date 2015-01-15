@@ -1,11 +1,11 @@
 <?php
     namespace Thin;
+
     class Mandrill
     {
     	//public static function __callStatic($method, $args)
     	public static function request($method, $arguments = array())
     	{
-
     		// load api key
     		$apiKey = Bootstrap::$bag['config']->getMailer()->getPassword();
 
@@ -45,10 +45,13 @@
         public static function send($arguments = array())
         {
             $response = static::request('messages/send', $arguments);
+
             if (false !== $response && Arrays::is($response)) {
                 $response = Arrays::first($response);
+
                 return $response['status'] == 'sent' ? true : $response['status'];
             }
+
             return false;
         }
     }

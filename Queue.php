@@ -2,7 +2,7 @@
     namespace Thin;
 
     use Closure;
-    use Dbjson\Dbjson as Db;
+    use Dbredis\Database as Db;
     use Jeremeamia\SuperClosure\SerializableClosure;
 
     class Queue
@@ -11,7 +11,7 @@
         {
             $closure = serialize(new SerializableClosure($closure));
 
-            $db = Db::instance('system', 'task');
+            $db = Db::instance('queue', 'task');
 
             $new = $db->create([
                 'closure'   => $closure,
@@ -55,7 +55,7 @@
 
         public static function bulk(array $closures, $args = [], $when = 0)
         {
-            if (count($closures)) {
+            if (!empty($closures)) {
                 foreach ($closures as $closure) {
                     if ($closure instanceof Closure) {
                         static::push($closure, $args, $when);
@@ -71,7 +71,7 @@
 
         public static function pushMethod($method, $args = [], $when = 0)
         {
-            $db = Db::instance('system', 'task');
+            $db = Db::instance('queue', 'task');
 
             list($class, $action) = explode('::', $method, 2);
 
@@ -85,7 +85,7 @@
 
         public static function bulkMethod(array $methods, $args = [], $when = 0)
         {
-            if (count($mvcs)) {
+            if (!empty($mvcs)) {
                 foreach ($methods as $method) {
                     if (strstr($method, '::')) {
                         static::pushMethod($method, $args, $when);
@@ -103,11 +103,10 @@
         {
             set_time_limit(0);
 
-            $db = Db::instance('system', 'task');
+            $db     = Db::instance('queue', 'task');
+            $tasks  = $db->where(['when', '=', time()])->exec();
 
-            $tasks = $db->where('when < ' . time())->exec();
-
-            if (count($tasks)) {
+            if (!empty($tasks)) {
                 foreach ($tasks as $task) {
                     $isClosure = isAke($task, 'closure', false);
 
@@ -122,11 +121,11 @@
 
         private static function runMethod($task)
         {
-            $dbTask         = Db::instance('system', 'task');
-            $dbTaskInstance = Db::instance('system', 'taskinstance');
-            $dbTaskOver     = Db::instance('system', 'taskover');
+            $dbTask         = Db::instance('queue', 'task');
+            $dbTaskInstance = Db::instance('queue', 'taskinstance');
+            $dbTaskOver     = Db::instance('queue', 'taskover');
 
-            $inInstance     = $dbTaskInstance->where('task_id = ' . $task['id'])->first(true);
+            $inInstance     = $dbTaskInstance->where(['task_id', '=', $task['id']])->first(true);
 
             if (empty($inInstance)) {
                 $inInstance = $dbTaskInstance->create(['task_id' => $task['id']])->save();
@@ -155,11 +154,11 @@
 
         private static function runClosure($task)
         {
-            $dbTask         = Db::instance('system', 'task');
-            $dbTaskInstance = Db::instance('system', 'taskinstance');
-            $dbTaskOver     = Db::instance('system', 'taskover');
+            $dbTask         = Db::instance('queue', 'task');
+            $dbTaskInstance = Db::instance('queue', 'taskinstance');
+            $dbTaskOver     = Db::instance('queue', 'taskover');
 
-            $inInstance     = $dbTaskInstance->where('task_id = ' . $task['id'])->first(true);
+            $inInstance     = $dbTaskInstance->where(['task_id', '=', $task['id']])->first(true);
 
             if (empty($inInstance)) {
                 $inInstance = $dbTaskInstance->create(['task_id' => $task['id']])->save();
