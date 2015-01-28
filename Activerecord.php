@@ -31,18 +31,22 @@
                     if (empty($this->_settings)) {
                         throw new Exception("Settings do not exist.");
                     }
+
                     if (Arrays::exists('entity', $this->_settings)) {
                         $this->_entity = $this->_settings['entity'];
                     } else {
                         throw new Exception('The model is misconfigured. Entity missing.');
                     }
+
                     if (Arrays::exists('table', $this->_settings)) {
                         $this->_table = $this->_settings['table'];
                     } else {
                         throw new Exception('The model is misconfigured. Table missing.');
                     }
+
                     $configs        = container()->getConfig()->getDb();
                     $config         = isAke($configs, $this->_entity);
+
                     if (empty($config)) {
                         throw new Exception("Database connection settings do not exist.");
                     }
@@ -56,17 +60,21 @@
 
                     $this->_keyConnexion = sha1(serialize(array($dsn, $username, $password)));
                     $dbs = container()->getArConnexions();
+
                     if (empty($all)) {
                         $dbs = array();
                     }
+
                     $db = $dbs[$this->_keyConnexion] = new PDO($dsn, $username, $password);
                     container()->setArConnexions($dbs);
 
                     $this->_relationships = isAke($this->_settings, 'relationships');
                     $this->_fields = isAke($this->_settings, 'fields');
+
                     if (empty($this->_fields)) {
                         $this->map();
                     }
+
                 } else {
                     throw new Exception('The model is misconfigured.');
                 }
@@ -78,12 +86,14 @@
         public function tts($sec = 3600)
         {
             $this->_tts = $sec;
+
             return $this;
         }
 
         public function cache($bool)
         {
             $this->_cache = $bool;
+
             return $this;
         }
 
@@ -92,6 +102,7 @@
             if (count($this->_pks)) {
                 return Arrays::first($this->_pks);
             }
+
             return $this->_table . '_id';
         }
 
@@ -104,6 +115,7 @@
                     }
                 }
             }
+
             return null;
         }
 
@@ -116,6 +128,7 @@
                     }
                 }
             }
+
             return false;
         }
 
@@ -123,22 +136,28 @@
         {
             $q = "SHOW COLUMNS FROM $this->_table";
             $res = $this->query($q, false);
+
             if (empty($res)) {
                 throw new Exception("The system cannot access to the table $this->_table on $this->_entity.");
             }
+
             $conf = array();
+
             foreach ($res as $data) {
                 $field = $data['Field'];
                 $conf[$field] = array();
                 $conf[$field]['type'] = typeSql($data['Type']);
                 $conf[$field]['nullable'] = ('yes' == Inflector::lower($data['Null'])) ? true : false;
+
                 if ($data['Key'] == 'PRI') {
                     $this->_pks[] = $field;
                 }
+
                 if (strlen($data['Key']) && $data['Key'] != 'PRI') {
                     $this->_keys[] = $field;
                 }
             }
+
             $this->_fields = $conf;
         }
 
@@ -152,7 +171,9 @@
             if ($field == 'id') {
                 $field = $this->pk();
             }
+
             $hasFk = $this->fk($field);
+
             if (null === $hasFk) {
                 $q = "SELECT ". $this->_entity . '.' . $this->_table . '.' . implode(', ' . $this->_entity . '.' . $this->_table . '.' , $this->fields()) . "
                 FROM $this->_entity.$this->_table
@@ -164,10 +185,13 @@
                 FROM $this->_entity.$this->_table
                 WHERE $this->_entity.$this->_table.$fieldName = " . $this->quote($value);
             }
+
             $res = $this->query($q, true, $recursive);
+
             if (true === $one && count($res)) {
                 return Arrays::first($res);
             }
+
             return true === $one ? null : $res;
         }
 
@@ -194,16 +218,20 @@
         public function where($where, $args = array(), $type = 'AND')
         {
             $q = '';
+
             if (count($this->_wheres)) {
                 $q .= ' ' . $type . ' ';
             }
+
             if (count($args) && Arrays::isAssoc($args)) {
                 foreach ($args as $k => $v) {
                     $where = repl(":$k", !is_int($v) ? $this->quote($v) : $v, $where);
                 }
             }
+
             $q .= $where;
             $this->_wheres[] = $q;
+
             return $this;
         }
 
@@ -212,7 +240,9 @@
             if (!ake('order', $this->_query)) {
                 $this->_query['order'] = array();
             }
+
             $this->_query['order'][] = array($field, Inflector::upper($direction));
+
             return $this;
         }
 
@@ -221,31 +251,37 @@
             if (!ake('join', $this->_query)) {
                 $this->_query['join'] = array();
             }
+
             $this->_query['join'][] = $join;
+
             return $this;
         }
 
         public function limit($limit, $offset = 0)
         {
             $this->_query['limit'] = array($limit, $offset);
+
             return $this;
         }
 
         public function groupBy($field)
         {
             $this->_query['groupBy'] = $field;
+
             return $this;
         }
 
         public function distinct()
         {
             $this->_query['distinct'] = true;
+
             return $this;
         }
 
         public function fetch($obj = true, $chain = false)
         {
             $sql = $this->makeSql();
+
             return true === $chain ? $this : $this->query($sql, $obj);
         }
 
@@ -261,31 +297,40 @@
             if (ake('order', $this->_query)) {
                 $order = 'ORDER BY ';
                 $i = 0;
+
                 foreach ($this->_query['order'] as $qo) {
                     list($field, $direction) = $qo;
+
                     if ($i > 0) {
                         $order .= ', ';
                     }
+
                     $order .= "$this->_entity.$this->_table.$field $direction";
                     $i++;
                 }
             }
+
             if (ake('limit', $this->_query)) {
                 list($max, $offset) = $this->_query['limit'];
                 $limit = "LIMIT $offset, $max";
             }
+
             if (ake('join', $this->_query)) {
                 $join = implode(' ', $this->_query['join']);
             }
+
             if (ake('groupBy', $this->_query)) {
                 $groupBy = 'GROUP BY ' . $this->_query['groupBy'];
             }
+
             if (ake('distinct', $this->_query)) {
                 $distinct = (true === $this->_query['distinct']) ? 'DISTINCT' : '';
             }
+
             $sql = "SELECT $distinct " . $this->_entity . '.' . $this->_table . '.' . implode(', ' . $this->_entity . '.' . $this->_table . '.' , $this->fields()) . "
                 FROM $this->_entity.$this->_table $join
                 WHERE $where $order $limit $groupBy";
+
             return $sql;
         }
 
@@ -294,39 +339,52 @@
             $db = $this->db();
             $sql = empty($sql) ? $this->makeSql() : $sql;
             $keyCache = sha1($sql . serialize($this->_settings));
+
             if (true === $this->_cache) {
                 $cached = $this->cached($keyCache);
+
                 if (!empty($cached)) {
                     $this->_count = count($cached);
                     return $cached;
                 }
             }
+
             $res = $db->prepare($sql);
             $res->execute();
             $result = array();
+
             if (false !== $res) {
                 $cols = array();
+
                 while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
                     $cols[] = $obj ? $this->row($row, $recursive) : $row;
                 }
+
                 $result = $cols;
             }
+
             if (true === $this->_cache) {
                 $this->cached($keyCache, $result);
             }
+
             $this->_count = count($result);
+
             return $result;
         }
 
         public function cached($key, $data = null)
         {
             $file = CACHE_PATH . DS . $key . '_sql';
+
             if (!empty($data)) {
                 File::put($file, serialize($data));
+
                 return $data;
             }
+
             if (File::exists($file)) {
                 $age = time() - filemtime($file);
+
                 if ($age > $this->_tts) {
                     File::delete($file);
                 } else {
@@ -338,18 +396,22 @@
         public function db()
         {
             $dbs = container()->getArConnexions();
+
             if (null !== $dbs && Arrays::is($dbs)) {
                 $db = isAke($dbs, $this->_keyConnexion);
+
                 if (!empty($db)) {
                     return $db;
                 }
             }
+
             return null;
         }
 
         public function getId()
         {
             $pk = $this->pk();
+
             return $this->$pk;
         }
 
@@ -357,6 +419,7 @@
         {
             $pk = $this->pk();
             $this->$pk = $id;
+
             return $this;
         }
 
@@ -366,6 +429,7 @@
             $q = 'DESCRIBE ' . $this->_entity . '.' . $this->_table;
             $res = $this->query($q, false);
             $count = count($res);
+
             if (0 < $count) {
                 $field   = 0;
                 $type    = 1;
@@ -375,6 +439,7 @@
                 $extra   = 5;
                 $i = 1;
                 $p = 1;
+
                 foreach ($res as $row) {
                     list(
                         $length,
@@ -395,9 +460,11 @@
                         null,
                         false
                     );
+
                     if (preg_match('/unsigned/', $row[$type])) {
                         $unsigned = true;
                     }
+
                     if (preg_match('/^((?:var)?char)\((\d+)\)/', $row[$type], $matches)) {
                         $row[$type] = $matches[1];
                         $length = $matches[2];
@@ -414,10 +481,12 @@
                         // The optional argument of a MySQL int type is not precision
                         // or length; it is only a hint for display width.
                     }
+
                     if (strlen($row[$key])) {
                         if (Inflector::upper($row[$key]) == 'PRI') {
                             $primary = true;
                             $primaryPosition = $p;
+
                             if ($row[$extra] == 'auto_increment') {
                                 $identity = true;
                                 $index = true;
@@ -429,6 +498,7 @@
                             $index = true;
                         }
                     }
+
                     $desc[$this->foldCase($row[$field])] = array(
                         'ENTITY_NAME'      => $this->foldCase($this->_entity),
                         'TABLE_NAME'       => $this->foldCase($this->_table),
@@ -449,12 +519,14 @@
                     ++$i;
                 }
             }
+
             return $desc;
         }
 
         public function foldCase($string)
         {
             $value = (string) $string;
+
             return $value;
         }
 
@@ -464,12 +536,14 @@
         {
             $db = $this->db();
             $begin = $db->beginTransaction();
+
             return $this;
         }
 
         public function inTransaction()
         {
             $db = $this->db();
+
             return $db->inTransaction();
         }
 
@@ -477,6 +551,7 @@
         {
             $db = $this->db();
             $commit = $db->commit();
+
             return $this;
         }
 
@@ -484,6 +559,7 @@
         {
             $db = $this->db();
             $rollback = $db->rollBack();
+
             return $this;
         }
 
@@ -496,6 +572,7 @@
         public function closure($name, Closure $closure)
         {
             $this->_closures[$name] = $closure;
+
             return $this;
         }
 
@@ -504,38 +581,49 @@
             if (Arrays::isAssoc($data)) {
                 $obj = o(sha1(serialize($data)));
                 $obj->db_instance = $this;
+
                 if (count($extends)) {
                     foreach ($extends as $name => $instance) {
                         $closure = function ($object) use ($name, $instance) {
                             $idx = $object->is_thin_object;
                             $objects = Utils::get('thinObjects');
+
                             return $instance->$name($objects[$idx]);
                         };
+
                         $obj->_closures[$name] = $closure;
                     }
                 }
+
                 $fields = $this->fields();
+
                 foreach ($fields as $field) {
                     $hasFk = $this->hasFk($field);
+
                     if (false === $hasFk) {
                         $obj->$field = $data[$field];
                     } else {
                         extract($hasFk);
                         $ar = ar($foreignEntity, $foreignTable);
                         $one = contain('toone', Inflector::lower($type));
+
                         if ($one && $recursive) {
                             $foreignObj = $ar->findBy($foreignKey, $data[$field], $one);
                             $obj->$relationKey = $foreignObj;
                         }
                     }
                 }
+
                 $hasFk = ake('relationships', $this->_settings);
+
                 if (true === $hasFk && $recursive) {
                     $rs = $this->_settings['relationships'];
+
                     if (count($rs)) {
                         foreach ($rs as $field => $infos) {
                             extract($infos);
                             $ar = ar($foreignEntity, $foreignTable);
+
                             if (!Arrays::in($field, $fields)) {
                                 $pk = $this->pk();
                                 $obj->$field = $ar->findBy($foreignKey, $obj->$pk, false, false);
@@ -543,8 +631,10 @@
                         }
                     }
                 }
+
                 return $obj;
             }
+
             return null;
         }
 
@@ -552,12 +642,15 @@
         {
             $db = $this->db();
             $pk = $this->pk();
+
             if (isset($row->$pk)) {
                 $q = "DELETE FROM $this->_entity.$this->_table WHERE $this->_entity.$this->_table.$pk = " . $this->quote($row->$pk);
                 $res = $db->prepare($q);
                 $res->execute();
+
                 return true;
             }
+
             return false;
         }
 
@@ -565,37 +658,48 @@
         {
             $db = $this->db();
             $fields = $this->fields();
+
             foreach ($fields as $field) {
                 $hasFk = $this->hasFk($field);
+
                 if (Arrays::is($hasFk)) {
                     extract($hasFk);
                     $value = $row->$relationKey->$foreignKey;
                     $row->$fieldName = $value;
                 }
             }
+
             $pk = $this->pk();
             $new = !isset($row->$pk);
             $saveFields = $this->fieldsSave();
+
             if (false === $new) {
                 $q = "UPDATE $this->_entity.$this->_table SET ";
+
                 foreach($saveFields as $field) {
                     $value = $row->$field;
                     $q .= "$this->_entity.$this->_table.$field = " . $this->quote($value) . ', ';
                 }
+
                 $q = substr($q, 0, -2) . " WHERE $this->_entity.$this->_table.$pk = " . $this->quote($row->$pk);
             } else {
                 $q = "INSERT INTO $this->_entity.$this->_table (" . implode(', ', $saveFields) . ") VALUES (";
+
                 foreach($saveFields as $field) {
                     $value = $row->$field;
                     $q .= $this->quote($value) . ', ';
                 }
+
                 $q = substr($q, 0, -2) . ')';
             }
+
             $res = $db->prepare($q);
             $res->execute();
+
             if (true === $new) {
                 $row->$pk = $db->lastInsertId();
             }
+
             return $row;
         }
 
@@ -604,23 +708,28 @@
             $pk = $this->pk();
             $fields = $this->fields();
             $collection = array();
+
             foreach ($fields as $field) {
                 if ($pk != $field) {
                     $collection[] = $field;
                 }
             }
+
             return $collection;
         }
 
         protected function quote($value, $parameterType = PDO::PARAM_STR)
         {
-            if(empty($value)) {
+            if (empty($value)) {
                 return "NULL";
             }
+
             $db = $this->db();
+
             if (is_string($value)) {
                 return $db->quote($value, $parameterType);
             }
+
             return $value;
         }
 
@@ -640,6 +749,7 @@
             } else {
                 foreach ($res as $row) {
                     $val = Arrays::first($row);
+
                     return $val;
                 }
             }
@@ -656,6 +766,7 @@
             } else {
                 foreach ($res as $row) {
                     $val = Arrays::first($row);
+
                     return $val;
                 }
             }
@@ -672,6 +783,7 @@
             } else {
                 foreach ($res as $row) {
                     $val = Arrays::first($row);
+
                     return $val;
                 }
             }
@@ -688,6 +800,7 @@
             } else {
                 foreach ($res as $row) {
                     $val = Arrays::first($row);
+
                     return $val;
                 }
             }
@@ -709,6 +822,7 @@
             } else {
                 foreach ($res as $row) {
                     $val = Arrays::first($row);
+
                     return $val;
                 }
             }
@@ -720,11 +834,13 @@
                 $value = Arrays::first($args);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 6)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 return $this->findBy($var, $value);
             } elseif (substr($method, 0, strlen('findOneBy')) == 'findOneBy') {
                 $value = Arrays::first($args);
                 $uncamelizeMethod = Inflector::uncamelize(lcfirst(substr($method, 9)));
                 $var = Inflector::lower($uncamelizeMethod);
+
                 return $this->findBy($var, $value, true);
             }
         }

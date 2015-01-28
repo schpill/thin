@@ -21,11 +21,13 @@
         {
             $collection = array();
             $results = mysql_query($query);
+
             while ($row = mysql_fetch_array($results, MYSQL_ASSOC)) {
                 $obj = newObj('Row');
                 $obj->populate($row);
                 $collection[] = $obj;
             }
+
             return $collection;
         }
 
@@ -34,12 +36,14 @@
             if ($this->_result) {
                 $this->free();
             }
+
             $this->_disconnect();
         }
 
         public function execute($query)
         {
             $this->_result = mysql_query($query);
+
             return $this->_result;
         }
 
@@ -68,6 +72,7 @@
         {
             $this->_db = mysql_connect($this->_config['host'], $this->_config['user'], $this->_config['password']);
             mysql_select_db($this->_config['database']);
+
             unset($this->_config);
         }
 
