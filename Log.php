@@ -70,11 +70,14 @@
             if (!isset(static::$_logFile)) {
                 static::$_logFile = LOGS_PATH . DS . date('Y-m-d') . '.log';
             }
+
             if (!File::exists(static::$_logFile)) {
                 File::create(static::$_logFile);
             }
-            $message = (false !== $prettyPrint) ? print_r($message, true) : $message;
+
+            $message = false !== $prettyPrint ? print_r($message, true) : $message;
             $message = static::format($type, $message);
+
             File::append(static::$_logFile, $message);
         }
 
