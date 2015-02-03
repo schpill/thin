@@ -18,14 +18,18 @@
             if (true === $has) {
                 return Instance::get('Api', $key);
             } else {
-                return Instance::make('Api', $key, with(new self($resource)));
+                return Instance::make('Api', $key, new self($resource));
             }
         }
 
         public function auth($key)
         {
-            $db = em('core', 'api');
-            $auth = $db->where('resource = ' . $this->resource)->where('key = ' . $key)->first(true);
+            $db = rdb('api', 'resource');
+
+            $auth = $db
+            ->where(['resource', '=', $this->resource])
+            ->where(['key', '=', $key])
+            ->first(true);
 
             if (!empty($auth)) {
                 $this->token = sha1(serialize($auth->assoc()) . date('dmY'));
@@ -42,7 +46,7 @@
 
         public static function clean()
         {
-            $oldies = jmodel('apiauth')->where('expire < ' . time())->exec(true);
+            $oldies = rdb('api', 'auth')->where(['expire', '<', time()])->exec(true);
 
             if ($oldies) {
                 $oldies->delete();
@@ -57,7 +61,7 @@
                 self::unauthorized();
             }
 
-            $auth = jmodel('apiauth')->where('token = ' . $token)->first(true);
+            $auth = rdb('api', 'auth')->where(['token', '=', $token])->first(true);
 
             if (empty($auth)) {
                 self::unauthorized();
@@ -86,18 +90,18 @@
                 self::unauthorized();
             }
 
-            if (2 == $auth->is_admin) {
-                $rigth = jmodel('apiright')
-                ->where('resource = ' . $resource)
-                ->where('action = ' . $action)
-                ->where('user_id = ' . $auth->user_id)
+            if (2 == (int) $auth->is_admin) {
+                $rigth = rdb('api', 'right')
+                ->where(['resource', '=', $resource])
+                ->where(['action', '=', $action])
+                ->where(['user_id', '=', $auth->user_id])
                 ->first(true);
 
                 if (empty($right)) {
                     self::unauthorized();
                 }
 
-                $can = $right->can;
+                $can = (int) $right->can;
 
                 if (2 == $can) {
                     self::unauthorized();
