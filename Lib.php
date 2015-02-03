@@ -3,7 +3,7 @@
 
     class Lib
     {
-        public function __callStatic($f, $a)
+        public static function __callStatic($f, $a)
         {
             $f = strtolower($f);
 
