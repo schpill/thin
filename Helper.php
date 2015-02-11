@@ -511,22 +511,7 @@
     if (!function_exists('lng')) {
         function lng($context = 'web')
         {
-            $language = session($context)->getLanguage();
-
-            if (is_null($language)) {
-                $language = isAke(
-                    $_REQUEST,
-                    'thin_language',
-                    Config::get(
-                        'application.language',
-                        DEFAULT_LANGUAGE
-                    )
-                );
-
-                session($context)->setLanguage($language);
-            }
-
-            return $language;
+            return lib('lang')->locale($context);
         }
 
         function assignParams($string, $params = array())
@@ -1037,20 +1022,16 @@ var s=document.getElementsByTagName(\'script\')[0];s.parentNode.insertBefore(ga,
     }
 
     if (!function_exists('trad')) {
-        function trad($id, $default, $args = '')
-        {
-            $app = App::instance();
-            $lang = $app->getLang();
-            $translation = $lang->translate($id, $default);
-            $args = eval('return array(' . $args . ');');
-
-            if (count($args)) {
-                foreach ($args as $key => $value) {
-                    $translation = str_replace("%$key%", $value, $translation);
-                }
+        if (!function_exists('__')) {
+            function __($default, $key = null, $args = [])
+            {
+                echo lib('lang')->i18n($default, $key, $args);
             }
+        }
 
-            return $translation;
+        function trad($default, $key = null, $args = [])
+        {
+            return lib('lang')->i18n($default, $key, $args);
         }
     }
 
@@ -4317,35 +4298,6 @@ $(document).ready(function() {
             $session = session('web');
 
             return $session->getLanguage();
-        }
-    }
-
-    if (!function_exists('__')) {
-        function __($str, $segment, $name, $echo = true)
-        {
-            $session        = session('web');
-            $language       = $session->getLanguage();
-            $translation    = $str;
-            $file           = STORAGE_PATH . DS . 'translation' . DS . repl('.', DS, Inflector::lower($segment)) . DS . Inflector::lower($language) . '.php';
-
-            if (File::exists($file)) {
-                $sentences  = include($file);
-                if (Arrays::exists($name, $sentences)) {
-                    $translation = $sentences[$name];
-                }
-            }
-            if (true === $echo) {
-                echo $translation;
-            } else {
-                return $translation;
-            }
-        }
-    }
-
-    if (!function_exists('___')) {
-        function ___($str)
-        {
-            return __($str, false);
         }
     }
 
