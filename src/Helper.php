@@ -236,14 +236,21 @@
             $module = is_null($module) ? container()->getRoute()->getModule() : $module;
             $controller = is_null($controller) ? container()->getRoute()->getController() : $controller;
 
-            return URLSITE . Inflector::lower($module) . '/' . Inflector::lower($controller) . '/' . Inflector::lower($action);
+            return URLSITE .
+            Inflector::lower($module) .
+            '/' .
+            Inflector::lower($controller) .
+            '/' .
+            Inflector::lower($action);
         }
 
-        function url($action = null, $module = null, $controller = null)
-        {
-            if (0 == func_num_args()) return context('url');
+        if (!function_exists('url')) {
+            function url($action = null, $module = null, $controller = null)
+            {
+                if (0 == func_num_args()) return context('url');
 
-            echo urlAction($action, $module, $controller);
+                echo urlAction($action, $module, $controller);
+            }
         }
     }
 
