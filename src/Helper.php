@@ -2995,7 +2995,7 @@ $(document).ready(function() {
         function session($name = 'core', $adapter = 'session', $ttl = 3600)
         {
             switch ($adapter) {
-                case 'session': return Session::instance($name);
+                case 'session': return lib('session', [$name]);
                 case 'redis': return RedisSession::instance($name, $ttl);
             }
         }
