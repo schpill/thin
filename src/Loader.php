@@ -117,7 +117,7 @@
                 $file = isAke($trace, 'file', false);
                 $line = isAke($trace, 'line', false);
 
-                if (false !== $file && false !== $line) {
+                if (false !== $file && false !== $line && $file != __FILE__) {
                     $start      = $line > 5 ? $line - 5 : $line;
                     $code       = Thin\File::readLines($file, $start, $line + 5);
 
