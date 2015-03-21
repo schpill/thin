@@ -110,8 +110,9 @@
 
         // $traces = Thin\Input::globals('dbg_stack', []);
         $traces = debug_backtrace();
+        array_pop($traces);
 
-        if (count($traces)) {
+        if (!empty($traces)) {
             foreach($traces as $trace) {
                 $file = isAke($trace, 'file', false);
                 $line = isAke($trace, 'line', false);
