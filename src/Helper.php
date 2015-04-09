@@ -4038,20 +4038,6 @@ $(document).ready(function() {
         }
     }
 
-    if (!function_exists('startsWith')) {
-        function startsWith($haystack, $needle)
-        {
-            return strpos($haystack, $needle) === 0;
-        }
-    }
-
-    if (!function_exists('endsWith')) {
-        function endsWith($haystack, $needle)
-        {
-            return $needle == substr($haystack, strlen($haystack) - strlen($needle));
-        }
-    }
-
     if (!function_exists('strContains')) {
         function strContains($haystack, $needle)
         {
