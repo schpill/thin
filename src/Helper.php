@@ -4359,34 +4359,6 @@ $(document).ready(function() {
         }
     }
 
-    if (!function_exists('set')) {
-        function set($key, $value)
-        {
-            return Config::set('helper.' . $key, $value);
-        }
-    }
-
-    if (!function_exists('get')) {
-        function get($key, $default = null)
-        {
-            return Config::get('helper.' . $key, $default);
-        }
-    }
-
-    if (!function_exists('has')) {
-        function has($key)
-        {
-            return Config::has('helper.' . $key);
-        }
-    }
-
-    if (!function_exists('forget')) {
-        function forget($key)
-        {
-            return Config::forget('helper.' . $key);
-        }
-    }
-
     if (!function_exists('save')) {
         function save($key, $value = null)
         {
