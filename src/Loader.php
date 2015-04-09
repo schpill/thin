@@ -110,13 +110,14 @@
 
         // $traces = Thin\Input::globals('dbg_stack', []);
         $traces = debug_backtrace();
+        array_pop($traces);
 
-        if (count($traces)) {
+        if (!empty($traces)) {
             foreach($traces as $trace) {
                 $file = isAke($trace, 'file', false);
                 $line = isAke($trace, 'line', false);
 
-                if (false !== $file && false !== $line) {
+                if (false !== $file && false !== $line && $file != __FILE__) {
                     $start      = $line > 5 ? $line - 5 : $line;
                     $code       = Thin\File::readLines($file, $start, $line + 5);
 
