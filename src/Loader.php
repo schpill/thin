@@ -4,7 +4,11 @@
     require_once 'Helper.php';
     require_once realpath(APPLICATION_PATH . DS . '..' . DS . 'vendor') . DS . 'autoload.php';
 
-    $debug = 'production' != APPLICATION_ENV;
+    if (defined('DEBUG')) {
+        $debug = DEBUG;
+    } else {
+        $debug = 'production' != APPLICATION_ENV;
+    }
 
     if (true === $debug) {
         error_reporting(-1);
