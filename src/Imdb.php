@@ -1066,6 +1066,18 @@
             return $this->sNotFound;
         }
 
+        /**
+         * @return string The release year of the movie or $sNotFound.
+         */
+        public function getReleaseYear()
+        {
+            if (true === $this->isReady) {
+                return (int) Utils::cut('(<a href="/year/', '/', $this->sSource);
+            }
+
+            return $this->sNotFound;
+        }
+
 
         /**
         * Release date doesn't contain all the information we need to create a media and
