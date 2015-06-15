@@ -4,9 +4,9 @@
 
     class Bounce
     {
-        protected static $_rules = array();
+        protected static $_rules = [];
         protected $_connection;
-        protected $_errors = array();
+        protected $_errors = [];
         protected $_results;
         protected $_searchResults;
         public $connectionString;
@@ -26,7 +26,7 @@
         const BODY_RULES = 2;
         const COMMON_RULES = 3;
 
-        public function __construct($connectionString = null, $username = null, $password = null, array $options = array())
+        public function __construct($connectionString = null, $username = null, $password = null, array $options = [])
         {
             $this->connectionString = $connectionString;
             $this->username = $username;
@@ -35,6 +35,7 @@
             foreach ($options as $name => $value) {
                 if (property_exists($this, $name)) {
                     $reflection = new \ReflectionProperty($this, $name);
+
                     if ($reflection->isPublic()) {
                         $this->$name = $value;
                     }
@@ -54,12 +55,13 @@
             }
 
             $searchResults = $this->getSearchResults();
+
             if (empty($searchResults)) {
                 $this->closeConnection();
-                return $this->_results = array();
+                return $this->_results = [];
             }
 
-            $results = array();
+            $results = [];
             $counter = 0 ;
 
             foreach ($searchResults as $messageId) {
@@ -68,10 +70,12 @@
                 }
 
                 $header = imap_fetchheader($this->_connection, $messageId);
+
                 if (empty($header)) {
                     if ($this->deleteMessages) {
                         imap_delete($this->_connection, "$messageId:$messageId");
                     }
+
                     continue;
                 }
 
@@ -96,35 +100,43 @@
 
                 // this email headers
                 $result['headers'] = null;
+
                 if ($this->returnHeaders) {
                     $result['headers'] = $header;
                 }
 
                 // the body will also contain the original message(with headers and body!!!)
                 $result['body'] = null;
+
                 if ($this->returnBody) {
                     $result['body'] = imap_body($this->_connection, $messageId);
                 }
 
                 // just the original message, headers and body!
                 $result['originalEmail'] = null;
+
                 if ($this->returnOriginalEmail) {
                     $result['originalEmail'] = imap_fetchbody($this->_connection, $messageId, "3");
                 }
 
                 // this is useful for reading back custom headers sent in the original email.
-                $result['originalEmailHeadersArray'] = array();
+                $result['originalEmailHeadersArray'] = [];
+
                 if ($this->returnOriginalEmailHeadersArray) {
                     if (!($data = $result['originalEmail'])) {
                         $data = imap_fetchbody($this->_connection, $messageId, "3");
                     }
+
                     $originalHeaders = $this->getHeadersArray($data);
+
                     if (empty($originalHeaders)) {
                         if (!($data = $result['body'])) {
                             $data = imap_body($this->_connection, $messageId);
                         }
+
                         $originalHeaders = $this->getHeadersArray($data);
                     }
+
                     $result['originalEmailHeadersArray'] = $originalHeaders;
                 }
 
@@ -142,6 +154,7 @@
             }
 
             $this->closeConnection();
+
             return $this->_results = $results;
         }
 
@@ -151,20 +164,25 @@
                 return $rawHeader;
             }
 
-            $headers = array();
+            $headers = [];
+
             if (preg_match_all('/([^: ]+): (.+?(?:\r\n\s(?:.+?))*)\r\n/m', $rawHeader, $headerLines)) {
                 foreach ($headerLines[0] as $line) {
                     if (strpos($line, ':') === false) {
                         continue;
                     }
+
                     $lineParts = explode(':', $line, 2);
+
                     if (count($lineParts) != 2) {
                         continue;
                     }
+
                     list($name, $value) = $lineParts;
                     $headers[$name] = $value;
                 }
             }
+
             return $headers;
         }
 
@@ -195,11 +213,13 @@
 
             if (preg_match("/Original-Recipient: rfc822;(.*)/i", $dsnReport, $matches)) {
                 $emailArr = imap_rfc822_parse_adrlist($matches[1], 'default.domain.name');
+
                 if (isset($emailArr[0]->host) && $emailArr[0]->host != '.SYNTAX-ERROR.' && $emailArr[0]->host != 'default.domain.name' ) {
                     $result['email'] = $emailArr[0]->mailbox.'@'.$emailArr[0]->host;
                 }
             } else if (preg_match("/Final-Recipient: rfc822;(.*)/i", $dsnReport, $matches)) {
                 $emailArr = imap_rfc822_parse_adrlist($matches[1], 'default.domain.name');
+
                 if (isset($emailArr[0]->host) && $emailArr[0]->host != '.SYNTAX-ERROR.' && $emailArr[0]->host != 'default.domain.name' ) {
                     $result['email'] = $emailArr[0]->mailbox.'@'.$emailArr[0]->host;
                 }
@@ -228,31 +248,38 @@
                 if ($action == 'failed') {
                     $rules = $this->getRules();
                     $foundMatch = false;
+
                     foreach ($rules[self::DIAGNOSTIC_CODE_RULES] as $rule) {
                         if (preg_match($rule['regex'], $diagnosticCode, $matches)) {
                             $foundMatch = true;
                             $result['bounceType'] = $rule['bounceType'];
+
                             break;
                         }
                     }
+
                     if (!$foundMatch) {
                         foreach ($rules[self::DSN_MESSAGE_RULES] as $rule) {
                             if (preg_match($rule['regex'], $dsnMessage, $matches)) {
                                 $foundMatch = true;
                                 $result['bounceType'] = $rule['bounceType'];
+
                                 break;
                             }
                         }
                     }
+
                     if (!$foundMatch) {
                         foreach ($rules[self::COMMON_RULES] as $rule) {
                             if (preg_match($rule['regex'], $dsnMessage, $matches)) {
                                 $foundMatch = true;
                                 $result['bounceType'] = $rule['bounceType'];
+
                                 break;
                             }
                         }
                     }
+
                     if (!$foundMatch) {
                         $result['bounceType'] = self::BOUNCE_HARD;
                     }
@@ -270,7 +297,7 @@
 
         protected function processBody($messageId)
         {
-            $result    = array(
+            $result = array(
                 'email'         => null,
                 'bounceType'    => self::BOUNCE_HARD,
                 'action'        => null,
@@ -280,8 +307,10 @@
 
             $body = null;
             $structure = imap_fetchstructure($this->_connection, $messageId);
+
             if (in_array($structure->type, array(0, 1))) {
                 $body = imap_fetchbody($this->_connection, $messageId, "1");
+
                 // Detect encoding and decode - only base64
                 if (isset($structure->parts) && isset($structure->parts[0]) && $structure->parts[0]->encoding == 4) {
                     $body = quoted_printable_decode($body);
@@ -295,23 +324,28 @@
                 } elseif ($structure->encoding == 3) {
                     $body = base64_decode($body);
                 }
+
                 $body = substr($body, 0, 1000);
             }
 
             if (!$body) {
                 $result['bounceType'] = self::BOUNCE_HARD;
+
                 return $result;
             }
 
             $rules = $this->getRules();
             $foundMatch = false;
+
             foreach ($rules[self::BODY_RULES] as $rule) {
                 if (preg_match($rule['regex'], $body, $matches)) {
                     $foundMatch = true;
                     $result['bounceType'] = $rule['bounceType'];
+
                     if (isset($rule['regexEmailIndex']) && isset($matches[$rule['regexEmailIndex']])) {
                         $result['email'] = $matches[$rule['regexEmailIndex']];
                     }
+
                     break;
                 }
             }
@@ -320,10 +354,12 @@
                     if (preg_match($rule['regex'], $body, $matches)) {
                         $foundMatch = true;
                         $result['bounceType'] = $rule['bounceType'];
+
                         break;
                     }
                 }
             }
+
             if (!$foundMatch) {
                 $result['bounceType'] = self::BOUNCE_HARD;
             }
@@ -338,20 +374,22 @@
             }
 
             if (!$this->openConnection()) {
-                return $this->_searchResults = array();
+                return $this->_searchResults = [];
             }
 
             $searchString = sprintf('UNDELETED SINCE "%s"', date('d-M-Y'));
+
             if (!empty($this->searchString)) {
                 $searchString = $this->searchString;
             }
 
             $searchResults = imap_search($this->_connection, $searchString, null, 'UTF-8');
-            if (empty($searchResults)) {
-                $searchResults = array();
-             }
 
-             return $this->_searchResults = $searchResults;
+            if (empty($searchResults)) {
+                $searchResults = [];
+            }
+
+            return $this->_searchResults = $searchResults;
         }
 
         protected function openConnection()
@@ -362,21 +400,25 @@
 
             if (!function_exists('imap_open')) {
                 $this->_errors[] = 'The IMAP extension is not enabled on this server!';
+
                 return false;
             }
 
             if (empty($this->connectionString) || empty($this->username) || empty($this->password)) {
                 $this->_errors[] = 'The connection string, username and password are required in order to open the connection!';
+
                 return false;
             }
 
             $connection = @imap_open($this->connectionString, $this->username, $this->password, null, 1);
             if (empty($connection)) {
                 $this->_errors = array_unique(array_values(imap_errors()));
+
                 return false;
             }
 
             $this->_connection = $connection;
+
             return true;
         }
 
