@@ -12,9 +12,6 @@
 
     namespace Thin;
 
-    use Thin\Inflector;
-    use Thin\Arrays;
-
     class Moo
     {
         public static function __callStatic($method, $args)
