@@ -286,7 +286,7 @@
                     $ids[] = $row['id'];
                 }
 
-                $this->cached('sort' . $field . '.' . $direction . '.' . sha1(serialize($this->wheres)), $ids);
+                $this->setCached('sort' . $field . '.' . $direction . '.' . sha1(serialize($this->wheres)), $ids);
             }
 
             return $ids;
