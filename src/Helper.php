@@ -799,7 +799,9 @@
 
             return null;
         }
+    }
 
+    if (!function_exists('view')) {
         function view()
         {
             $view = container()->getView();
