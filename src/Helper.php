@@ -1686,7 +1686,9 @@ $(document).ready(function() {
 
             return URLSITE . 'file.php?file=' . $key . '&type=png&name=image';
         }
+    }
 
+    if (!function_exists('info')) {
         function info($what = null, $die = false)
         {
             if (null === $what) {
@@ -1699,7 +1701,9 @@ $(document).ready(function() {
                 exit;
             }
         }
+    }
 
+    if (!function_exists('lite')) {
         function lite($name)
         {
             $dbs = container()->getLites();
@@ -1759,7 +1763,9 @@ $(document).ready(function() {
 
             return $userAgents[rand(0, count($userAgents) - 1)];
         }
+    }
 
+    if (!function_exists('dwn')) {
         function dwn($url)
         {
             $ip         = rand(200, 225) . '.' . rand(0, 255) . '.' . rand(0, 255) . '.' . rand(0, 255);
