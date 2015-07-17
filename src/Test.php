@@ -7,6 +7,6 @@
         public function setUp()
         {
             /* ENVIRONMENT */
-
+            parent::setUp();
         }
     }

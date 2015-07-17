@@ -799,7 +799,9 @@
 
             return null;
         }
+    }
 
+    if (!function_exists('view')) {
         function view()
         {
             $view = container()->getView();
@@ -1684,7 +1686,9 @@ $(document).ready(function() {
 
             return URLSITE . 'file.php?file=' . $key . '&type=png&name=image';
         }
+    }
 
+    if (!function_exists('info')) {
         function info($what = null, $die = false)
         {
             if (null === $what) {
@@ -1697,7 +1701,9 @@ $(document).ready(function() {
                 exit;
             }
         }
+    }
 
+    if (!function_exists('lite')) {
         function lite($name)
         {
             $dbs = container()->getLites();
@@ -1757,7 +1763,9 @@ $(document).ready(function() {
 
             return $userAgents[rand(0, count($userAgents) - 1)];
         }
+    }
 
+    if (!function_exists('dwn')) {
         function dwn($url)
         {
             $ip         = rand(200, 225) . '.' . rand(0, 255) . '.' . rand(0, 255) . '.' . rand(0, 255);
@@ -1971,12 +1979,16 @@ $(document).ready(function() {
 
                 return null;
             }
+        }
 
+        if (!function_exists('event')) {
             function event($name, Closure $closure)
             {
                 registry('events.' . $name, $closure);
             }
+        }
 
+        if (!function_exists('fire')) {
             function fire($name, $args = array())
             {
                 $closure = registry('events.' . $name);
@@ -1989,7 +2001,9 @@ $(document).ready(function() {
 
                 return null;
             }
+        }
 
+        if (!function_exists('hasEvent')) {
             function hasEvent($name)
             {
                 $closure = registry('events.' . $name);
@@ -2061,6 +2075,7 @@ $(document).ready(function() {
             }
         }
     }
+
     if (!function_exists('partial')) {
         function partial($file)
         {
@@ -2096,12 +2111,16 @@ $(document).ready(function() {
 
             return "O:" . strlen($className) . ":\"" . $className . "\":" . count($properties) . ':{' . serializeProperties($reflection, $properties) . "}";
         }
+    }
 
+    if (!function_exists('instantiator')) {
         function instantiator($className)
         {
             return unserialize(createSerializedObject($className));
         }
+    }
 
+    if (!function_exists('serializeProperties')) {
         function serializeProperties(ReflectionClass $reflection, array $properties)
         {
             $serializedProperties = '';
@@ -2113,7 +2132,9 @@ $(document).ready(function() {
 
             return $serializedProperties;
         }
+    }
 
+    if (!function_exists('serializePropertyName')) {
         function serializePropertyName(ReflectionClass $class, ReflectionProperty $property)
         {
             $propertyName = $property->getName();
@@ -2126,7 +2147,9 @@ $(document).ready(function() {
 
             return serialize($propertyName);
         }
+    }
 
+    if (!function_exists('serializePropertyValue')) {
         function serializePropertyValue(ReflectionClass $class, ReflectionProperty $property)
         {
             $defaults = $class->getDefaultProperties();
@@ -2137,7 +2160,9 @@ $(document).ready(function() {
 
             return serialize(null);
         }
+    }
 
+    if (!function_exists('callNotPublicMethod')) {
         function callNotPublicMethod($object, $methodName)
         {
             $reflectionClass    = new ReflectionClass($object);
