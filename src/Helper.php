@@ -3256,17 +3256,15 @@ $(document).ready(function() {
             }
 
             $ns         = SITE_NAME . '_' . $ns;
-            $cookie     = cookies()->$ns;
+            $cookie     = isAke($_COOKIE, $ns, null);
 
-            if (null === $cookie) {
-                setcookie($ns, Utils::token(), strtotime('+1 year'), '/');
-            } else {
-                setcookie($ns, $cookie, strtotime('+1 year'), '/');
+            if (!$cookie) {
+                $cookie = Utils::UUID();
             }
 
-            $key = cookies()->$ns;
+            setcookie($ns, $cookie, strtotime('+1 year'), '/');
 
-            return $key;
+            return $cookie;
         }
     }
 
