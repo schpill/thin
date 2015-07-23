@@ -62,7 +62,7 @@
 			);
 
 			$headers = $message->getHeaders();
-			$headers->addTextHeader('X-Mailer', Config::get('mailer.app.version', 'ZeLift Mailer v1.2'));
+			$headers->addTextHeader('X-Mailer', Config::get('mailer.app.version', SITE_NAME . ' Mailer v1.2'));
 			$headers->addTextHeader('X-MC-Track', Config::get('mailer.global.track', 'clicks_textonly'));
 
 			$message = (string) $message;
