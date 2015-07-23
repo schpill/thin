@@ -56,8 +56,6 @@
 		 */
 		public function send(Swift_Mime_Message $message, &$failedRecipients = null)
 		{
-			$client = $this->getHttpClient();
-
 			$message->setSender(
 				Config::get('mailer.global.address', 'mailer@' . SITE_NAME . '.com'),
 				Config::get('mailer.global.sender', SITE_NAME)
@@ -71,15 +69,46 @@
 
 			$message = str_replace('swift', SITE_NAME, $message);
 
-			$res = $client->post('https://mandrillapp.com/api/1.0/messages/send-raw.json', [
+			// $res = $client->post('https://mandrillapp.com/api/1.0/messages/send-raw.json', [
+			// 	'body' 				=> [
+			// 		'key' 			=> $this->key,
+			// 		'raw_message' 	=> (string) $message,
+			// 		'async'			=> true,
+			// 	],
+			// ]);
+
+			$arguments = [
 				'body' 				=> [
 					'key' 			=> $this->key,
 					'raw_message' 	=> (string) $message,
 					'async'			=> true,
 				],
-			]);
+			];
 
-			return $res;
+			$ch = curl_init();
+    		curl_setopt($ch, CURLOPT_URL, 'https://mandrillapp.com/api/1.0/messages/send.json');
+    		curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+    		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    		curl_setopt($ch, CURLOPT_POST, true);
+    		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+    		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($arguments));
+    		$response = curl_exec($ch);
+
+			// catch errors
+    		if (curl_errno($ch)) {
+    			#$errors = curl_error($ch);
+    			curl_close($ch);
+
+    			// return false
+    			return false;
+    		} else {
+    			curl_close($ch);
+
+    			// return array
+    			return json_decode($response, true);
+    		}
 		}
 
 		/**
