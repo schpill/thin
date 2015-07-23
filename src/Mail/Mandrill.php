@@ -86,7 +86,7 @@
 			];
 
 			$ch = curl_init();
-    		curl_setopt($ch, CURLOPT_URL, 'https://mandrillapp.com/api/1.0/messages/send.json');
+    		curl_setopt($ch, CURLOPT_URL, 'https://mandrillapp.com/api/1.0/messages/send-raw.json');
     		curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
