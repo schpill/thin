@@ -86,14 +86,14 @@
 			];
 
 			$ch = curl_init();
-    		curl_setopt($ch, CURLOPT_URL, 'https://mandrillapp.com/api/1.0/messages/send-raw.json');
-    		curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-    		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    		curl_setopt($ch, CURLOPT_POST, true);
-    		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-    		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($arguments));
+	        curl_setopt($ch, CURLOPT_URL, 'https://mandrillapp.com/api/1.0/messages/send-raw.json');
+	        curl_setopt($ch, CURLOPT_POST, 1);
+	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(array(
+	            'key' => $this->key,
+	            'raw_message' => (string) $message,
+	            'async' => true
+	        )));
     		$response = curl_exec($ch);
 
 			// catch errors
