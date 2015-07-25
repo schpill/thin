@@ -244,8 +244,8 @@
                 )
             );
 
-            $tab        = json_decode($this->response, true);
-            $res        = isAke($tab, 'message');
+            $tab    = json_decode($this->response, true);
+            $res    = isAke($tab, 'message');
 
             return $res;
         }
@@ -308,5 +308,12 @@
         private function log()
         {
             container()->log(func_get_args());
+        }
+
+        public function __call($m, $a)
+        {
+            $this->call($m, $a);
+
+            return isAke(json_decode($this->response, true), 'message');
         }
     }
