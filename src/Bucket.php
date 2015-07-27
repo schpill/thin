@@ -312,7 +312,7 @@
 
         public function __call($m, $a)
         {
-            $this->call($m, $a);
+            $this->call($m, current($a));
 
             return isAke(json_decode($this->response, true), 'message');
         }
