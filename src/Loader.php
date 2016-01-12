@@ -1,7 +1,7 @@
 <?php
     clearstatcache();
 
-    require_once 'Helper.php';
+    require_once VENDORS_PATH . DS . 'schpill/thin/src/Helper.php';
     require_once VENDORS_PATH . DS . 'autoload.php';
 
     if (defined('DEBUG')) {
