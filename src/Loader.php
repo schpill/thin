@@ -2,7 +2,7 @@
     clearstatcache();
 
     require_once 'Helper.php';
-    require_once realpath(APPLICATION_PATH . DS . '..' . DS . 'vendor') . DS . 'autoload.php';
+    require_once VENDORS_PATH . DS . 'autoload.php';
 
     if (defined('DEBUG')) {
         $debug = DEBUG;
