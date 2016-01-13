@@ -11,7 +11,7 @@
         error_reporting(-1);
 
         set_exception_handler(function($exception) {
-            vd('EXCEPTION', $exception, debug_backtrace());
+            var_dump('EXCEPTION', $exception, debug_backtrace());
         });
 
         set_error_handler(function($type, $message, $file, $line) {
