@@ -165,7 +165,15 @@
 		{
 			umask(0000);
 
-			return (!is_dir($path)) ? mkdir($path, $chmod, true) : true;
+			if (is_dir($path)) {
+				return true;
+			}
+
+			try {
+				mkdir($path, $chmod, true);
+			} catch (\Exception $e) {
+				die("You have not sufficient right to create $path.");
+			}
 		}
 
 		public static function mvdir($source, $destination, $options = \FilesystemIterator::SKIP_DOTS)
